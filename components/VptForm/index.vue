@@ -30,4 +30,4 @@ function updateInput(index: string) {
     gap: 1em;
     flex-direction: column;
 }
-</style>
+</style>../../__index.js

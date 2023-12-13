@@ -1,0 +1,1 @@
+export default m as (nuxtApp: any) => void

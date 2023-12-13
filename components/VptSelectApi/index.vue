@@ -36,4 +36,4 @@ const enabled = ref(false)
 .vp-hidden {
     display: none;
 }
-</style>
+</style>../../__index.js

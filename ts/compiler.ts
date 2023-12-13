@@ -1,0 +1,690 @@
+import StateManager from "./StateManager"
+import { config } from "./config"
+import { PatternsApi } from "./interfaces"
+import { addToPath, buildUrl, queryToApi } from "./utilits"
+
+export default class CompositionBuilder {
+    private _currentArgs: any[] = []
+
+    public static instruction(defaultValue: any) {
+        let compiledObject: any = null
+        const anonInstruction = new Proxy({__wrt: [] as any[], __value: defaultValue}, {
+            get(target, p, receiver) {
+                if(p == '__wrt' || p == '__value') {
+                    return target[p]
+                }
+                else if(p == '__ref') {
+                    return compiledObject
+                }
+                else { return function (...kwargs: any[]) {
+                    target.__wrt.push([p, kwargs])
+                    return anonInstruction
+            }}},
+            set(target, p, newValue, receiver) {
+                if(p == '__ref') {
+                    compiledObject = newValue
+                }
+                return true
+            },})
+        return anonInstruction as any;
+    }
+
+    public compile(instruction: {__wrt: any[], __value: any, __ref: any}) {
+        const mainComposition = this.composition()
+        mainComposition.__value = config.init(instruction.__value)
+        mainComposition.get = () => config.get(mainComposition.__value)
+        mainComposition.set = (v: any) => { config.set(mainComposition.__value, v)}
+        mainComposition.__obbsv = 0
+        mainComposition.subs = []
+        mainComposition.lastStep = () => {}
+
+        instruction.__ref = mainComposition
+
+        for(const doOf of instruction.__wrt) {
+            this._currentArgs = doOf[1]
+            const name = ((doOf[0] as string)[0].toLocaleUpperCase()) + ((doOf[0] as string).slice(1));
+            const answer = (this as any)[`do${name}`](mainComposition, this._currentArgs)
+            if(typeof answer !== 'undefined' && answer != null) {
+                return answer
+            }
+        }
+    }
+
+    protected createWay(name: string, composition: {[name: string]: any}, data: any) {
+        return (this as any)[`way${name}${data}`](composition, data)
+    }
+
+    protected composition(): {[name: string]: any} { return {}; }
+
+    protected setType(composition: {[name: string]: any}, value: number) {
+        composition.__obbsv = value
+        return this
+    }
+
+    protected argument<T>(index: number, method: (value: T) => void) {
+        if(this._currentArgs.length > index) {
+            method(this._currentArgs[length])
+        }
+    }
+
+    protected dynamicAdd(composition: {[name: string]: any}, name: string, value: any) {
+        composition[name] = value
+        return this
+    }
+}
+
+interface IStateComposition {
+    __obbsv: number
+    __value: any
+    get: () => any
+    set: (v: any) => void
+    lastStep: () => void
+
+    api: {
+        path: string,
+        query: {[name: string]: any},
+        userQuery: {[name: string]: any},
+
+        optimization: {
+            preventRepeat: boolean,
+        }
+
+        customParams: {[name: string]: any},
+
+        method: "GET"|"POST"|"PUT"|"DELETE",
+
+        auth: {
+            use: boolean,
+            login: string,
+            password: string
+        },
+
+        linkMethod: string,
+        joined: {
+            query: {[name: string]: {object: any, field: string} | any}
+        }
+
+        pagination: {
+            append: boolean,
+            size: number,
+            offset: number,
+            maxOffset: number
+        }
+    },
+    parent: IStateComposition,
+    template: PatternsApi,
+    cache: {
+        loaded: boolean,
+        type: "blob"|"json"|"string"|"number"|"arrayBuffer",
+        where: {
+            isLocalStorage: boolean,
+            isCache: boolean,
+            isCookie: boolean
+        },
+        name: string,
+        duration: number,
+    },
+    subs: Function[]
+    convert: {
+        map: Function[],
+        sort: Function[],
+        has: Function[]
+    }
+
+    // with: [] as any[],
+    // kick: null as any,
+    // subs: [] as Function[],
+    // buxt: null,
+    // template: "",
+    // cache: {
+    //     loaded: false,
+    //     cacheType: "string",
+    //     where: {
+    //         isLocalStorage: false,
+    //         isCache: false,
+    //         isCooke: false
+    //     },
+    //     name: '',
+    //     duration: 0,
+    // },
+    // type: 0
+}
+
+export class StateComposition extends CompositionBuilder {
+    private compileQuery(composition: IStateComposition) {
+        let query = Object.assign({}, composition.api.query, composition.api.userQuery)
+        
+        if(composition.template == 'yii2-data-provider') {
+            query['page[number]'] = composition.api.pagination.offset
+            query['page[size]'] = composition.api.pagination.size
+        }
+
+        for (const [key, val] of Object.entries(composition.api.joined.query)) {
+            if(typeof val == 'object') {
+                query[key] = val.object.getParams(val.field).get()
+            }
+            else {
+                query[key] = val
+            }
+        }
+
+        return query
+    }
+
+    protected doApi(composition: IStateComposition, args: any[]) {
+        this.setType(composition, 2)
+            .dynamicAdd(composition, 'api', {
+                path: '',
+                query: {},
+                userQuery: {},
+                method: "GET",
+                auth: {
+                    use: false,
+                    login: '',
+                    password: ''
+                },
+                joined: {
+                    query: {}
+                },
+                customParams: {},
+                optimization: {
+                    preventRepeat: true,
+                },
+                pagination: {
+                    append: false,
+                    size: 0,
+                    offset: 0,
+                    maxOffset: 99999
+                }
+            })
+            .dynamicAdd(composition, 'parent', null)
+            .dynamicAdd(composition, 'template', '')
+            .dynamicAdd(composition, 'convert', {
+                map: [],
+                sort: [],
+                has: []
+            })
+            
+        if(typeof args[0] == 'object') {
+            composition.api.path = args[0].path
+            composition.api.query = args[0].query
+        }
+        else {
+            composition.api.path = args[0]
+        }
+    }
+
+    protected doKeep(composition: IStateComposition, args: any[]) {
+        this.setType(composition, 1)
+            .dynamicAdd(composition, 'cache', {
+            loaded: false,
+            type: "string",
+            where: {
+                isLocalStorage: false,
+                isCache: false,
+                isCookie: false
+            },
+            name: args[0],
+            duration: args[1],
+        })
+    }
+
+    protected doPagination(composition: IStateComposition, args: any[]) {
+        composition.api.pagination.size = args[0]
+        
+        this.argument<boolean>(1, (value) => {
+            composition.api.pagination.append = value
+        })
+    }
+
+    protected doReload(composition: IStateComposition, args: any[]) {
+        composition.api.optimization.preventRepeat = false
+    }
+
+    protected doAuth(composition: IStateComposition, args: any[]) {
+        composition.api.auth.use = true
+        composition.api.auth.login = args[0]
+        composition.api.auth.password = args[1]
+    }
+
+    protected doJoin(composition: IStateComposition, args: any[]) {
+        if(typeof args[0] == 'string') {
+            const delimeter = args[0].split('.')
+            try {
+                StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
+                    .subs.push(() => {
+                        composition.lastStep()
+                    })
+            }
+            catch(e) {
+                console.error(args[0] + ' not exist. Maybe not init')
+            }
+        }
+        else {
+            if(args[0].__ref.__obbsv == 2) {
+                composition.parent = args[0].__ref
+                composition.api.linkMethod = args[1]
+            }
+            else {
+                args[0].__ref.subs.push(() => {
+                    composition.lastStep()
+                })
+            }
+        }
+    }
+
+    protected doJoinToQuery(composition: IStateComposition, args: any[]) {
+        if(typeof args[1] == 'string') {
+            try {
+                const delimeter = args[1].split('.')
+                const objt = StateManager.manager(delimeter[0].trim())
+
+                composition.api.joined.query[args[0]] = {
+                    object: objt,
+                    field: delimeter[1].trim()
+                }
+            }
+            catch(e) {
+                console.log(args[1] + " not found. Maybe not init")
+            }
+        }
+        else {
+            composition.api.joined.query[args[0]] = args[1]
+        }
+    }
+
+    protected doCacheType(composition: IStateComposition, args: any[]) {
+        composition.cache.type = args[0]
+    }
+
+    protected doMap(composition: IStateComposition, args: any[]) {
+
+    }
+
+    // Segment doOne
+    protected doOne(composition: IStateComposition, args: any[]) {
+        return this.createWay('One', composition, composition.__obbsv)
+    }
+
+    // Segment doOne
+    // if api()
+    protected wayOne2(composition: IStateComposition, val: number) {
+        const _pthis = this
+        const _fetching = config.init(false)
+
+        if(composition.get() == null) composition.set({})
+
+        const get = async (value: any) => {
+            let query = _pthis.compileQuery(composition)
+            let path = composition.api.path
+
+            if(typeof value != 'object') {
+                if(composition.parent != null) {
+                    for(const part of composition.parent.get()) {
+                        if(part[composition.api.linkMethod] == value) {
+                            return part
+                        }
+                    }
+                }
+                path = addToPath(path, value as string)
+            }
+            else {
+                query = Object.assign(query, value)
+            }
+
+            let url = buildUrl(path, query, {}, composition.template)
+            let params = Object.assign({method: composition.api.method}, composition.api.customParams);
+
+            return await queryToApi(
+                url, params, composition.template
+            )
+        }
+
+        const send = async (body: any, multipart: boolean = false) => {
+            let query = _pthis.compileQuery(composition)
+            let path = composition.api.path
+
+            if(typeof body == 'object' && multipart == false) {
+                try {
+                    body = JSON.parse(body)
+                }
+                catch(e) { }
+            }
+
+            let url = buildUrl(path, query, {}, composition.template)
+            let params = Object.assign({method: composition.api.method, body: body}, composition.api.customParams);
+
+            return await queryToApi(
+                url, params, composition.template
+            )
+        }
+
+        const property = {
+            __obbsv: 2,
+            _forceMode: false,
+            get(value: string|number|{[param:string]:any}) {
+                composition.lastStep = () => { property.user().get(value) }
+
+                if(this._forceMode == false && composition.api.optimization.preventRepeat) {
+                    if(Object.keys(composition.get()).length > 0) {
+                        return composition.get()
+                    }
+                }
+                config.set(_fetching, true)
+
+                get(value).then((val) => {
+                    composition.set(val)
+                    config.set(_fetching, false)
+                })
+                
+                this._forceMode = false
+                return composition.get()
+            },
+            getBy(param: string|{[queryName:string]:string}) {
+                composition.lastStep = () => { property.user().getBy(param) }
+
+                if(this._forceMode == false && composition.api.optimization.preventRepeat) {
+                    if(Object.keys(composition.get()).length > 0) {
+                        return composition.get()
+                    }
+                }
+
+                config.set(_fetching, true)
+
+                let query = _pthis.compileQuery(composition)
+                let path = composition.api.path
+
+                const router = config.router()
+
+                if(typeof param == 'object') {
+                    for(const [key, value] of Object.entries(param)) {
+                        if(router.currentRoute.value.params && value in router.currentRoute.value.params) {
+                            query[key] = router.currentRoute.value.params[value]
+                        }
+                        else if(router.currentRoute.value.query && value in router.currentRoute.value.query) {
+                            query[key] = router.currentRoute.value.query[value]
+                        }
+                    }
+                }
+                else {
+                    let val = ''
+                    if(router.currentRoute.value.params && param in router.currentRoute.value.params) val = router.currentRoute.value.params[param]
+                    else if(router.currentRoute.value.query && param in router.currentRoute.value.query) val = router.currentRoute.value.query[param]
+
+                    if(composition.parent != null) {
+                        for(const part of composition.parent.get()) {
+                            if(part[composition.api.linkMethod] == val) {
+                                config.set(_fetching, false)
+                                composition.set(part)
+                                return composition.get()
+                            }
+                        }
+                    }
+                    path = addToPath(path, val as string)
+                }
+
+                let url = buildUrl(path, query, {}, composition.template)
+                let params = Object.assign({method: composition.api.method}, composition.api.customParams);
+    
+                queryToApi(
+                    url, params, composition.template
+                ).then((ival) => {
+                    console.log(ival)
+                    composition.set(ival)
+                    config.set(_fetching, false)
+                })
+    
+                this._forceMode = false
+                return composition.get()
+            },
+            send(body: {[name: string]: any}|string) {
+                config.set(_fetching, true)
+
+                send(body).then((ival) => {
+                    composition.set(ival)
+                    config.set(_fetching, false)
+                })
+            },
+            multipart(formData: FormData) {
+                config.set(_fetching, true)
+
+                send(formData, true).then((ival) => {
+                    composition.set(ival)
+                    config.set(_fetching, false)
+                })
+            },
+            sync() {
+                return {
+                    async send(body: {[name: string]: any}|string) {
+                        return await send(body)
+                    },
+                    async multipart(formData: FormData) {
+                        return await send(formData, true)
+                    },
+                    async get(value: string|number|{[param:string]:any}) {
+                        return await get(value)
+                    }
+                }
+            },
+            method(type: any) {
+                composition.api.method = type
+                return this
+            },
+            setQuery(params: any) {
+                composition.api.query = params
+                return this
+            },
+            user() {
+                this._forceMode = true
+                return this
+            }
+        }
+
+        Object.defineProperty(property, 'value', {
+            get() { return composition.get() },
+            set(v) { composition.set(v) },
+        })
+
+        Object.defineProperty(property, 'isLoading', {
+            get() { return config.get(_fetching) },
+        })
+
+        return property
+    }
+
+    // Segment doOne
+    // if keep()
+    protected wayOne1(composition: IStateComposition, val: number) {
+        return composition
+    }
+
+    // Segment doOne
+    // if nobody
+    protected wayOne0(composition: IStateComposition, val: number) {
+        return composition
+    }
+
+    // Segment doMany
+    protected doMany(composition: IStateComposition, args: any[]) {
+        console.log(composition)
+        return this.createWay('Many', composition, composition.__obbsv)
+    }
+
+        // Segment doOne
+    // if api()
+    protected wayMany2(composition: IStateComposition, val: number) {
+        const _pthis = this
+        const _fetching = config.init(false)
+
+        if(composition.get() == null) composition.set([])
+
+        const property = {
+            __obbsv: 2,
+            _forceMode: false,
+            all() {
+                composition.lastStep = () => { property.user().all() }
+
+                if(this._forceMode == false && composition.api.optimization.preventRepeat) {
+                    if(Object.keys(composition.get()).length > 0) {
+                        return composition.get()
+                    }
+                }
+                config.set(_fetching, true)
+                
+                let query = _pthis.compileQuery(composition)
+                let path = composition.api.path
+
+                let url = buildUrl(path, query, {}, composition.template)
+                let params = Object.assign({method: composition.api.method}, composition.api.customParams);
+    
+                queryToApi(
+                    url, params, composition.template
+                ).then((ival) => {
+                    composition.set(ival)
+                    config.set(_fetching, false)
+                })
+
+                this._forceMode = false
+                return composition.get()
+            },
+            next() {
+                composition.lastStep = () => { property.user().page(1, false) }
+
+                config.set(_fetching, true)
+                composition.api.pagination.offset += 1
+                
+                let query = _pthis.compileQuery(composition)
+                let path = composition.api.path
+
+                let url = buildUrl(path, query, {}, composition.template)
+                let params = Object.assign({method: composition.api.method}, composition.api.customParams);
+    
+                queryToApi(
+                    url, params, composition.template
+                ).then((ival) => {
+                    if(composition.api.pagination.append) {
+                        composition.set((composition.get() as any[]).concat(ival))
+                    }
+                    else {
+                        composition.set(ival)
+                    }
+                    config.set(_fetching, false)
+                })
+
+                return composition.get()
+            },
+            prev() {
+                composition.lastStep = () => { property.user().page(1, false) }
+
+                config.set(_fetching, true)
+                composition.set([])
+                composition.api.pagination.offset -= 1
+                
+                let query = _pthis.compileQuery(composition)
+                let path = composition.api.path
+
+                let url = buildUrl(path, query, {}, composition.template)
+                let params = Object.assign({method: composition.api.method}, composition.api.customParams);
+    
+                queryToApi(
+                    url, params, composition.template
+                ).then((ival) => {
+                    composition.set(ival)
+                    config.set(_fetching, false)
+                })
+
+                return composition.get()
+            },
+            page(number: number, preventLastStep = true) {
+                if(preventLastStep) composition.lastStep = () => { property.user().page(number) }
+
+                composition.set([])
+                config.set(_fetching, true)
+                composition.api.pagination.offset = number - 1
+                
+                let query = _pthis.compileQuery(composition)
+                let path = composition.api.path
+
+                let url = buildUrl(path, query, {}, composition.template)
+                let params = Object.assign({method: composition.api.method}, composition.api.customParams);
+    
+                queryToApi(
+                    url, params, composition.template
+                ).then((ival) => {
+                    composition.set(ival)
+                    config.set(_fetching, false)
+                })
+
+                return composition.get()
+            },
+            pageBy(name: string) {
+                composition.lastStep = () => { property.user().pageBy(name) }
+
+                composition.set([])
+                config.set(_fetching, true)
+
+                const router = config.router()
+                if(router.currentRoute.value.params && name in router.currentRoute.value.params) {
+                    composition.api.pagination.offset = Number.parseInt(router.currentRoute.value.params[name]) - 1
+                }
+                else if(router.currentRoute.value.query && name in router.currentRoute.value.query) {
+                    composition.api.pagination.offset = Number.parseInt(router.currentRoute.value.query[name]) - 1
+                }
+
+                let query = _pthis.compileQuery(composition)
+                let path = composition.api.path
+
+                let url = buildUrl(path, query, {}, composition.template)
+                let params = Object.assign({method: composition.api.method}, composition.api.customParams);
+    
+                queryToApi(
+                    url, params, composition.template
+                ).then((ival) => {
+                    composition.set(ival)
+                    config.set(_fetching, false)
+                })
+
+                return composition.get()
+            },
+            size(size: number) {
+                composition.api.pagination.size = size
+                return this
+            },
+            method(type: any) {
+                composition.api.method = type
+                return this
+            },
+            setQuery(params: any) {
+                composition.api.query = params
+                return this
+            },
+            user() {
+                this._forceMode = true
+                return this
+            }
+        }
+
+        Object.defineProperty(property, 'value', {
+            get() { return composition.get() },
+            set(v) { composition.set(v) },
+        })
+
+        Object.defineProperty(property, 'isLoading', {
+            get() { return config.get(_fetching) },
+        })
+
+        return property
+    }
+
+    // Segment doOne
+    // if keep()
+    protected wayMany1(composition: IStateComposition, val: number) {
+        throw "keep() cannot be many()"
+    }
+
+    // Segment doOne
+    // if nobody
+    protected wayMany0(composition: IStateComposition, val: number) {
+        return composition
+    }
+}
