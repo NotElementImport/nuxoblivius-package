@@ -56,8 +56,8 @@ export default class CompositionBuilder {
         return this;
     }
     argument(index, method) {
-        if (this._currentArgs.length > index) {
-            method(this._currentArgs[length]);
+        if (Array.isArray(this._currentArgs) && this._currentArgs.length > index) {
+            method(this._currentArgs[index]);
         }
     }
     dynamicAdd(composition, name, value) {
@@ -74,6 +74,7 @@ export class StateComposition extends CompositionBuilder {
         }
         for (const [key, val] of Object.entries(composition.api.joined.query)) {
             if (typeof val == 'object') {
+                // console.log(val.object)
                 query[key] = val.object.getParams(val.field).get();
             }
             else {
@@ -136,6 +137,28 @@ export class StateComposition extends CompositionBuilder {
             name: args[0],
             duration: args[1],
         });
+    }
+    doPlace(composition, args) {
+        if (!Array.isArray(args[0])) {
+            args[0] = [args[0]];
+        }
+        composition.cache.where.isLocalStorage = false;
+        composition.cache.where.isCookie = false;
+        composition.cache.where.isCache = false;
+        for (const a of args[0]) {
+            if (a == 'localStorage') {
+                composition.cache.where.isLocalStorage = true;
+            }
+            else if (a == 'cache') {
+                composition.cache.where.isCache = true;
+            }
+            else {
+                composition.cache.where.isCookie = true;
+            }
+        }
+    }
+    doTemplate(composition, args) {
+        composition.template = args[0];
     }
     doPagination(composition, args) {
         composition.api.pagination.size = args[0];
@@ -361,6 +384,84 @@ export class StateComposition extends CompositionBuilder {
     // Segment doOne
     // if keep()
     wayOne1(composition, val) {
+        composition.get = () => {
+            if (composition.cache.where.isCookie && composition.cache.loaded == false) {
+                config.set(composition.__value, config.getCookie(composition.cache.name));
+                composition.cache.loaded = true;
+            }
+            else if (typeof localStorage !== 'undefined'
+                && composition.cache.where.isLocalStorage
+                && composition.cache.loaded == false) {
+                config.set(composition.__value, localStorage[composition.cache.name]);
+                composition.cache.loaded = true;
+            }
+            else if (typeof caches !== 'undefined'
+                && composition.cache.where.isCache
+                && composition.cache.loaded == false) {
+                caches.open('storage').then(e => {
+                    e.match(composition.cache.name).then((e) => {
+                        switch (composition.cache.type) {
+                            case "string":
+                                e?.text().then(e => {
+                                    config.set(composition.__value, e);
+                                });
+                                break;
+                            case "number":
+                                e?.text().then(e => {
+                                    config.set(composition.__value, Number.parseFloat(e));
+                                });
+                                break;
+                            case "arrayBuffer":
+                                e?.arrayBuffer().then(e => {
+                                    config.set(composition.__value, e);
+                                });
+                                break;
+                            case "blob":
+                                e?.blob().then(e => {
+                                    config.set(composition.__value, e);
+                                });
+                                break;
+                            case "json":
+                                e?.json().then(e => {
+                                    config.set(composition.__value, e);
+                                });
+                                break;
+                        }
+                        composition.cache.loaded = true;
+                    });
+                });
+            }
+            return config.get(composition.__value);
+        };
+        composition.set = (v) => {
+            if (composition.cache.where.isCookie) {
+                if (typeof v == 'object')
+                    throw "Object cannot be keep in Cookie";
+                let expr = undefined;
+                if (composition.cache.duration != 0 && composition.cache.duration != Infinity)
+                    expr = Date.now() + composition.cache.duration;
+                config.saveCookie(composition.cache.name, v, expr);
+            }
+            if (typeof localStorage !== 'undefined' && composition.cache.where.isLocalStorage) {
+                if (typeof v == 'object')
+                    v = JSON.parse(v);
+                localStorage[composition.cache.name] = v;
+                if (composition.cache.duration != 0 && composition.cache.duration != Infinity)
+                    localStorage[composition.cache.name + "_exp"] = Date.now() + composition.cache.duration;
+            }
+            if (typeof caches !== 'undefined' && composition.cache.where.isCache) {
+                caches.open('storage').then(e => {
+                    const reponse = new Response(v);
+                    e.put(composition.cache.name, reponse);
+                });
+            }
+            config.set(composition.__value, v);
+            setTimeout(() => {
+                composition.subs.forEach((value) => {
+                    value();
+                });
+            }, 50);
+        };
         return composition;
     }
     // Segment doOne

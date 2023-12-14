@@ -65,4 +65,4 @@ export default class Posts extends StateManager {
 </template>
 ```
 
-## Docs
+[GitHub Wiki (DOCS)](https://github.com/NotElementImport/nuxoblivius-package/wiki)

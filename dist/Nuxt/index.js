@@ -1,5 +1,5 @@
 import { useCookie, useLazyFetch, useRouter } from 'nuxt/app';
-import { config } from '../ts/config';
+import { config } from '../ts/config.js';
 import { ref } from 'vue';
 export default (nuxtApp) => {
     config.get = (object_) => object_.value;

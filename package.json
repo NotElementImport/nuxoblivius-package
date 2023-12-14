@@ -1,7 +1,7 @@
 {
   "name": "nuxoblivius",
   "type": "module",
-  "version": "0.1.1c",
+  "version": "0.1.2a",
   "description": "Nuxt store smart  module",
   "main": "index.js",
   "scripts": {

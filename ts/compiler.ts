@@ -1,7 +1,7 @@
-import StateManager from "./StateManager"
-import { config } from "./config"
-import { PatternsApi } from "./interfaces"
-import { addToPath, buildUrl, queryToApi } from "./utilits"
+import StateManager from "./StateManager/index.js"
+import { config } from "./config.js"
+import { PatternsApi, PlaceKeep } from "./interfaces.js"
+import { addToPath, buildUrl, queryToApi } from "./utilits.js"
 
 export default class CompositionBuilder {
     private _currentArgs: any[] = []
@@ -62,8 +62,8 @@ export default class CompositionBuilder {
     }
 
     protected argument<T>(index: number, method: (value: T) => void) {
-        if(this._currentArgs.length > index) {
-            method(this._currentArgs[length])
+        if(Array.isArray(this._currentArgs) && this._currentArgs.length > index) {
+            method(this._currentArgs[index])
         }
     }
 
@@ -161,6 +161,7 @@ export class StateComposition extends CompositionBuilder {
 
         for (const [key, val] of Object.entries(composition.api.joined.query)) {
             if(typeof val == 'object') {
+                // console.log(val.object)
                 query[key] = val.object.getParams(val.field).get()
             }
             else {
@@ -227,6 +228,30 @@ export class StateComposition extends CompositionBuilder {
             name: args[0],
             duration: args[1],
         })
+    }
+
+    protected doPlace(composition: IStateComposition, args: any[]) {
+        if(!Array.isArray(args[0])) {
+            args[0] = [args[0]]
+        }
+        composition.cache.where.isLocalStorage = false
+        composition.cache.where.isCookie = false
+        composition.cache.where.isCache = false
+        for(const a of args[0] as PlaceKeep[]) {
+            if(a == 'localStorage') {
+                composition.cache.where.isLocalStorage = true
+            }
+            else if(a == 'cache') {
+                composition.cache.where.isCache = true
+            }
+            else {
+                composition.cache.where.isCookie = true
+            }
+        }
+    }
+
+    protected doTemplate(composition: IStateComposition, args: any[]) {
+        composition.template = args[0]
     }
 
     protected doPagination(composition: IStateComposition, args: any[]) {
@@ -495,6 +520,88 @@ export class StateComposition extends CompositionBuilder {
     // Segment doOne
     // if keep()
     protected wayOne1(composition: IStateComposition, val: number) {
+        composition.get = () => {
+            if(composition.cache.where.isCookie && composition.cache.loaded == false) {
+                config.set(composition.__value, config.getCookie(composition.cache.name))
+                composition.cache.loaded = true
+            }
+            else if(typeof localStorage !== 'undefined' 
+                        && composition.cache.where.isLocalStorage 
+                        && composition.cache.loaded == false) {
+                config.set(composition.__value, localStorage[composition.cache.name])
+                composition.cache.loaded = true
+            }
+            else if(typeof caches !== 'undefined' 
+                        && composition.cache.where.isCache 
+                        && composition.cache.loaded == false) {
+                caches.open('storage').then(e => {
+                    e.match(composition.cache.name).then((e) => {
+                        switch(composition.cache.type) {
+                            case "string":
+                                e?.text().then(e => {
+                                    config.set(composition.__value, e)
+                                })
+                                break
+                            case "number":
+                                e?.text().then(e => {
+                                    config.set(composition.__value, Number.parseFloat(e))
+                                })
+                                break
+                            case "arrayBuffer":
+                                e?.arrayBuffer().then(e => {
+                                    config.set(composition.__value, e)
+                                })
+                                break
+                            case "blob":
+                                e?.blob().then(e => {
+                                    config.set(composition.__value, e)
+                                })
+                                break
+                            case "json":
+                                e?.json().then(e => {
+                                    config.set(composition.__value, e)
+                                })
+                                break
+                        }
+                        composition.cache.loaded = true
+                    })
+                })
+            }
+            return config.get(composition.__value)
+        }
+
+        composition.set = (v: any) => {
+            if(composition.cache.where.isCookie) {
+                if(typeof v == 'object') throw "Object cannot be keep in Cookie";
+
+                let expr = undefined as any
+                if(composition.cache.duration != 0 && composition.cache.duration != Infinity)
+                    expr = Date.now() + composition.cache.duration
+
+                config.saveCookie(composition.cache.name, v, expr)
+            }
+            if(typeof localStorage !== 'undefined' && composition.cache.where.isLocalStorage) {
+                if(typeof v == 'object') v = JSON.parse(v);
+                localStorage[composition.cache.name] = v
+
+                if(composition.cache.duration != 0 && composition.cache.duration != Infinity)
+                    localStorage[composition.cache.name+"_exp"] = Date.now() + composition.cache.duration
+            }
+            if(typeof caches !== 'undefined' && composition.cache.where.isCache) {
+                caches.open('storage').then(e => {
+                    const reponse = new Response(v)
+                    e.put(composition.cache.name, reponse)
+                })
+            }
+
+            config.set(composition.__value, v)
+
+            setTimeout(() => {
+                composition.subs.forEach((value) => {
+                    value()
+            })}, 50)
+        }
+        
         return composition
     }
 
