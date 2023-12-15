@@ -79,11 +79,17 @@ export default class StateManager {
     }
 
     public getParams(name: string) {
-        return this._paramsObjects.get(name) as any
+        return _instances.get(this._nameInstance)?._paramsObjects.get(name) as any
     }
 
     public watch(name: string, func: () => void) {
         _instances.get(this._nameInstance)?.getParams(name).subs.push(func)
+    }
+
+    public catchOnce(name: string, func: () => void) {
+        _instances.get(this._nameInstance)?.getParams(name).subs.push(() => {
+
+        })
     }
 
     protected manage() {
@@ -121,7 +127,7 @@ export default class StateManager {
                                 return dataContains
                             }
                         })
-                        this._paramsObjects.set(name, dataContains)
+                        this._paramsObjects.set(name, objectGet.__ref)
                     }
                 }
             }

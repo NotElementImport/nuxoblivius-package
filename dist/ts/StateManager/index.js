@@ -66,7 +66,7 @@ export default class StateManager {
         throw "static.globalName not set: SM.ref(), " + this.name + ", name: " + this.globalName;
     }
     getParams(name) {
-        return this._paramsObjects.get(name);
+        return _instances.get(this._nameInstance)?._paramsObjects.get(name);
     }
     watch(name, func) {
         _instances.get(this._nameInstance)?.getParams(name).subs.push(func);
@@ -104,7 +104,7 @@ export default class StateManager {
                                 return dataContains;
                             }
                         });
-                        this._paramsObjects.set(name, dataContains);
+                        this._paramsObjects.set(name, objectGet.__ref);
                     }
                 }
             }

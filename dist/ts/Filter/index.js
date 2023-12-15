@@ -15,6 +15,7 @@ export default class Filter {
     __fully = new Map();
     __pStart = '';
     __pEnd = '';
+    __subs = [];
     setup() { }
     constructor(config = {}) {
         if (!('__special' in config)) {
@@ -22,25 +23,66 @@ export default class Filter {
         }
         this.setup();
     }
+    callSubs() {
+        this.__subs.forEach((value) => {
+            value();
+        });
+    }
+    on(func) {
+        if (this.__subs.some((value) => value == func) == false) {
+            console.log('test');
+            this.__subs.push(func);
+        }
+    }
     createFilter(items) {
         for (const [key, value] of Object.entries(items)) {
             this.__types.set(key, value[0]);
             this.__fully.set(key, !value[1]);
             switch (value[0]) {
-                case 0: // Number
-                    this.__values.set(key, ref(null));
+                case 0:
+                    { // Number
+                        const valueRef = ref(null);
+                        // watch(valueRef, (nw,ov) => {
+                        //     if(nw != ov) this.callSubs()
+                        // })
+                        this.__values.set(key, valueRef);
+                    }
                     break;
-                case 1: // Array
-                    this.__values.set(key, ref([]));
+                case 1:
+                    { // Array
+                        const valueRef = ref([]);
+                        // watch(valueRef, (nw,ov) => {
+                        //     if(nw != ov) this.callSubs()
+                        // })
+                        this.__values.set(key, valueRef);
+                    }
                     break;
-                case 2: // String
-                    this.__values.set(key, ref(''));
+                case 2:
+                    { // String
+                        const valueRef = ref('');
+                        // watch(valueRef, (nw,ov) => {
+                        //     if(nw != ov) this.callSubs()
+                        // })
+                        this.__values.set(key, valueRef);
+                    }
                     break;
-                case 3: // Boolean
-                    this.__values.set(key, ref(false));
+                case 3:
+                    { // Boolean
+                        const valueRef = ref(false);
+                        // watch(valueRef, (nw,ov) => {
+                        //     if(nw != ov) this.callSubs()
+                        // })
+                        this.__values.set(key, valueRef);
+                    }
                     break;
-                case 4: // Binary
-                    this.__values.set(key, ref(0));
+                case 4:
+                    { // Binary
+                        const valueRef = ref(0);
+                        // watch(valueRef, (nw,ov) => {
+                        //     if(nw != ov) this.callSubs()
+                        // })
+                        this.__values.set(key, valueRef);
+                    }
                     break;
             }
         }
@@ -100,6 +142,7 @@ export default class Filter {
                 });
             }
             else {
+                let lockForAwake = false;
                 Object.defineProperty(toolbox, key, {
                     get() {
                         if (value == 4) {
@@ -112,11 +155,20 @@ export default class Filter {
                             valueRef.value = v ? 1 : 0;
                         }
                         valueRef.value = v;
+                        instance?.callSubs();
                     },
                 });
             }
         }
         return toolbox;
+    }
+    resolve(value) { return true; }
+    get getValues() {
+        let result = {};
+        for (const [key, value] of this.__values.entries()) {
+            result[key] = value.value;
+        }
+        return result;
     }
     static filter(path) {
         const delimetr = path.split('.');
@@ -132,6 +184,9 @@ export default class Filter {
         else {
             throw `Filter ${delimetr[0]} not registered. Use '<FilterClass>.ref()' to register in function. ` + this.name;
         }
+    }
+    static instance(name) {
+        return instancesFilters.get(name);
     }
     setPrefix(start, end) {
         this.__pStart = start;

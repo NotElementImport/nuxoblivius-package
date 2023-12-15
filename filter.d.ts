@@ -16,9 +16,15 @@ export declare class IFilter {
      * @virtual
      */
     protected  setup(): void
+    /**
+     * @virtual
+     */
+    protected resolve(value: any): boolean
     public static filter (path: string): {[name: string]: any}|any
     public static toolbox (): {[name: string]: any|IToolboxArray}
     public static ref (): string
+    readonly protected get getValues(): {[name: string]: any}
+    readonly public on(func: Function): void
     readonly protected createFilter(items: {[name: string]: any[]}): void
     readonly protected setDefault(map: {[name: string]: any}): void
     readonly protected setPrefix(start: string, end: string): IFilter

@@ -1,4 +1,4 @@
-import { ref } from "vue"
+import { ref, watch } from "vue"
 
 const instancesFilters: Map<string, Filter> = new Map()
 
@@ -19,6 +19,7 @@ export default class Filter {
     private __fully: Map<string, any> = new Map()
     private __pStart = ''
     private __pEnd = ''
+    private __subs: Function[] = []
 
     protected setup() {}
 
@@ -29,26 +30,59 @@ export default class Filter {
         this.setup()
     }
 
+    private callSubs() {
+        this.__subs.forEach((value) => {
+            value()
+        })
+    }
+
+    public on(func: Function) {
+        if(this.__subs.some((value) => value == func) == false) {
+            console.log('test')
+            this.__subs.push(func)
+        }
+    }
+
     protected createFilter(items: {[name: string]: any[]}) {
         for (const [key, value] of Object.entries(items)) {
             this.__types.set(key, value[0])
             this.__fully.set(key, !value[1])
             switch(value[0]) {
-                case 0: // Number
-                    this.__values.set(key, ref(null))
-                    break
-                case 1: // Array
-                    this.__values.set(key, ref([]))
-                    break
-                case 2: // String
-                    this.__values.set(key, ref(''))
-                    break
-                case 3: // Boolean
-                    this.__values.set(key, ref(false))
-                    break
-                case 4: // Binary
-                    this.__values.set(key, ref(0))
-                    break
+                case 0: {// Number
+                    const valueRef = ref(null)
+                    // watch(valueRef, (nw,ov) => {
+                    //     if(nw != ov) this.callSubs()
+                    // })
+                    this.__values.set(key, valueRef)
+                }break
+                case 1:{ // Array
+                    const valueRef = ref([])
+                    // watch(valueRef, (nw,ov) => {
+                    //     if(nw != ov) this.callSubs()
+                    // })
+                    this.__values.set(key, valueRef)
+                }break
+                case 2:{ // String
+                    const valueRef = ref('')
+                    // watch(valueRef, (nw,ov) => {
+                    //     if(nw != ov) this.callSubs()
+                    // })
+                    this.__values.set(key, valueRef)
+                }break
+                case 3:{ // Boolean
+                    const valueRef = ref(false)
+                    // watch(valueRef, (nw,ov) => {
+                    //     if(nw != ov) this.callSubs()
+                    // })
+                    this.__values.set(key, valueRef)
+                }break
+                case 4:{ // Binary
+                    const valueRef = ref(0)
+                    // watch(valueRef, (nw,ov) => {
+                    //     if(nw != ov) this.callSubs()
+                    // })
+                    this.__values.set(key, valueRef)
+                }break
             }
         }
         return this
@@ -108,6 +142,7 @@ export default class Filter {
                     })
                 }
                 else {
+                    let lockForAwake = false
                     Object.defineProperty(toolbox, key, {
                         get() {
                             if(value == 4) {
@@ -120,12 +155,23 @@ export default class Filter {
                                 valueRef.value = v ? 1 : 0
                             }
                             valueRef.value = v
+                            instance?.callSubs()
                         },
                     })
                 }
             }
 
             return toolbox
+    }
+
+    public resolve(value: any): boolean { return true }
+
+    protected get getValues() {
+        let result:{[name: string]: any} = {}
+        for (const [key, value] of this.__values.entries()) {
+            result[key] = value.value
+        }
+        return result
     }
 
     public static filter(path: string) {
@@ -142,6 +188,10 @@ export default class Filter {
         else {
             throw `Filter ${delimetr[0]} not registered. Use '<FilterClass>.ref()' to register in function. ` + this.name
         }
+    }
+
+    public static instance(name: string): Filter {
+        return instancesFilters.get(name) as Filter
     }
 
     protected setPrefix(start: string, end: string) {

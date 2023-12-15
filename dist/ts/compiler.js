@@ -67,6 +67,9 @@ export default class CompositionBuilder {
             method(this._currentArgs[index]);
         }
     }
+    argumentExist(index) {
+        return Array.isArray(this._currentArgs) && this._currentArgs.length > index;
+    }
     dynamicAdd(composition, name, value) {
         composition[name] = value;
         return this;
@@ -109,6 +112,7 @@ export class StateComposition extends CompositionBuilder {
                 password: ''
             },
             filters: [],
+            localFilters: [],
             joined: {
                 query: {}
             },
@@ -192,11 +196,28 @@ export class StateComposition extends CompositionBuilder {
             composition.api.pagination.append = value;
         });
     }
+    doMap(composition, args) {
+        composition.convert.map.push(args[0]);
+    }
+    doSort(composition, args) {
+        composition.convert.sort.push(args[0]);
+    }
+    doHas(composition, args) {
+        composition.convert.has.push(args[0]);
+    }
     doReload(composition, args) {
         composition.api.optimization.preventRepeat = false;
     }
     doFilter(composition, args) {
-        composition.api.filters.push(args[0]);
+        if (this.argumentExist(1)) {
+            if (args[1])
+                composition.api.localFilters.push(args[0]);
+            else
+                composition.api.filters.push(args[0]);
+        }
+        else {
+            composition.api.filters.push(args[0]);
+        }
     }
     doAuth(composition, args) {
         composition.api.auth.use = true;
@@ -248,8 +269,6 @@ export class StateComposition extends CompositionBuilder {
     }
     doCacheType(composition, args) {
         composition.cache.type = args[0];
-    }
-    doMap(composition, args) {
     }
     // Segment doOne
     doOne(composition, args) {
@@ -306,8 +325,11 @@ export class StateComposition extends CompositionBuilder {
                     }
                 }
                 config.set(_fetching, true);
-                get(value).then((val) => {
-                    composition.set(val);
+                get(value).then((ival) => {
+                    composition.convert.map.forEach((value) => {
+                        ival = value(ival);
+                    });
+                    composition.set(ival);
                     config.set(_fetching, false);
                 });
                 this._forceMode = false;
@@ -354,7 +376,9 @@ export class StateComposition extends CompositionBuilder {
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
                 queryToApi(url, params, composition.template).then((ival) => {
-                    console.log(ival);
+                    composition.convert.map.forEach((value) => {
+                        ival = value(ival);
+                    });
                     composition.set(ival);
                     config.set(_fetching, false);
                 });
@@ -415,7 +439,15 @@ export class StateComposition extends CompositionBuilder {
     wayOne1(composition, val) {
         composition.get = () => {
             if (composition.cache.where.isCookie && composition.cache.loaded == false) {
-                config.set(composition.__value, config.getCookie(composition.cache.name));
+                const cook = config.getCookie(composition.cache.name);
+                if (cook != null && typeof cook != 'undefined') {
+                    config.set(composition.__value, cook);
+                }
+                else {
+                    setTimeout(() => {
+                        config.set(composition.__value, config.getCookie(composition.cache.name));
+                    }, 100);
+                }
                 composition.cache.loaded = true;
             }
             else if (typeof localStorage !== 'undefined'
@@ -507,6 +539,35 @@ export class StateComposition extends CompositionBuilder {
     wayMany2(composition, val) {
         const _pthis = this;
         const _fetching = config.init(false);
+        const _originalValue = config.init([]);
+        const _allInstances = [];
+        const updateFilter = () => {
+            composition.set(config.get(_originalValue)
+                .filter((value) => {
+                for (const Filter of _allInstances) {
+                    if (Filter.resolve(value) == false)
+                        return false;
+                }
+                return true;
+            }));
+        };
+        const localFilterEnabled = composition.api.localFilters.length > 0;
+        const setValue = (result) => {
+            if (localFilterEnabled) {
+                config.set(_originalValue, result);
+                updateFilter();
+            }
+            else {
+                composition.set(result);
+            }
+        };
+        for (const filter of composition.api.localFilters) {
+            const object = Filter.instance(filter);
+            object.on(() => {
+                updateFilter();
+            });
+            _allInstances.push(object);
+        }
         if (composition.get() == null)
             composition.set([]);
         const property = {
@@ -526,7 +587,16 @@ export class StateComposition extends CompositionBuilder {
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
                 try {
                     queryToApi(url, params, composition.template).then((ival) => {
-                        composition.set(ival);
+                        composition.convert.map.forEach((value) => {
+                            ival = ival.map(value);
+                        });
+                        composition.convert.sort.forEach((value) => {
+                            ival = ival.sort(value);
+                        });
+                        composition.convert.has.forEach((value) => {
+                            ival = ival.filter(value);
+                        });
+                        setValue(ival);
                         config.set(_fetching, false);
                     });
                 }
@@ -548,11 +618,23 @@ export class StateComposition extends CompositionBuilder {
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
                 try {
                     queryToApi(url, params, composition.template).then((ival) => {
+                        composition.convert.map.forEach((value) => {
+                            ival = ival.map(value);
+                        });
+                        composition.convert.sort.forEach((value) => {
+                            ival = ival.sort(value);
+                        });
+                        composition.convert.has.forEach((value) => {
+                            ival = ival.filter(value);
+                        });
                         if (composition.api.pagination.append) {
-                            composition.set(composition.get().concat(ival));
+                            if (localFilterEnabled)
+                                setValue(config.get(_originalValue).concat(ival));
+                            else
+                                setValue(composition.get().concat(ival));
                         }
                         else {
-                            composition.set(ival);
+                            setValue(ival);
                         }
                         config.set(_fetching, false);
                     });
@@ -576,7 +658,16 @@ export class StateComposition extends CompositionBuilder {
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
                 try {
                     queryToApi(url, params, composition.template).then((ival) => {
-                        composition.set(ival);
+                        composition.convert.map.forEach((value) => {
+                            ival = ival.map(value);
+                        });
+                        composition.convert.sort.forEach((value) => {
+                            ival = ival.sort(value);
+                        });
+                        composition.convert.has.forEach((value) => {
+                            ival = ival.filter(value);
+                        });
+                        setValue(ival);
                         config.set(_fetching, false);
                     });
                 }
@@ -599,7 +690,16 @@ export class StateComposition extends CompositionBuilder {
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
                 queryToApi(url, params, composition.template).then((ival) => {
-                    composition.set(ival);
+                    composition.convert.map.forEach((value) => {
+                        ival = ival.map(value);
+                    });
+                    composition.convert.sort.forEach((value) => {
+                        ival = ival.sort(value);
+                    });
+                    composition.convert.has.forEach((value) => {
+                        ival = ival.filter(value);
+                    });
+                    setValue(ival);
                     config.set(_fetching, false);
                 });
                 return composition.get();
@@ -620,7 +720,16 @@ export class StateComposition extends CompositionBuilder {
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
                 queryToApi(url, params, composition.template).then((ival) => {
-                    composition.set(ival);
+                    composition.convert.map.forEach((value) => {
+                        ival = ival.map(value);
+                    });
+                    composition.convert.sort.forEach((value) => {
+                        ival = ival.sort(value);
+                    });
+                    composition.convert.has.forEach((value) => {
+                        ival = ival.filter(value);
+                    });
+                    setValue(ival);
                     config.set(_fetching, false);
                 });
                 return composition.get();

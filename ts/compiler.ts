@@ -74,6 +74,10 @@ export default class CompositionBuilder {
         }
     }
 
+    protected argumentExist(index: number): boolean {
+        return Array.isArray(this._currentArgs) && this._currentArgs.length > index
+    }
+
     protected dynamicAdd(composition: {[name: string]: any}, name: string, value: any) {
         composition[name] = value
         return this
@@ -112,6 +116,7 @@ interface IStateComposition {
         }
 
         filters: [],
+        localFilters: [],
 
         pagination: {
             append: boolean,
@@ -184,6 +189,7 @@ export class StateComposition extends CompositionBuilder {
                     password: ''
                 },
                 filters: [],
+                localFilters: [],
                 joined: {
                     query: {}
                 },
@@ -274,12 +280,32 @@ export class StateComposition extends CompositionBuilder {
         })
     }
 
+    protected doMap(composition: IStateComposition, args: any[]) {
+        composition.convert.map.push(args[0])
+    }
+
+    protected doSort(composition: IStateComposition, args: any[]) {
+        composition.convert.sort.push(args[0])
+    }
+
+    protected doHas(composition: IStateComposition, args: any[]) {
+        composition.convert.has.push(args[0])
+    }
+
     protected doReload(composition: IStateComposition, args: any[]) {
         composition.api.optimization.preventRepeat = false
     }
 
     protected doFilter(composition: IStateComposition, args: any[]) {
-        composition.api.filters.push(args[0] as never)
+        if(this.argumentExist(1)) {
+            if(args[1])
+            composition.api.localFilters.push(args[0] as never)
+            else
+                composition.api.filters.push(args[0] as never)
+        }
+        else {
+            composition.api.filters.push(args[0] as never)
+        }
     }
 
     protected doAuth(composition: IStateComposition, args: any[]) {
@@ -336,10 +362,6 @@ export class StateComposition extends CompositionBuilder {
 
     protected doCacheType(composition: IStateComposition, args: any[]) {
         composition.cache.type = args[0]
-    }
-
-    protected doMap(composition: IStateComposition, args: any[]) {
-
     }
 
     // Segment doOne
@@ -413,8 +435,12 @@ export class StateComposition extends CompositionBuilder {
                 }
                 config.set(_fetching, true)
 
-                get(value).then((val) => {
-                    composition.set(val)
+                get(value).then((ival) => {
+                    composition.convert.map.forEach((value) => {
+                        ival = value(ival)
+                    })
+
+                    composition.set(ival)
                     config.set(_fetching, false)
                 })
                 
@@ -470,7 +496,10 @@ export class StateComposition extends CompositionBuilder {
                 queryToApi(
                     url, params, composition.template
                 ).then((ival) => {
-                    console.log(ival)
+                    composition.convert.map.forEach((value) => {
+                        ival = value(ival)
+                    })
+
                     composition.set(ival)
                     config.set(_fetching, false)
                 })
@@ -538,7 +567,15 @@ export class StateComposition extends CompositionBuilder {
     protected wayOne1(composition: IStateComposition, val: number) {
         composition.get = () => {
             if(composition.cache.where.isCookie && composition.cache.loaded == false) {
-                config.set(composition.__value, config.getCookie(composition.cache.name))
+                const cook = config.getCookie(composition.cache.name)
+                if(cook != null && typeof cook != 'undefined') {
+                    config.set(composition.__value, cook)
+                }
+                else {
+                    setTimeout(() => {
+                        config.set(composition.__value, config.getCookie(composition.cache.name))
+                    }, 100)
+                }
                 composition.cache.loaded = true
             }
             else if(typeof localStorage !== 'undefined' 
@@ -637,6 +674,40 @@ export class StateComposition extends CompositionBuilder {
     protected wayMany2(composition: IStateComposition, val: number) {
         const _pthis = this
         const _fetching = config.init(false)
+        const _originalValue = config.init([])
+        const _allInstances: Filter[] = []
+
+        const updateFilter = () => {
+            composition.set(
+                config.get(_originalValue)
+                    .filter((value: any) => {                                    
+                        for (const Filter of _allInstances as Filter[]) {
+                            if(Filter.resolve(value) == false) return false
+                        }
+                        return true
+                    })
+            )
+        }
+
+        const localFilterEnabled = composition.api.localFilters.length > 0
+
+        const setValue = (result: any) => {
+            if(localFilterEnabled) {
+                config.set(_originalValue, result)
+                updateFilter()
+            }
+            else {
+                composition.set(result)
+            }
+        }
+
+        for (const filter of composition.api.localFilters as string[]) {
+            const object = Filter.instance(filter)
+            object.on(() => {
+                updateFilter()
+            })
+            _allInstances.push(object)
+        }
 
         if(composition.get() == null) composition.set([])
 
@@ -662,8 +733,18 @@ export class StateComposition extends CompositionBuilder {
                 try{
                     queryToApi(
                         url, params, composition.template
-                    ).then((ival) => {
-                        composition.set(ival)
+                    ).then((ival: any[]) => {
+                        composition.convert.map.forEach((value) => {
+                            ival = ival.map(value as any)
+                        })
+                        composition.convert.sort.forEach((value) => {
+                            ival = ival.sort(value as any)
+                        })
+                        composition.convert.has.forEach((value) => {
+                            ival = ival.filter(value as any)
+                        })
+
+                        setValue(ival)
                         config.set(_fetching, false)
                     })
                 } catch(e) {
@@ -691,11 +772,24 @@ export class StateComposition extends CompositionBuilder {
                     queryToApi(
                         url, params, composition.template
                     ).then((ival) => {
+                        composition.convert.map.forEach((value) => {
+                            ival = ival.map(value as any)
+                        })
+                        composition.convert.sort.forEach((value) => {
+                            ival = ival.sort(value as any)
+                        })
+                        composition.convert.has.forEach((value) => {
+                            ival = ival.filter(value as any)
+                        })
+
                         if(composition.api.pagination.append) {
-                            composition.set((composition.get() as any[]).concat(ival))
+                            if(localFilterEnabled)
+                                setValue(config.get(_originalValue).concat(ival))
+                            else
+                                setValue(composition.get().concat(ival))
                         }
                         else {
-                            composition.set(ival)
+                            setValue(ival)
                         }
                         config.set(_fetching, false)
                     })
@@ -725,7 +819,17 @@ export class StateComposition extends CompositionBuilder {
                     queryToApi(
                         url, params, composition.template
                     ).then((ival) => {
-                        composition.set(ival)
+                        composition.convert.map.forEach((value) => {
+                            ival = ival.map(value as any)
+                        })
+                        composition.convert.sort.forEach((value) => {
+                            ival = ival.sort(value as any)
+                        })
+                        composition.convert.has.forEach((value) => {
+                            ival = ival.filter(value as any)
+                        })
+
+                        setValue(ival)
                         config.set(_fetching, false)
                     })
                 } catch(e) {
@@ -753,7 +857,17 @@ export class StateComposition extends CompositionBuilder {
                 queryToApi(
                     url, params, composition.template
                 ).then((ival) => {
-                    composition.set(ival)
+                    composition.convert.map.forEach((value) => {
+                        ival = ival.map(value as any)
+                    })
+                    composition.convert.sort.forEach((value) => {
+                        ival = ival.sort(value as any)
+                    })
+                    composition.convert.has.forEach((value) => {
+                        ival = ival.filter(value as any)
+                    })
+
+                    setValue(ival)
                     config.set(_fetching, false)
                 })
 
@@ -782,7 +896,17 @@ export class StateComposition extends CompositionBuilder {
                 queryToApi(
                     url, params, composition.template
                 ).then((ival) => {
-                    composition.set(ival)
+                    composition.convert.map.forEach((value) => {
+                        ival = ival.map(value as any)
+                    })
+                    composition.convert.sort.forEach((value) => {
+                        ival = ival.sort(value as any)
+                    })
+                    composition.convert.has.forEach((value) => {
+                        ival = ival.filter(value as any)
+                    })
+                    
+                    setValue(ival)
                     config.set(_fetching, false)
                 })
 
