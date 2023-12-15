@@ -71,6 +71,16 @@ export default class StateManager {
     watch(name, func) {
         _instances.get(this._nameInstance)?.getParams(name).subs.push(func);
     }
+    catchOnce(name, func) {
+        _instances.get(this._nameInstance)?.getParams(name).onceSubs.push(func);
+    }
+    static globalWatch(name, func) {
+        if (this.globalName) {
+            _instances.get(this.globalName)?.getParams(name).subs.push(func);
+            return;
+        }
+        throw "static.globalName not set: SM.ref(), " + this.name + ", name: " + this.globalName;
+    }
     manage() {
         const names = Object.getOwnPropertyNames(this);
         const getServer = _instances.get(this._nameInstance);

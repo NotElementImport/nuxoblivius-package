@@ -6,6 +6,8 @@ declare class IStateManager<K> {
     protected manage(): void
     protected name(): void
     public watch(name: keyof K, func: () => void): void
+    public static globalWatch(name: string, func: () => void): void
+    public catchOnce(name: string, func: () => void): void
     public static set(variable: keyof K, value: any): void
     public static ref(variable: keyof K): string
     public static get(variable: keyof K): string
@@ -83,6 +85,7 @@ export interface IStateApi<T> {
      * @param type Type
      */
     template(type:PatternsApi): IStateApi<T>
+    flat(): IStateApi<T>
     map<K extends T>(func: (value: K) => any): IStateApi<T>
     sort<K extends T>(func: (a: K, b: K) => number): IStateApi<T>
     has<K extends T>(func: (a: K) => boolean): IStateApi<T>
@@ -157,9 +160,10 @@ export interface IStateApiMany<T> {
 
 export interface IStateApiPagi<T> {
     template(type:PatternsApi): IStateApiPagi<T>
-    map<K extends T>(func: (value: K) => any): IStateApi<T>
-    sort<K extends T>(func: (a: K, b: K) => number): IStateApi<T>
-    has<K extends T>(func: (a: K) => boolean): IStateApi<T>
+    flat(): IStateApiPagi<T>
+    map<K extends T|any>(func: (value: K) => any): IStateApiPagi<T>
+    sort<K extends T|any>(func: (a: K, b: K) => number): IStateApiPagi<T>
+    has<K extends T|any>(func: (a: K) => boolean): IStateApiPagi<T>
     auth(type: AuthType, login: string, password: string): IStateApiPagi<T>
     filter(object: string, local?: boolean): IStateApiPagi<T>
     join(object: IState<T>|IStateFin<T>|string): IStateApiPagi<T>

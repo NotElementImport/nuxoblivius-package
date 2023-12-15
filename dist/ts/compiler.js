@@ -42,7 +42,13 @@ export default class CompositionBuilder {
             });
         };
         mainComposition.__obbsv = 0;
-        mainComposition.subs = [];
+        mainComposition.subs = [() => {
+                mainComposition.onceSubs.forEach((value) => {
+                    value();
+                });
+                mainComposition.onceSubs = [];
+            }];
+        mainComposition.onceSubs = [];
         mainComposition.lastStep = () => { };
         instruction.__ref = mainComposition;
         for (const doOf of instruction.__wrt) {
@@ -132,7 +138,8 @@ export class StateComposition extends CompositionBuilder {
             .dynamicAdd(composition, 'convert', {
             map: [],
             sort: [],
-            has: []
+            has: [],
+            isFlat: false
         });
         if (typeof args[0] == 'object') {
             composition.api.path = args[0].path;
@@ -204,6 +211,9 @@ export class StateComposition extends CompositionBuilder {
     }
     doHas(composition, args) {
         composition.convert.has.push(args[0]);
+    }
+    doFlat(composition, args) {
+        composition.convert.isFlat = true;
     }
     doReload(composition, args) {
         composition.api.optimization.preventRepeat = false;
@@ -590,6 +600,9 @@ export class StateComposition extends CompositionBuilder {
                         composition.convert.map.forEach((value) => {
                             ival = ival.map(value);
                         });
+                        if (composition.convert.isFlat) {
+                            ival = ival.flat();
+                        }
                         composition.convert.sort.forEach((value) => {
                             ival = ival.sort(value);
                         });
@@ -621,6 +634,9 @@ export class StateComposition extends CompositionBuilder {
                         composition.convert.map.forEach((value) => {
                             ival = ival.map(value);
                         });
+                        if (composition.convert.isFlat) {
+                            ival = ival.flat();
+                        }
                         composition.convert.sort.forEach((value) => {
                             ival = ival.sort(value);
                         });
@@ -661,6 +677,9 @@ export class StateComposition extends CompositionBuilder {
                         composition.convert.map.forEach((value) => {
                             ival = ival.map(value);
                         });
+                        if (composition.convert.isFlat) {
+                            ival = ival.flat();
+                        }
                         composition.convert.sort.forEach((value) => {
                             ival = ival.sort(value);
                         });
@@ -682,6 +701,11 @@ export class StateComposition extends CompositionBuilder {
             page(number, preventLastStep = true) {
                 if (preventLastStep)
                     composition.lastStep = () => { property.user().page(number); };
+                if (this._forceMode == false && composition.api.optimization.preventRepeat) {
+                    if (Object.keys(composition.get()).length > 0) {
+                        return composition.get();
+                    }
+                }
                 composition.set([]);
                 config.set(_fetching, true);
                 composition.api.pagination.offset = number;
@@ -693,6 +717,9 @@ export class StateComposition extends CompositionBuilder {
                     composition.convert.map.forEach((value) => {
                         ival = ival.map(value);
                     });
+                    if (composition.convert.isFlat) {
+                        ival = ival.flat();
+                    }
                     composition.convert.sort.forEach((value) => {
                         ival = ival.sort(value);
                     });
@@ -706,6 +733,11 @@ export class StateComposition extends CompositionBuilder {
             },
             pageBy(name) {
                 composition.lastStep = () => { property.user().pageBy(name); };
+                if (this._forceMode == false && composition.api.optimization.preventRepeat) {
+                    if (Object.keys(composition.get()).length > 0) {
+                        return composition.get();
+                    }
+                }
                 composition.set([]);
                 config.set(_fetching, true);
                 const router = config.router();
@@ -723,6 +755,9 @@ export class StateComposition extends CompositionBuilder {
                     composition.convert.map.forEach((value) => {
                         ival = ival.map(value);
                     });
+                    if (composition.convert.isFlat) {
+                        ival = ival.flat();
+                    }
                     composition.convert.sort.forEach((value) => {
                         ival = ival.sort(value);
                     });

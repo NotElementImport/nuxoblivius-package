@@ -87,9 +87,15 @@ export default class StateManager {
     }
 
     public catchOnce(name: string, func: () => void) {
-        _instances.get(this._nameInstance)?.getParams(name).subs.push(() => {
+        _instances.get(this._nameInstance)?.getParams(name).onceSubs.push(func)
+    }
 
-        })
+    public static globalWatch(name: string, func: () => void) {
+        if(this.globalName) {
+            _instances.get(this.globalName)?.getParams(name).subs.push(func)
+            return
+        }
+        throw "static.globalName not set: SM.ref(), " + this.name + ", name: " + this.globalName
     }
 
     protected manage() {

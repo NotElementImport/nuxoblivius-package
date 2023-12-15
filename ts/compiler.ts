@@ -42,7 +42,13 @@ export default class CompositionBuilder {
             })
         }
         mainComposition.__obbsv = 0
-        mainComposition.subs = []
+        mainComposition.subs = [()=>{
+            mainComposition.onceSubs.forEach((value: Function) => {
+                value()
+            })
+            mainComposition.onceSubs = []
+        }]
+        mainComposition.onceSubs = []
         mainComposition.lastStep = () => {}
 
         instruction.__ref = mainComposition
@@ -139,11 +145,13 @@ interface IStateComposition {
         duration: number,
         safe: () => void
     },
-    subs: Function[]
+    subs: Function[],
+    onceSubs: Function[],
     convert: {
         map: Function[],
         sort: Function[],
-        has: Function[]
+        has: Function[],
+        isFlat: boolean
     }
 }
 
@@ -209,7 +217,8 @@ export class StateComposition extends CompositionBuilder {
             .dynamicAdd(composition, 'convert', {
                 map: [],
                 sort: [],
-                has: []
+                has: [],
+                isFlat: false
             })
             
         if(typeof args[0] == 'object') {
@@ -290,6 +299,10 @@ export class StateComposition extends CompositionBuilder {
 
     protected doHas(composition: IStateComposition, args: any[]) {
         composition.convert.has.push(args[0])
+    }
+
+    protected doFlat(composition: IStateComposition, args: any[]) {
+        composition.convert.isFlat = true
     }
 
     protected doReload(composition: IStateComposition, args: any[]) {
@@ -737,6 +750,9 @@ export class StateComposition extends CompositionBuilder {
                         composition.convert.map.forEach((value) => {
                             ival = ival.map(value as any)
                         })
+                        if(composition.convert.isFlat) {
+                            ival = ival.flat()
+                        }
                         composition.convert.sort.forEach((value) => {
                             ival = ival.sort(value as any)
                         })
@@ -775,6 +791,9 @@ export class StateComposition extends CompositionBuilder {
                         composition.convert.map.forEach((value) => {
                             ival = ival.map(value as any)
                         })
+                        if(composition.convert.isFlat) {
+                            ival = ival.flat()
+                        }
                         composition.convert.sort.forEach((value) => {
                             ival = ival.sort(value as any)
                         })
@@ -822,6 +841,9 @@ export class StateComposition extends CompositionBuilder {
                         composition.convert.map.forEach((value) => {
                             ival = ival.map(value as any)
                         })
+                        if(composition.convert.isFlat) {
+                            ival = ival.flat()
+                        }
                         composition.convert.sort.forEach((value) => {
                             ival = ival.sort(value as any)
                         })
@@ -844,6 +866,12 @@ export class StateComposition extends CompositionBuilder {
             page(number: number, preventLastStep = true) {
                 if(preventLastStep) composition.lastStep = () => { property.user().page(number) }
 
+                if(this._forceMode == false && composition.api.optimization.preventRepeat) {
+                    if(Object.keys(composition.get()).length > 0) {
+                        return composition.get()
+                    }
+                }
+
                 composition.set([])
                 config.set(_fetching, true)
                 composition.api.pagination.offset = number
@@ -860,6 +888,9 @@ export class StateComposition extends CompositionBuilder {
                     composition.convert.map.forEach((value) => {
                         ival = ival.map(value as any)
                     })
+                    if(composition.convert.isFlat) {
+                        ival = ival.flat()
+                    }
                     composition.convert.sort.forEach((value) => {
                         ival = ival.sort(value as any)
                     })
@@ -875,6 +906,12 @@ export class StateComposition extends CompositionBuilder {
             },
             pageBy(name: string) {
                 composition.lastStep = () => { property.user().pageBy(name) }
+
+                if(this._forceMode == false && composition.api.optimization.preventRepeat) {
+                    if(Object.keys(composition.get()).length > 0) {
+                        return composition.get()
+                    }
+                }
 
                 composition.set([])
                 config.set(_fetching, true)
@@ -899,6 +936,9 @@ export class StateComposition extends CompositionBuilder {
                     composition.convert.map.forEach((value) => {
                         ival = ival.map(value as any)
                     })
+                    if(composition.convert.isFlat) {
+                        ival = ival.flat()
+                    }
                     composition.convert.sort.forEach((value) => {
                         ival = ival.sort(value as any)
                     })
