@@ -1,6 +1,7 @@
-import StateManager from "./StateManager";
-import { config } from "./config";
-import { addToPath, buildUrl, queryToApi } from "./utilits";
+import Filter from "./Filter/index.js";
+import StateManager from "./StateManager/index.js";
+import { config } from "./config.js";
+import { addToPath, buildUrl, queryToApi } from "./utilits.js";
 export default class CompositionBuilder {
     _currentArgs = [];
     static instruction(defaultValue) {
@@ -31,9 +32,15 @@ export default class CompositionBuilder {
     }
     compile(instruction) {
         const mainComposition = this.composition();
+        mainComposition.__default = instruction.__value;
         mainComposition.__value = config.init(instruction.__value);
         mainComposition.get = () => config.get(mainComposition.__value);
-        mainComposition.set = (v) => { config.set(mainComposition.__value, v); };
+        mainComposition.set = (v) => {
+            config.set(mainComposition.__value, v);
+            mainComposition.subs.forEach((value) => {
+                value();
+            });
+        };
         mainComposition.__obbsv = 0;
         mainComposition.subs = [];
         mainComposition.lastStep = () => { };
@@ -68,9 +75,15 @@ export default class CompositionBuilder {
 export class StateComposition extends CompositionBuilder {
     compileQuery(composition) {
         let query = Object.assign({}, composition.api.query, composition.api.userQuery);
-        if (composition.template == 'yii2-data-provider') {
-            query['page[number]'] = composition.api.pagination.offset;
-            query['page[size]'] = composition.api.pagination.size;
+        if (composition.api.pagination.size > 0) {
+            if (composition.template == 'yii2-data-provider') {
+                query['page[number]'] = composition.api.pagination.offset;
+                query['page[size]'] = composition.api.pagination.size;
+            }
+        }
+        for (const filterLink of composition.api.filters) {
+            const fquery = Filter.filter(filterLink);
+            query = Object.assign(query, fquery);
         }
         for (const [key, val] of Object.entries(composition.api.joined.query)) {
             if (typeof val == 'object') {
@@ -95,6 +108,7 @@ export class StateComposition extends CompositionBuilder {
                 login: '',
                 password: ''
             },
+            filters: [],
             joined: {
                 query: {}
             },
@@ -136,6 +150,18 @@ export class StateComposition extends CompositionBuilder {
             },
             name: args[0],
             duration: args[1],
+            safe: async () => {
+                if (composition.cache.where.isCookie) {
+                    if (config.getCookie(composition.cache.name) == null) {
+                        config.saveCookie(composition.cache.name, composition.__default, undefined);
+                    }
+                }
+                else if (composition.cache.where.isLocalStorage) {
+                    if (!(composition.cache.name in localStorage)) {
+                        localStorage[composition.cache.name] = composition.__default;
+                    }
+                }
+            }
         });
     }
     doPlace(composition, args) {
@@ -168,6 +194,9 @@ export class StateComposition extends CompositionBuilder {
     }
     doReload(composition, args) {
         composition.api.optimization.preventRepeat = false;
+    }
+    doFilter(composition, args) {
+        composition.api.filters.push(args[0]);
     }
     doAuth(composition, args) {
         composition.api.auth.use = true;
@@ -471,7 +500,6 @@ export class StateComposition extends CompositionBuilder {
     }
     // Segment doMany
     doMany(composition, args) {
-        console.log(composition);
         return this.createWay('Many', composition, composition.__obbsv);
     }
     // Segment doOne
@@ -496,10 +524,17 @@ export class StateComposition extends CompositionBuilder {
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
-                queryToApi(url, params, composition.template).then((ival) => {
-                    composition.set(ival);
-                    config.set(_fetching, false);
-                });
+                try {
+                    queryToApi(url, params, composition.template).then((ival) => {
+                        composition.set(ival);
+                        config.set(_fetching, false);
+                    });
+                }
+                catch (e) {
+                    setTimeout(() => {
+                        this.user().all();
+                    }, 1000);
+                }
                 this._forceMode = false;
                 return composition.get();
             },
@@ -511,15 +546,23 @@ export class StateComposition extends CompositionBuilder {
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
-                queryToApi(url, params, composition.template).then((ival) => {
-                    if (composition.api.pagination.append) {
-                        composition.set(composition.get().concat(ival));
-                    }
-                    else {
-                        composition.set(ival);
-                    }
-                    config.set(_fetching, false);
-                });
+                try {
+                    queryToApi(url, params, composition.template).then((ival) => {
+                        if (composition.api.pagination.append) {
+                            composition.set(composition.get().concat(ival));
+                        }
+                        else {
+                            composition.set(ival);
+                        }
+                        config.set(_fetching, false);
+                    });
+                }
+                catch (e) {
+                    setTimeout(() => {
+                        composition.api.pagination.offset -= 1;
+                        this.user().next();
+                    }, 1000);
+                }
                 return composition.get();
             },
             prev() {
@@ -531,10 +574,18 @@ export class StateComposition extends CompositionBuilder {
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
-                queryToApi(url, params, composition.template).then((ival) => {
-                    composition.set(ival);
-                    config.set(_fetching, false);
-                });
+                try {
+                    queryToApi(url, params, composition.template).then((ival) => {
+                        composition.set(ival);
+                        config.set(_fetching, false);
+                    });
+                }
+                catch (e) {
+                    setTimeout(() => {
+                        composition.api.pagination.offset += 1;
+                        this.user().next();
+                    }, 1000);
+                }
                 return composition.get();
             },
             page(number, preventLastStep = true) {
@@ -542,7 +593,7 @@ export class StateComposition extends CompositionBuilder {
                     composition.lastStep = () => { property.user().page(number); };
                 composition.set([]);
                 config.set(_fetching, true);
-                composition.api.pagination.offset = number - 1;
+                composition.api.pagination.offset = number;
                 let query = _pthis.compileQuery(composition);
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
@@ -559,10 +610,10 @@ export class StateComposition extends CompositionBuilder {
                 config.set(_fetching, true);
                 const router = config.router();
                 if (router.currentRoute.value.params && name in router.currentRoute.value.params) {
-                    composition.api.pagination.offset = Number.parseInt(router.currentRoute.value.params[name]) - 1;
+                    composition.api.pagination.offset = Number.parseInt(router.currentRoute.value.params[name]);
                 }
                 else if (router.currentRoute.value.query && name in router.currentRoute.value.query) {
-                    composition.api.pagination.offset = Number.parseInt(router.currentRoute.value.query[name]) - 1;
+                    composition.api.pagination.offset = Number.parseInt(router.currentRoute.value.query[name]);
                 }
                 let query = _pthis.compileQuery(composition);
                 let path = composition.api.path;

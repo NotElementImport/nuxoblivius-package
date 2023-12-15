@@ -1,1 +1,0 @@
-export default m as {install: (app: any, context: any) => void}

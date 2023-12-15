@@ -1,11 +1,13 @@
+import { StaticKeyword } from "typescript"
 import { StateComposition } from "../compiler.js"
 
 export const _instances: Map<string, StateManager> = new Map()
-const _earlyInstances: StateManager[] = []
+const _globalInstances: StateManager[] = []
 
 export default class StateManager {
     private _nameInstance: string = ""
     protected _isServer: boolean = false
+    protected static globalName: string = ""
     private _paramsObjects: Map<string, {[key: string]:any}> = new Map()
 
     constructor(name: string|null = null) {
@@ -28,8 +30,60 @@ export default class StateManager {
         return _instances.get(name) as T
     }
 
+    public static set(variable: string, value: any) {
+        if(this.globalName != '') {
+            let server: StateManager = null as any
+            if(!_instances.has(this.globalName)) {
+                _instances.set(this.globalName, null as any)
+                server = new this()
+                _instances.set(this.globalName, server)
+            }
+            else {
+                server = _instances.get(this.globalName) as any
+            }
+            (server as any)[variable] = value
+            
+            return
+        }
+        throw "static.globalName not set: SM.set(), " + this.name + ", name: " + this.globalName
+    }
+    
+    public static get(variable: string) {
+        if(this.globalName != '') {
+            let server: StateManager = null as any
+            if(!_instances.has(this.globalName)) {
+                _instances.set(this.globalName, null as any)
+                // console.log(this.constructor as any)
+                server = new this()
+                _instances.set(this.globalName, server)
+            }
+            else {
+                server = _instances.get(this.globalName) as any
+            }
+            return (server as any)[variable]
+        }
+        throw "static.globalName not set: SM.get(), " + this.name + ", name: " + this.globalName
+    }
+
+    public static ref(variable: string): string {
+        if(this.globalName != '') {
+            let server: StateManager = null as any
+            if(!_instances.has(this.globalName)) {
+                _instances.set(this.globalName, null as any)
+                server = new this()
+                _instances.set(this.globalName, server)
+            }
+            return this.globalName+'.'+variable
+        }
+        throw "static.globalName not set: SM.ref(), " + this.name + ", name: " + this.globalName
+    }
+
     public getParams(name: string) {
         return this._paramsObjects.get(name) as any
+    }
+
+    public watch(name: string, func: () => void) {
+        _instances.get(this._nameInstance)?.getParams(name).subs.push(func)
     }
 
     protected manage() {
@@ -44,6 +98,10 @@ export default class StateManager {
                     const dataContains = stateBuilder.compile(objectGet)
                     dataContains.buxt = this
                     if(dataContains.__obbsv != 2) {
+                        if(dataContains.__obbsv == 1) {
+                            dataContains.cache.safe()
+                        }
+
                         Object.defineProperty(this, name, {
                             get() {
                                 return dataContains.get()

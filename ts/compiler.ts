@@ -1,3 +1,4 @@
+import Filter from "./Filter/index.js"
 import StateManager from "./StateManager/index.js"
 import { config } from "./config.js"
 import { PatternsApi, PlaceKeep } from "./interfaces.js"
@@ -31,9 +32,15 @@ export default class CompositionBuilder {
 
     public compile(instruction: {__wrt: any[], __value: any, __ref: any}) {
         const mainComposition = this.composition()
+        mainComposition.__default = instruction.__value
         mainComposition.__value = config.init(instruction.__value)
         mainComposition.get = () => config.get(mainComposition.__value)
-        mainComposition.set = (v: any) => { config.set(mainComposition.__value, v)}
+        mainComposition.set = (v: any) => { 
+            config.set(mainComposition.__value, v); 
+            mainComposition.subs.forEach((value: Function) => {
+                value()
+            })
+        }
         mainComposition.__obbsv = 0
         mainComposition.subs = []
         mainComposition.lastStep = () => {}
@@ -104,6 +111,8 @@ interface IStateComposition {
             query: {[name: string]: {object: any, field: string} | any}
         }
 
+        filters: [],
+
         pagination: {
             append: boolean,
             size: number,
@@ -123,6 +132,7 @@ interface IStateComposition {
         },
         name: string,
         duration: number,
+        safe: () => void
     },
     subs: Function[]
     convert: {
@@ -130,33 +140,22 @@ interface IStateComposition {
         sort: Function[],
         has: Function[]
     }
-
-    // with: [] as any[],
-    // kick: null as any,
-    // subs: [] as Function[],
-    // buxt: null,
-    // template: "",
-    // cache: {
-    //     loaded: false,
-    //     cacheType: "string",
-    //     where: {
-    //         isLocalStorage: false,
-    //         isCache: false,
-    //         isCooke: false
-    //     },
-    //     name: '',
-    //     duration: 0,
-    // },
-    // type: 0
 }
 
 export class StateComposition extends CompositionBuilder {
     private compileQuery(composition: IStateComposition) {
         let query = Object.assign({}, composition.api.query, composition.api.userQuery)
         
-        if(composition.template == 'yii2-data-provider') {
-            query['page[number]'] = composition.api.pagination.offset
-            query['page[size]'] = composition.api.pagination.size
+        if(composition.api.pagination.size > 0) {
+            if(composition.template == 'yii2-data-provider') {
+                query['page[number]'] = composition.api.pagination.offset
+                query['page[size]'] = composition.api.pagination.size
+            }
+        }
+
+        for(const filterLink of composition.api.filters) {
+            const fquery = Filter.filter(filterLink)
+            query = Object.assign(query, fquery)
         }
 
         for (const [key, val] of Object.entries(composition.api.joined.query)) {
@@ -184,6 +183,7 @@ export class StateComposition extends CompositionBuilder {
                     login: '',
                     password: ''
                 },
+                filters: [],
                 joined: {
                     query: {}
                 },
@@ -227,6 +227,18 @@ export class StateComposition extends CompositionBuilder {
             },
             name: args[0],
             duration: args[1],
+            safe: async () => {
+                if(composition.cache.where.isCookie) {
+                    if(config.getCookie(composition.cache.name) == null) {
+                        config.saveCookie(composition.cache.name, (composition as any).__default, undefined as any)
+                    }
+                }
+                else if(composition.cache.where.isLocalStorage) {
+                    if(!(composition.cache.name in localStorage)) {
+                        localStorage[composition.cache.name] = (composition as any).__default
+                    }
+                }
+            }
         })
     }
 
@@ -264,6 +276,10 @@ export class StateComposition extends CompositionBuilder {
 
     protected doReload(composition: IStateComposition, args: any[]) {
         composition.api.optimization.preventRepeat = false
+    }
+
+    protected doFilter(composition: IStateComposition, args: any[]) {
+        composition.api.filters.push(args[0] as never)
     }
 
     protected doAuth(composition: IStateComposition, args: any[]) {
@@ -613,7 +629,6 @@ export class StateComposition extends CompositionBuilder {
 
     // Segment doMany
     protected doMany(composition: IStateComposition, args: any[]) {
-        console.log(composition)
         return this.createWay('Many', composition, composition.__obbsv)
     }
 
@@ -643,13 +658,19 @@ export class StateComposition extends CompositionBuilder {
 
                 let url = buildUrl(path, query, {}, composition.template)
                 let params = Object.assign({method: composition.api.method}, composition.api.customParams);
-    
-                queryToApi(
-                    url, params, composition.template
-                ).then((ival) => {
-                    composition.set(ival)
-                    config.set(_fetching, false)
-                })
+                
+                try{
+                    queryToApi(
+                        url, params, composition.template
+                    ).then((ival) => {
+                        composition.set(ival)
+                        config.set(_fetching, false)
+                    })
+                } catch(e) {
+                    setTimeout(() => {
+                        this.user().all()
+                    }, 1000)
+                }
 
                 this._forceMode = false
                 return composition.get()
@@ -666,17 +687,24 @@ export class StateComposition extends CompositionBuilder {
                 let url = buildUrl(path, query, {}, composition.template)
                 let params = Object.assign({method: composition.api.method}, composition.api.customParams);
     
-                queryToApi(
-                    url, params, composition.template
-                ).then((ival) => {
-                    if(composition.api.pagination.append) {
-                        composition.set((composition.get() as any[]).concat(ival))
-                    }
-                    else {
-                        composition.set(ival)
-                    }
-                    config.set(_fetching, false)
-                })
+                try{
+                    queryToApi(
+                        url, params, composition.template
+                    ).then((ival) => {
+                        if(composition.api.pagination.append) {
+                            composition.set((composition.get() as any[]).concat(ival))
+                        }
+                        else {
+                            composition.set(ival)
+                        }
+                        config.set(_fetching, false)
+                    })
+                } catch(e) {
+                    setTimeout(() => {
+                        composition.api.pagination.offset -= 1
+                        this.user().next()
+                    }, 1000)
+                }
 
                 return composition.get()
             },
@@ -693,12 +721,19 @@ export class StateComposition extends CompositionBuilder {
                 let url = buildUrl(path, query, {}, composition.template)
                 let params = Object.assign({method: composition.api.method}, composition.api.customParams);
     
-                queryToApi(
-                    url, params, composition.template
-                ).then((ival) => {
-                    composition.set(ival)
-                    config.set(_fetching, false)
-                })
+                try{
+                    queryToApi(
+                        url, params, composition.template
+                    ).then((ival) => {
+                        composition.set(ival)
+                        config.set(_fetching, false)
+                    })
+                } catch(e) {
+                    setTimeout(() => {
+                        composition.api.pagination.offset += 1
+                        this.user().next()
+                    }, 1000)
+                }
 
                 return composition.get()
             },
@@ -707,7 +742,7 @@ export class StateComposition extends CompositionBuilder {
 
                 composition.set([])
                 config.set(_fetching, true)
-                composition.api.pagination.offset = number - 1
+                composition.api.pagination.offset = number
                 
                 let query = _pthis.compileQuery(composition)
                 let path = composition.api.path
@@ -732,10 +767,10 @@ export class StateComposition extends CompositionBuilder {
 
                 const router = config.router()
                 if(router.currentRoute.value.params && name in router.currentRoute.value.params) {
-                    composition.api.pagination.offset = Number.parseInt(router.currentRoute.value.params[name]) - 1
+                    composition.api.pagination.offset = Number.parseInt(router.currentRoute.value.params[name])
                 }
                 else if(router.currentRoute.value.query && name in router.currentRoute.value.query) {
-                    composition.api.pagination.offset = Number.parseInt(router.currentRoute.value.query[name]) - 1
+                    composition.api.pagination.offset = Number.parseInt(router.currentRoute.value.query[name])
                 }
 
                 let query = _pthis.compileQuery(composition)

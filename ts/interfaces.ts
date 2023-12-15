@@ -1,3 +1,5 @@
+import { IFilter } from "../filter"
+
 export type PatternsApi = "yii2-data-provider" | ""
 export type PlaceKeep = "cookie" | "localStorage" | "cache"
 export type AuthType = "bearer-token" | "login-password" | "api-key"
@@ -73,7 +75,7 @@ export interface IStateApi<T> {
     join(object: IState<T>|IStateFin<T>|string): IStateApi<T>
     join(object: IStateApiMany<T>|IStateApiPagiMany<T>|IStateApiOne<T>, fieldLink: string): IStateApi<T>
     joinToQuery(name: string, object: IState<T>|IStateFin<T>|string): IStateApi<T>
-    filter(name: string): IStateApi<T>
+    filter(object: string): IStateApi<T>
     one(): IStateApiOne<T>
     many(): IStateApiMany<T>
 }
@@ -136,8 +138,8 @@ export interface IStateApiPagi<T> {
     sort(func: (a: T, b: T) => -1|0|1): IStateApi<T>
     has(func: (a: T) => boolean): IStateApi<T>
     auth(type: AuthType, login: string, password: string): IStateApiPagi<T>
-    filter(name: string): IStateApiPagi<T>
-    join(object: IState<T>|IStateFin<T>): IStateApiPagi<T>
+    filter(object: string): IStateApiPagi<T>
+    join(object: IState<T>|IStateFin<T>|string): IStateApiPagi<T>
     join(object: IStateApiMany<T>|IStateApiPagiMany<T>|IStateApiOne<T>, fieldLink: string): IStateApiPagi<T>
     joinToQuery(name: string, object: IState<T>|IStateFin<T>|string): IStateApiPagi<T>
     many(): IStateApiPagiMany<T>

@@ -1,9 +1,10 @@
 import { StateComposition } from "../compiler.js";
 export const _instances = new Map();
-const _earlyInstances = [];
+const _globalInstances = [];
 export default class StateManager {
     _nameInstance = "";
     _isServer = false;
+    static globalName = "";
     _paramsObjects = new Map();
     constructor(name = null) {
         this._nameInstance = this.constructor.name;
@@ -20,8 +21,55 @@ export default class StateManager {
     static manager(name) {
         return _instances.get(name);
     }
+    static set(variable, value) {
+        if (this.globalName != '') {
+            let server = null;
+            if (!_instances.has(this.globalName)) {
+                _instances.set(this.globalName, null);
+                server = new this();
+                _instances.set(this.globalName, server);
+            }
+            else {
+                server = _instances.get(this.globalName);
+            }
+            server[variable] = value;
+            return;
+        }
+        throw "static.globalName not set: SM.set(), " + this.name + ", name: " + this.globalName;
+    }
+    static get(variable) {
+        if (this.globalName != '') {
+            let server = null;
+            if (!_instances.has(this.globalName)) {
+                _instances.set(this.globalName, null);
+                // console.log(this.constructor as any)
+                server = new this();
+                _instances.set(this.globalName, server);
+            }
+            else {
+                server = _instances.get(this.globalName);
+            }
+            return server[variable];
+        }
+        throw "static.globalName not set: SM.get(), " + this.name + ", name: " + this.globalName;
+    }
+    static ref(variable) {
+        if (this.globalName != '') {
+            let server = null;
+            if (!_instances.has(this.globalName)) {
+                _instances.set(this.globalName, null);
+                server = new this();
+                _instances.set(this.globalName, server);
+            }
+            return this.globalName + '.' + variable;
+        }
+        throw "static.globalName not set: SM.ref(), " + this.name + ", name: " + this.globalName;
+    }
     getParams(name) {
         return this._paramsObjects.get(name);
+    }
+    watch(name, func) {
+        _instances.get(this._nameInstance)?.getParams(name).subs.push(func);
     }
     manage() {
         const names = Object.getOwnPropertyNames(this);
@@ -34,6 +82,9 @@ export default class StateManager {
                     const dataContains = stateBuilder.compile(objectGet);
                     dataContains.buxt = this;
                     if (dataContains.__obbsv != 2) {
+                        if (dataContains.__obbsv == 1) {
+                            dataContains.cache.safe();
+                        }
                         Object.defineProperty(this, name, {
                             get() {
                                 return dataContains.get();

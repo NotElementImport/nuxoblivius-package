@@ -1,11 +1,15 @@
 import { IState, IStateApi, IStateApiMany, IStateApiOne, IStateApiPagiMany } from "./ts/interfaces";
 
-declare class IStateManager {
+declare class IStateManager<K extends IStateManager> {
+    protected static globalName: string
     constructor(name: string)
     protected _isServer: boolean
     public getParams(name: string): {[name: string] : any}
     protected manage(): void
     protected name(): void
+    public static set(variable: keyof K, value: any): void
+    public static ref(variable: string): string
+    public static get(ariable: keyof K): string
     public static manager<T extends IStateManager>(name: string): T
 }
 
@@ -31,3 +35,7 @@ declare class IFormModel extends IStateManager {
 declare export const state: <T>(value: []|{}|T) => IState<T>
 declare export default m as typeof IStateManager
 declare export const FormModel: typeof IFormModel 
+
+declare export const setCustomCookie: (func: Function) => void
+declare export const setCustomRouter: (func: Function) => void
+declare export const setCustomFetch: (func: Function) => void
