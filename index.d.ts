@@ -1,4 +1,4 @@
-declare class IStateManager<K> {
+export declare class IStateManager<K> {
     protected static globalName: string
     constructor(name: string)
     protected _isServer: boolean
@@ -85,6 +85,7 @@ export interface IStateApi<T> {
      * @param type Type
      */
     template(type:PatternsApi): IStateApi<T>
+    caching(duration: number):  IStateApi<T>
     flat(): IStateApi<T>
     map<K extends T>(func: (value: K) => any): IStateApi<T>
     sort<K extends T>(func: (a: K, b: K) => number): IStateApi<T>
@@ -112,7 +113,7 @@ export interface IStateApiOne<T> {
     /**
      * Force mode
      */
-    user(): IStateApiMany<T>
+    user(): IStateApiOne<T>
     /**
      * Just send post data with body
      * @param body 
@@ -160,6 +161,7 @@ export interface IStateApiMany<T> {
 
 export interface IStateApiPagi<T> {
     template(type:PatternsApi): IStateApiPagi<T>
+    caching(duration: number):  IStateApiPagi<T>
     flat(): IStateApiPagi<T>
     map<K extends T|any>(func: (value: K) => any): IStateApiPagi<T>
     sort<K extends T|any>(func: (a: K, b: K) => number): IStateApiPagi<T>
@@ -190,6 +192,7 @@ export interface IStateApiPagiMany<T> {
 }
 
 export type IStateAny = IState<any> | IStateFin<any> | IStateApi<any> | IStateApiPagi<any> | StateValue<any> | IStateApiPagiMany<any> | IStateApiOne<any> | IStateApiMany<any>
+export type IApiState = IStateApiOne<any> | IStateApiPagiMany<any> | IStateApiMany<any>
 
 declare class IFormModel extends IStateManager {
     protected createForm(description: {[key: string]: any}): void
@@ -209,3 +212,5 @@ declare export const FormModel: typeof IFormModel
 declare export const setCustomCookie: (func: Function) => void
 declare export const setCustomRouter: (func: Function) => void
 declare export const setCustomFetch: (func: Function) => void
+declare export const setHeaders: (data: any) => void
+declare export const EmulateRobots: () => void

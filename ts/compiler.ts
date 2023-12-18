@@ -98,6 +98,7 @@ interface IStateComposition {
     lastStep: () => void
 
     api: {
+        watching: boolean
         path: string,
         query: {[name: string]: any},
         userQuery: {[name: string]: any},
@@ -187,6 +188,7 @@ export class StateComposition extends CompositionBuilder {
     protected doApi(composition: IStateComposition, args: any[]) {
         this.setType(composition, 2)
             .dynamicAdd(composition, 'api', {
+                watching: false,
                 path: '',
                 query: {},
                 userQuery: {},
@@ -331,6 +333,7 @@ export class StateComposition extends CompositionBuilder {
         if(typeof args[0] == 'string') {
             const delimeter = args[0].split('.')
             try {
+                composition.api.watching = true
                 StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
                     .subs.push(() => {
                         composition.lastStep()
@@ -346,6 +349,7 @@ export class StateComposition extends CompositionBuilder {
                 composition.api.linkMethod = args[1]
             }
             else {
+                composition.api.watching = true
                 args[0].__ref.subs.push(() => {
                     composition.lastStep()
                 })
@@ -594,7 +598,12 @@ export class StateComposition extends CompositionBuilder {
             else if(typeof localStorage !== 'undefined' 
                         && composition.cache.where.isLocalStorage 
                         && composition.cache.loaded == false) {
-                config.set(composition.__value, localStorage[composition.cache.name])
+                if(composition.cache.type == 'json') {
+                    config.set(composition.__value, JSON.parse(localStorage[composition.cache.name]))
+                }
+                else {
+                    config.set(composition.__value, localStorage[composition.cache.name])
+                }
                 composition.cache.loaded = true
             }
             else if(typeof caches !== 'undefined' 
@@ -638,7 +647,7 @@ export class StateComposition extends CompositionBuilder {
 
         composition.set = (v: any) => {
             if(composition.cache.where.isCookie) {
-                if(typeof v == 'object') throw "Object cannot be keep in Cookie";
+                if(typeof v == 'object' || Array.isArray(v)) throw "Object cannot be keep in Cookie";
 
                 let expr = undefined as any
                 if(composition.cache.duration != 0 && composition.cache.duration != Infinity)
@@ -647,7 +656,7 @@ export class StateComposition extends CompositionBuilder {
                 config.saveCookie(composition.cache.name, v, expr)
             }
             if(typeof localStorage !== 'undefined' && composition.cache.where.isLocalStorage) {
-                if(typeof v == 'object') v = JSON.parse(v);
+                if(typeof v == 'object' || Array.isArray(v)) v = JSON.parse(v);
                 localStorage[composition.cache.name] = v
 
                 if(composition.cache.duration != 0 && composition.cache.duration != Infinity)

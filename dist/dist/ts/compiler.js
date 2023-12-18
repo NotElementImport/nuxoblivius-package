@@ -108,7 +108,6 @@ export class StateComposition extends CompositionBuilder {
     doApi(composition, args) {
         this.setType(composition, 2)
             .dynamicAdd(composition, 'api', {
-            watching: false,
             path: '',
             query: {},
             userQuery: {},
@@ -239,7 +238,6 @@ export class StateComposition extends CompositionBuilder {
         if (typeof args[0] == 'string') {
             const delimeter = args[0].split('.');
             try {
-                composition.api.watching = true;
                 StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
                     .subs.push(() => {
                     composition.lastStep();
@@ -255,7 +253,6 @@ export class StateComposition extends CompositionBuilder {
                 composition.api.linkMethod = args[1];
             }
             else {
-                composition.api.watching = true;
                 args[0].__ref.subs.push(() => {
                     composition.lastStep();
                 });

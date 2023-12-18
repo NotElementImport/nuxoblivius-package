@@ -82,6 +82,10 @@ export default class StateManager {
         return _instances.get(this._nameInstance)?._paramsObjects.get(name) as any
     }
 
+    public debugParams() {
+        return _instances.get(this._nameInstance)?._paramsObjects.entries()
+    }
+
     public watch(name: string, func: () => void) {
         _instances.get(this._nameInstance)?.getParams(name).subs.push(func)
     }
@@ -109,6 +113,7 @@ export default class StateManager {
                     const stateBuilder = new StateComposition()
                     const dataContains = stateBuilder.compile(objectGet)
                     dataContains.buxt = this
+                    dataContains.buxtName = name
                     if(dataContains.__obbsv != 2) {
                         if(dataContains.__obbsv == 1) {
                             dataContains.cache.safe()
@@ -133,6 +138,9 @@ export default class StateManager {
                                 return dataContains
                             }
                         })
+                        console.log(objectGet.__ref)
+                        objectGet.__ref.buxt = this
+                        objectGet.__ref.buxtName = name
                         this._paramsObjects.set(name, objectGet.__ref)
                     }
                 }
