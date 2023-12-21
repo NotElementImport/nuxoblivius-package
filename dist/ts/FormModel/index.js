@@ -106,7 +106,7 @@ export default class FormModel extends StateManager {
                 const data = {
                     type: 'basic',
                     value: ref(""),
-                    title: title,
+                    title: ref(title),
                     options: {
                         ...options,
                         validateMessage: ref("")
@@ -125,7 +125,7 @@ export default class FormModel extends StateManager {
                 return {
                     type: 'email',
                     value: ref(""),
-                    title: title,
+                    title: ref(title),
                     options: {
                         ...options,
                         validateMessage: ref("")
@@ -137,7 +137,7 @@ export default class FormModel extends StateManager {
                 return {
                     type: 'tel',
                     value: ref(""),
-                    title: title,
+                    title: ref(""),
                     options: {
                         prefix: prefix,
                         validateMessage: ref("")
@@ -149,7 +149,7 @@ export default class FormModel extends StateManager {
                 const data = {
                     type: 'number',
                     value: ref(0),
-                    title: title,
+                    title: ref(title),
                     options: {
                         ...options,
                         validateMessage: ref("")
@@ -165,7 +165,7 @@ export default class FormModel extends StateManager {
                 const data = {
                     type: 'checkbox',
                     value: ref(false),
-                    title: title,
+                    title: ref(title),
                     options: {
                         validateMessage: ref("")
                     },
@@ -175,7 +175,8 @@ export default class FormModel extends StateManager {
                     data['validate'] = validate;
                 }
                 return data;
-            }
+            },
+            // select(title: string, )
         };
     }
 }

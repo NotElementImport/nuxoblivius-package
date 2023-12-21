@@ -102,6 +102,14 @@ export default class StateManager {
         throw "static.globalName not set: SM.ref(), " + this.name + ", name: " + this.globalName
     }
 
+    public static globalCatchOnce(name: string, func: () => void) {
+        if(this.globalName) {
+            _instances.get(this.globalName)?.getParams(name).onceSubs.push(func)
+            return
+        }
+        throw "static.globalName not set: SM.ref(), " + this.name + ", name: " + this.globalName
+    }
+
     protected manage() {
         const names = Object.getOwnPropertyNames(this)
         const getServer = _instances.get(this._nameInstance) as StateManager

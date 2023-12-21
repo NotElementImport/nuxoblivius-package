@@ -92,10 +92,16 @@ export const buildUrl = (path, query, pagiantion, template) => {
     fullURL += mapOfQuery.join('&');
     return fullURL;
 };
-export const queryToApi = async (url, params, template) => {
+export const queryToApi = async (url, params, template, composition) => {
     let raw = await config.request(url, params);
     let dry = JSON.parse(raw);
     if (template == 'yii2-data-provider') {
+        if ('meta' in dry) {
+            composition.api.pagination.maxOffset = dry['meta']['page-count'];
+        }
+        else {
+            composition.api.pagination.maxOffset = 1;
+        }
         if ('data' in dry) {
             if (Array.isArray(dry.data)) {
                 return dry.data.map((value) => value.attributes);

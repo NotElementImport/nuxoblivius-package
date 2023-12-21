@@ -133,7 +133,11 @@ export default class Filter {
                                 if(state && index == -1) { valueRef.value.push(value) }
                                 else if(state == false && index != -1) { valueRef.value.splice(index, 1) }
                             }
+                            instance?.callSubs()
                         },
+                        get() {
+                            return valueRef.value
+                        }
                     }
                     Object.defineProperty(toolbox, key, {
                         get() {

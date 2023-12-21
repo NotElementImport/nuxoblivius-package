@@ -11,17 +11,15 @@
 ## Setup Nuxt 3 
 Create in folder `plugins` file `nuxoblivius.ts`
 ```ts
-import Plugin from 'nuxoblivius/Nuxt'
+import { setCustomCookie, setCustomFetch, setCustomRouter, setHeaders } from "nuxoblivius"
 
-export default defineNuxtPlugin(nuxtapp => {
-    Plugin(nuxtapp)
+export default defineNuxtPlugin((nuxtApp) => {
+    setCustomCookie(useCookie)
+    setCustomFetch(useLazyFetch)
+    setCustomRouter(useRouter)
+    // For support SSR
+    setHeaders(useRequestHeaders)
 })
-```
-## Setup Vue 3
-```ts
-import Plugin from 'nuxoblivius/Vue'
-
-Vue.use(Plugin)
 ```
 
 ## Example

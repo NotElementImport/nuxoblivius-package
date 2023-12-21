@@ -7,6 +7,7 @@ export declare class IStateManager<K> {
     protected name(): void
     public watch(name: keyof K, func: () => void): void
     public static globalWatch(name: string, func: () => void): void
+    public static globalCatchOnce(name: string, func: () => void): void
     public catchOnce(name: string, func: () => void): void
     public static set(variable: keyof K, value: any): void
     public static ref(variable: keyof K): string
@@ -27,6 +28,7 @@ import { IFilter } from "../filter"
 export type PatternsApi = "yii2-data-provider" | ""
 export type PlaceKeep = "cookie" | "localStorage" | "cache"
 export type AuthType = "bearer-token" | "login-password" | "api-key"
+type JoinMethod = 'only-filter'| 'only-sort' | 'only-process'
 
 export type StateValue<T> = T
 export type StateQuery = {[name: string]: string|number|boolean|StateQuery}
@@ -87,9 +89,12 @@ export interface IStateApi<T> {
     template(type:PatternsApi): IStateApi<T>
     caching(duration: number):  IStateApi<T>
     flat(): IStateApi<T>
-    map<K extends T>(func: (value: K) => any): IStateApi<T>
-    sort<K extends T>(func: (a: K, b: K) => number): IStateApi<T>
-    has<K extends T>(func: (a: K) => boolean): IStateApi<T>
+    map(func: (value: T) => any): IStateApi<T>
+    map<K extends any>(func: (value: K) => any): IStateApi<T>
+    sort(func: (a: T, b: T) => number): IStateApi<T>
+    sort<K extends any>(func: (a: K, b: K) => number): IStateApi<T>
+    has(func: (a: T) => boolean): IStateApi<T>
+    has<K extends any>(func: (a: K) => boolean): IStateApi<T>
     pagination(size: number, append?: boolean): IStateApiPagi<T>
     /**
      * Auth to Backend or API
@@ -98,10 +103,11 @@ export interface IStateApi<T> {
      * @param password 
      */
     auth(type: AuthType, login: string, password: string): IStateApi<T>
-    join(object: IState<T>|IStateFin<T>|string): IStateApi<T>
+    join(object: IState<T>|IStateFin<T>|string|StateValue<T>,  type?: JoinMethod): IStateApi<T>
     join(object: IStateApiMany<T>|IStateApiPagiMany<T>|IStateApiOne<T>, fieldLink: string): IStateApi<T>
     joinToQuery(name: string, object: IState<T>|IStateFin<T>|string): IStateApi<T>
     filter(object: string, local?: boolean): IStateApi<T>
+    filter(object: string, cmd?: "emit-always"|"emit-localy"): IStateApi<T>
     one(): IStateApiOne<T>
     many(): IStateApiMany<T>
 }
@@ -163,12 +169,16 @@ export interface IStateApiPagi<T> {
     template(type:PatternsApi): IStateApiPagi<T>
     caching(duration: number):  IStateApiPagi<T>
     flat(): IStateApiPagi<T>
-    map<K extends T|any>(func: (value: K) => any): IStateApiPagi<T>
-    sort<K extends T|any>(func: (a: K, b: K) => number): IStateApiPagi<T>
-    has<K extends T|any>(func: (a: K) => boolean): IStateApiPagi<T>
+    map(func: (value: T) => any): IStateApiPagi<T>
+    map<K extends any>(func: (value: K) => any): IStateApiPagi<T>
+    sort(func: (a: T, b: T) => number): IStateApiPagi<T>
+    sort<K extends any>(func: (a: K, b: K) => number): IStateApiPagi<T>
+    has(func: (a: T) => boolean): IStateApiPagi<T>
+    has<K extends any>(func: (a: K) => boolean): IStateApiPagi<T>
     auth(type: AuthType, login: string, password: string): IStateApiPagi<T>
     filter(object: string, local?: boolean): IStateApiPagi<T>
-    join(object: IState<T>|IStateFin<T>|string): IStateApiPagi<T>
+    filter(object: string, cmd?: "emit-always"|"emit-localy"): IStateApiPagi<T>
+    join(object: IState<T>|IStateFin<T>|string|StateValue<T>, type?: JoinMethod): IStateApiPagi<T>
     join(object: IStateApiMany<T>|IStateApiPagiMany<T>|IStateApiOne<T>, fieldLink: string): IStateApiPagi<T>
     joinToQuery(name: string, object: IState<T>|IStateFin<T>|string): IStateApiPagi<T>
     many(): IStateApiPagiMany<T>
@@ -189,12 +199,13 @@ export interface IStateApiPagiMany<T> {
     reset(): IStateApiPagiMany<T>
     setQuery(query: StateQuery): IStateApiPagiMany<T>
     isLoading: boolean
+    isFinished: boolean
 }
 
 export type IStateAny = IState<any> | IStateFin<any> | IStateApi<any> | IStateApiPagi<any> | StateValue<any> | IStateApiPagiMany<any> | IStateApiOne<any> | IStateApiMany<any>
 export type IApiState = IStateApiOne<any> | IStateApiPagiMany<any> | IStateApiMany<any>
 
-declare class IFormModel extends IStateManager {
+declare class IFormModel extends IStateManager<IFormModel> {
     protected createForm(description: {[key: string]: any}): void
     public get formData(): FormData
     public get form(): {[name: string]: {[key: string]: any}}
@@ -205,9 +216,25 @@ declare class IFormModel extends IStateManager {
     protected get field(): IFormField
 }
 
+interface IMoleculaTransform<T> {
+    map<K>(func: (value: T, index?: number|string) => K): K[]
+    map<K,E>(func: (value: E, index?: number|string) => K): K[]
+    has<K>(func: (value: T, index?: number|string) => K): K[]
+    has<K,E>(func: (value: E, index?: number|string) => K): K[]
+    sort<K>(func: (a: K, b:K) => boolean): K[]
+    flat<K>(array: K[]): K[]
+    concat<K,E>(a:K[], b:E[]): (K & E)[]
+    assign<K,E>(a:K, b:E): (K & E)
+}
+
+interface IMolecula<T> {
+    transform<K>(build: (value:IMoleculaTransform<T>) => K): IMolecula<K>
+}
+
 declare export const state: <T>(value: []|{}|T) => IState<T>
+declare export const molecula: <T>(value: string|IStateApi<any>) => IMolecula<T>
 declare export default m as typeof IStateManager
-declare export const FormModel: typeof IFormModel 
+declare export const FormModel: typeof IFormModel
 
 declare export const setCustomCookie: (func: Function) => void
 declare export const setCustomRouter: (func: Function) => void

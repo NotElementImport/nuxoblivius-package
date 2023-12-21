@@ -5,6 +5,7 @@ import f from './dist/ts/FormModel/index.js'
 import { setCustomFetch as _1, setCustomRouter as _2, setCustomCookie as _3, setHeaders as _4, EmulationRobots as _5 } from './dist/ts/config.js'
 
 export const state = (value) => StateComposition.instruction(value)
+export const molecula = (value) => StateComposition.instruction(value)
 export default m
 export const FormModel = f
 

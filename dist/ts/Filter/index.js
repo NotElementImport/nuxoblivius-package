@@ -133,7 +133,11 @@ export default class Filter {
                                 valueRef.value.splice(index, 1);
                             }
                         }
+                        instance?.callSubs();
                     },
+                    get() {
+                        return valueRef.value;
+                    }
                 };
                 Object.defineProperty(toolbox, key, {
                     get() {

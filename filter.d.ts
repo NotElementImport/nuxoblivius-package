@@ -7,7 +7,8 @@ interface ITypeFilter {
     notEmpty(): ITypeFilter
 }
 interface IToolboxArray {
-    toggle(value: any, state?: boolean)
+    toggle(value: any, state?: boolean): void,
+    get(): any[]
 }
 
 export declare class IFilter {
@@ -21,7 +22,7 @@ export declare class IFilter {
      */
     protected resolve(value: any): boolean
     public static filter (path: string): {[name: string]: any}|any
-    public static toolbox (): {[name: string]: any|IToolboxArray}
+    public static toolbox (): {[name: string]: string|boolean|number|IToolboxArray}
     public static ref (): string
     readonly protected get getValues(): {[name: string]: any}
     readonly public on(func: Function): void

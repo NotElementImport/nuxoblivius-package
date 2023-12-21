@@ -3,10 +3,10 @@ import { ref } from "vue";
 export const settings = {
     fetch: async (...args: any[]) => {},
     router: () => {},
-    cookie: (...args: any[]) => {}
+    cookie: (...args: any[]) => {},
+    headers: null,
+    useServerFetch: false
 }
-
-export let headers = null
 
 export const setCustomFetch = (value: Function) => {
     settings.fetch = value as any
@@ -18,31 +18,24 @@ export const setCustomCookie = (value: Function) => {
     settings.cookie = value as any
 }
 export const setHeaders = (value: any) => {
-    headers = value
+    settings.headers = value
 }
 export const detectRobots = () => {
     return config.isRobot
 }
-let useServerFetch = true
 export const checkForRobots = () => {
-    if(headers != null) {
-        console.log(
-            /bot|googlebot|crawler|spider|robot|crawling/i.exec(headers['user-agent'])
-        )
-        config.isRobot = /bot|googlebot|crawler|spider|robot|crawling/i.test(headers['user-agent'])
-    }
-    else {
-        config.isRobot = /bot|googlebot|crawler|spider|robot|crawling/i.test(navigator.userAgent)
+    if(settings.headers != null) {
+        config.isRobot = /bot|googlebot|crawler|spider|robot|crawling/i.test(settings.headers['user-agent'])
     }
     return config.isRobot
 }
 export const EmulationRobots = () => {
-    if(headers != null) {
-        headers['user-agent'] = headers['user-agent'] + '; spider' as never
+    if(settings.headers != null) {
+        settings.headers['user-agent'] = settings.headers['user-agent'] + '; spider' as never
     }
 }
 export const setIsServer = (value: boolean) => {
-    useServerFetch = value
+    settings.useServerFetch = value
 }
 
 export const config = {
@@ -50,16 +43,7 @@ export const config = {
     set: (object_: any, value: any) => { object_.value = value },
     init: (value: any) => ref(value),
 
-    request: async (url: string, params: any) => {
-        if (useServerFetch) {
-            const fetchData = await settings.fetch(url, { credentials: 'include', responseType: 'text', cache: 'no-cache', server: true, ...params }) as any
-            return fetchData.data.value
-        }
-        else {
-            const fetchData = await fetch(url, params)
-            return await fetchData.text()
-        }
-    },
+    request: async (url: string, params: any) => {},
 
     saveCookie: (name: string, value: any, expr: number)  => {
         let data = settings.cookie(name, {
@@ -74,5 +58,16 @@ export const config = {
     router: () => {
         return settings.router() as any
     },
-    isRobot: true
+    isRobot: false
+}
+
+config.request = async (url: string, params: any) => {
+    if (settings.useServerFetch || config.isRobot) {
+        const fetchData = await settings.fetch(url, { credentials: 'include', responseType: 'text', cache: 'no-cache', server: true, ...params }) as any
+        return fetchData.data.value
+    }
+    else {
+        const fetchData = await fetch(url, params)
+        return await fetchData.text()
+    }
 }

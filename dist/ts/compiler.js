@@ -50,6 +50,7 @@ export default class CompositionBuilder {
             }];
         mainComposition.onceSubs = [];
         mainComposition.lastStep = () => { };
+        mainComposition.call = {};
         instruction.__ref = mainComposition;
         for (const doOf of instruction.__wrt) {
             this._currentArgs = doOf[1];
@@ -59,6 +60,16 @@ export default class CompositionBuilder {
                 return answer;
             }
         }
+    }
+    callPart(name, composition) {
+        if (name in composition.call) {
+            composition.call[name]();
+        }
+    }
+    subsToPart(name, composition, func, awake = false) {
+        composition.call[name] = func;
+        if (awake)
+            func();
     }
     createWay(name, composition, data) {
         return this[`way${name}${data}`](composition, data);
@@ -221,10 +232,29 @@ export class StateComposition extends CompositionBuilder {
     }
     doFilter(composition, args) {
         if (this.argumentExist(1)) {
-            if (args[1])
-                composition.api.localFilters.push(args[0]);
-            else
-                composition.api.filters.push(args[0]);
+            if (typeof args[1] == 'string') {
+                if (args[1] == 'emit-always') {
+                    composition.api.filters.push(args[0]);
+                    const object = Filter.instance(args[0]);
+                    object.on(() => {
+                        composition.lastStep();
+                    });
+                }
+                else if (args[1] == 'emit-localy') {
+                    composition.api.localFilters.push(args[0]);
+                }
+                else {
+                    console.error(`state.filter(${args[0]}, ${args[1]}); cmd is empty set, 'emit-always', 'emit-localy'`);
+                }
+            }
+            else if (typeof args[1] == 'boolean') {
+                if (args[1]) {
+                    composition.api.localFilters.push(args[0]);
+                }
+                else {
+                    composition.api.filters.push(args[0]);
+                }
+            }
         }
         else {
             composition.api.filters.push(args[0]);
@@ -240,10 +270,34 @@ export class StateComposition extends CompositionBuilder {
             const delimeter = args[0].split('.');
             try {
                 composition.api.watching = true;
-                StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
-                    .subs.push(() => {
-                    composition.lastStep();
-                });
+                if (this.argumentExist(1)) {
+                    if (args[1] == 'only-filter') {
+                        StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
+                            .subs.push(() => {
+                            this.callPart('filter', composition);
+                        });
+                    }
+                    else if (args[1] == 'only-sort') {
+                        StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
+                            .subs.push(() => {
+                            this.callPart('sort', composition);
+                        });
+                    }
+                    else if (args[1] == 'only-process') {
+                        StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
+                            .subs.push(() => {
+                            this.callPart('proccess', composition);
+                        });
+                    }
+                }
+                else {
+                    StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
+                        .subs.push(() => {
+                        setTimeout(() => {
+                            composition.lastStep();
+                        }, 100);
+                    });
+                }
             }
             catch (e) {
                 console.error(args[0] + ' not exist. Maybe not init');
@@ -253,12 +307,41 @@ export class StateComposition extends CompositionBuilder {
             if (args[0].__ref.__obbsv == 2) {
                 composition.parent = args[0].__ref;
                 composition.api.linkMethod = args[1];
+                composition.api.optimization.preventRepeat = false;
+                args[0].__ref.subs.push(() => {
+                    setTimeout(() => {
+                        if (Object.keys(composition.get()).length != 0) {
+                            composition.lastStep();
+                        }
+                    }, 50);
+                });
             }
             else {
                 composition.api.watching = true;
-                args[0].__ref.subs.push(() => {
-                    composition.lastStep();
-                });
+                if (this.argumentExist(1)) {
+                    if (args[1] == 'only-filter') {
+                        args[0].__ref.subs.push(() => {
+                            this.callPart('filter', composition);
+                        });
+                    }
+                    else if (args[1] == 'only-sort') {
+                        args[0].__ref.subs.push(() => {
+                            this.callPart('sort', composition);
+                        });
+                    }
+                    else if (args[1] == 'only-process') {
+                        args[0].__ref.subs.push(() => {
+                            this.callPart('proccess', composition);
+                        });
+                    }
+                }
+                else {
+                    args[0].__ref.subs.push(() => {
+                        setTimeout(() => {
+                            composition.lastStep();
+                        }, 100);
+                    });
+                }
             }
         }
     }
@@ -312,7 +395,7 @@ export class StateComposition extends CompositionBuilder {
             }
             let url = buildUrl(path, query, {}, composition.template);
             let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
-            return await queryToApi(url, params, composition.template);
+            return await queryToApi(url, params, composition.template, composition);
         };
         const send = async (body, multipart = false) => {
             let query = _pthis.compileQuery(composition);
@@ -325,7 +408,7 @@ export class StateComposition extends CompositionBuilder {
             }
             let url = buildUrl(path, query, {}, composition.template);
             let params = Object.assign({ method: composition.api.method, body: body }, composition.api.customParams);
-            return await queryToApi(url, params, composition.template);
+            return await queryToApi(url, params, composition.template, composition);
         };
         const property = {
             __obbsv: 2,
@@ -388,7 +471,7 @@ export class StateComposition extends CompositionBuilder {
                 }
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
-                queryToApi(url, params, composition.template).then((ival) => {
+                queryToApi(url, params, composition.template, composition).then((ival) => {
                     composition.convert.map.forEach((value) => {
                         ival = value(ival);
                     });
@@ -467,7 +550,10 @@ export class StateComposition extends CompositionBuilder {
                 && composition.cache.where.isLocalStorage
                 && composition.cache.loaded == false) {
                 if (composition.cache.type == 'json') {
-                    config.set(composition.__value, JSON.parse(localStorage[composition.cache.name]));
+                    const data = localStorage[composition.cache.name];
+                    if (data != '') {
+                        config.set(composition.__value, JSON.parse(localStorage[composition.cache.name]));
+                    }
                 }
                 else {
                     config.set(composition.__value, localStorage[composition.cache.name]);
@@ -522,9 +608,10 @@ export class StateComposition extends CompositionBuilder {
                 config.saveCookie(composition.cache.name, v, expr);
             }
             if (typeof localStorage !== 'undefined' && composition.cache.where.isLocalStorage) {
+                let result = v;
                 if (typeof v == 'object' || Array.isArray(v))
-                    v = JSON.parse(v);
-                localStorage[composition.cache.name] = v;
+                    result = JSON.stringify(v);
+                localStorage[composition.cache.name] = result;
                 if (composition.cache.duration != 0 && composition.cache.duration != Infinity)
                     localStorage[composition.cache.name + "_exp"] = Date.now() + composition.cache.duration;
             }
@@ -557,6 +644,7 @@ export class StateComposition extends CompositionBuilder {
     wayMany2(composition, val) {
         const _pthis = this;
         const _fetching = config.init(false);
+        const _isEnd = config.init(false);
         const _originalValue = config.init([]);
         const _allInstances = [];
         const updateFilter = () => {
@@ -569,6 +657,9 @@ export class StateComposition extends CompositionBuilder {
                 return true;
             }));
         };
+        this.subsToPart('filter', composition, () => {
+            updateFilter();
+        });
         const localFilterEnabled = composition.api.localFilters.length > 0;
         const setValue = (result) => {
             if (localFilterEnabled) {
@@ -604,24 +695,37 @@ export class StateComposition extends CompositionBuilder {
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
                 try {
-                    queryToApi(url, params, composition.template).then((ival) => {
-                        composition.convert.map.forEach((value) => {
-                            ival = ival.map(value);
-                        });
-                        if (composition.convert.isFlat) {
-                            ival = ival.flat();
-                        }
-                        composition.convert.sort.forEach((value) => {
-                            ival = ival.sort(value);
-                        });
-                        composition.convert.has.forEach((value) => {
-                            ival = ival.filter(value);
-                        });
-                        setValue(ival);
-                        config.set(_fetching, false);
+                    queryToApi(url, params, composition.template, composition).then((ival) => {
+                        _pthis.subsToPart('proccess', composition, () => {
+                            composition.convert.map.forEach((value) => {
+                                ival = ival.map(value);
+                            });
+                            if (composition.convert.isFlat) {
+                                ival = ival.flat();
+                            }
+                            let iValPost = ival;
+                            _pthis.subsToPart('sort', composition, () => {
+                                composition.convert.sort.forEach((value) => {
+                                    iValPost = iValPost.sort(value);
+                                });
+                                composition.convert.has.forEach((value) => {
+                                    iValPost = iValPost.filter(value);
+                                });
+                                setValue(iValPost);
+                            });
+                            composition.convert.sort.forEach((value) => {
+                                ival = ival.sort(value);
+                            });
+                            composition.convert.has.forEach((value) => {
+                                ival = ival.filter(value);
+                            });
+                            config.set(_fetching, false);
+                            setValue(ival);
+                        }, true);
                     });
                 }
                 catch (e) {
+                    config.set(_fetching, false);
                     setTimeout(() => {
                         this.user().all();
                     }, 1000);
@@ -632,39 +736,55 @@ export class StateComposition extends CompositionBuilder {
             next() {
                 composition.lastStep = () => { property.user().page(1, false); };
                 config.set(_fetching, true);
-                composition.api.pagination.offset += 1;
+                if (composition.api.pagination.maxOffset > 0) {
+                    if (composition.api.pagination.offset < composition.api.pagination.maxOffset) {
+                        composition.api.pagination.offset += 1;
+                        config.set(_isEnd, false);
+                    }
+                    else {
+                        config.set(_isEnd, true);
+                        config.set(_fetching, false);
+                        return composition.get();
+                    }
+                }
+                else {
+                    composition.api.pagination.offset += 1;
+                }
                 let query = _pthis.compileQuery(composition);
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
                 try {
-                    queryToApi(url, params, composition.template).then((ival) => {
-                        composition.convert.map.forEach((value) => {
-                            ival = ival.map(value);
-                        });
-                        if (composition.convert.isFlat) {
-                            ival = ival.flat();
-                        }
-                        composition.convert.sort.forEach((value) => {
-                            ival = ival.sort(value);
-                        });
-                        composition.convert.has.forEach((value) => {
-                            ival = ival.filter(value);
-                        });
-                        if (composition.api.pagination.append) {
-                            if (localFilterEnabled)
-                                setValue(config.get(_originalValue).concat(ival));
-                            else
-                                setValue(composition.get().concat(ival));
-                        }
-                        else {
-                            setValue(ival);
-                        }
-                        config.set(_fetching, false);
+                    queryToApi(url, params, composition.template, composition).then((ival) => {
+                        _pthis.subsToPart('proccess', composition, () => {
+                            composition.convert.map.forEach((value) => {
+                                ival = ival.map(value);
+                            });
+                            if (composition.convert.isFlat) {
+                                ival = ival.flat();
+                            }
+                            composition.convert.sort.forEach((value) => {
+                                ival = ival.sort(value);
+                            });
+                            composition.convert.has.forEach((value) => {
+                                ival = ival.filter(value);
+                            });
+                            config.set(_fetching, false);
+                            if (composition.api.pagination.append) {
+                                if (localFilterEnabled)
+                                    setValue(config.get(_originalValue).concat(ival));
+                                else
+                                    setValue(composition.get().concat(ival));
+                            }
+                            else {
+                                setValue(ival);
+                            }
+                        }, true);
                     });
                 }
                 catch (e) {
                     setTimeout(() => {
+                        config.set(_fetching, false);
                         composition.api.pagination.offset -= 1;
                         this.user().next();
                     }, 1000);
@@ -675,31 +795,40 @@ export class StateComposition extends CompositionBuilder {
                 composition.lastStep = () => { property.user().page(1, false); };
                 config.set(_fetching, true);
                 composition.set([]);
-                composition.api.pagination.offset -= 1;
+                if (composition.api.pagination.offset > 2) {
+                    composition.api.pagination.offset -= 1;
+                }
+                else {
+                    config.set(_fetching, false);
+                    return composition.get();
+                }
                 let query = _pthis.compileQuery(composition);
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
                 try {
-                    queryToApi(url, params, composition.template).then((ival) => {
-                        composition.convert.map.forEach((value) => {
-                            ival = ival.map(value);
-                        });
-                        if (composition.convert.isFlat) {
-                            ival = ival.flat();
-                        }
-                        composition.convert.sort.forEach((value) => {
-                            ival = ival.sort(value);
-                        });
-                        composition.convert.has.forEach((value) => {
-                            ival = ival.filter(value);
-                        });
-                        setValue(ival);
-                        config.set(_fetching, false);
+                    queryToApi(url, params, composition.template, composition).then((ival) => {
+                        _pthis.subsToPart('proccess', composition, () => {
+                            composition.convert.map.forEach((value) => {
+                                ival = ival.map(value);
+                            });
+                            if (composition.convert.isFlat) {
+                                ival = ival.flat();
+                            }
+                            composition.convert.sort.forEach((value) => {
+                                ival = ival.sort(value);
+                            });
+                            composition.convert.has.forEach((value) => {
+                                ival = ival.filter(value);
+                            });
+                            config.set(_fetching, false);
+                            setValue(ival);
+                        }, true);
                     });
                 }
                 catch (e) {
                     setTimeout(() => {
+                        config.set(_fetching, false);
                         composition.api.pagination.offset += 1;
                         this.user().next();
                     }, 1000);
@@ -721,21 +850,23 @@ export class StateComposition extends CompositionBuilder {
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
-                queryToApi(url, params, composition.template).then((ival) => {
-                    composition.convert.map.forEach((value) => {
-                        ival = ival.map(value);
-                    });
-                    if (composition.convert.isFlat) {
-                        ival = ival.flat();
-                    }
-                    composition.convert.sort.forEach((value) => {
-                        ival = ival.sort(value);
-                    });
-                    composition.convert.has.forEach((value) => {
-                        ival = ival.filter(value);
-                    });
-                    setValue(ival);
-                    config.set(_fetching, false);
+                queryToApi(url, params, composition.template, composition).then((ival) => {
+                    _pthis.subsToPart('proccess', composition, () => {
+                        composition.convert.map.forEach((value) => {
+                            ival = ival.map(value);
+                        });
+                        if (composition.convert.isFlat) {
+                            ival = ival.flat();
+                        }
+                        composition.convert.sort.forEach((value) => {
+                            ival = ival.sort(value);
+                        });
+                        composition.convert.has.forEach((value) => {
+                            ival = ival.filter(value);
+                        });
+                        config.set(_fetching, false);
+                        setValue(ival);
+                    }, true);
                 });
                 return composition.get();
             },
@@ -759,21 +890,23 @@ export class StateComposition extends CompositionBuilder {
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
-                queryToApi(url, params, composition.template).then((ival) => {
-                    composition.convert.map.forEach((value) => {
-                        ival = ival.map(value);
-                    });
-                    if (composition.convert.isFlat) {
-                        ival = ival.flat();
-                    }
-                    composition.convert.sort.forEach((value) => {
-                        ival = ival.sort(value);
-                    });
-                    composition.convert.has.forEach((value) => {
-                        ival = ival.filter(value);
-                    });
-                    setValue(ival);
-                    config.set(_fetching, false);
+                queryToApi(url, params, composition.template, composition).then((ival) => {
+                    _pthis.subsToPart('proccess', composition, () => {
+                        composition.convert.map.forEach((value) => {
+                            ival = ival.map(value);
+                        });
+                        if (composition.convert.isFlat) {
+                            ival = ival.flat();
+                        }
+                        composition.convert.sort.forEach((value) => {
+                            ival = ival.sort(value);
+                        });
+                        composition.convert.has.forEach((value) => {
+                            ival = ival.filter(value);
+                        });
+                        config.set(_fetching, false);
+                        setValue(ival);
+                    }, true);
                 });
                 return composition.get();
             },
@@ -801,6 +934,9 @@ export class StateComposition extends CompositionBuilder {
         Object.defineProperty(property, 'isLoading', {
             get() { return config.get(_fetching); },
         });
+        Object.defineProperty(property, 'isFinished', {
+            get() { return config.get(_isEnd); },
+        });
         return property;
     }
     // Segment doOne
@@ -813,4 +949,6 @@ export class StateComposition extends CompositionBuilder {
     wayMany0(composition, val) {
         return composition;
     }
+}
+export class MoleculaComposition extends CompositionBuilder {
 }

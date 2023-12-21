@@ -92,11 +92,19 @@ export const buildUrl =  (path: string, query: any, pagiantion: any, template: P
     return fullURL
 }
 
-export const queryToApi = async (url: string, params: RequestInit, template: PatternsApi): Promise<any> => {
-    let raw = await config.request(url, params)
+export const queryToApi = async (url: string, params: RequestInit, template: PatternsApi, composition: any): Promise<any> => {
+    let raw = await config.request(url, params) as any
+
     let dry = JSON.parse(raw) as {[name: string]: any}
 
     if(template == 'yii2-data-provider') {
+        if('meta' in dry) {
+            composition.api.pagination.maxOffset = dry['meta']['page-count']
+        }
+        else {
+            composition.api.pagination.maxOffset = 1
+        }
+
         if('data' in dry) {
             if(Array.isArray(dry.data)) {
                 return dry.data.map((value) => value.attributes)
