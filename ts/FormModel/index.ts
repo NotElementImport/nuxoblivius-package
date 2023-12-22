@@ -55,19 +55,21 @@ export default class FormModel extends StateManager {
         for (const [key, value] of Object.entries(this._fields)) {
             if(value.validate != null) {
                 const argv: any[] = []
-                if(value.validate instanceof ValidateRange) {
+                if(value.validate == ValidateRange || value.validate instanceof ValidateRange) {
                     if(value.options.min) argv.push(value.options.min);
                     else argv.push(null);
                     if(value.options.max) argv.push(value.options.max);
                     else argv.push(null);
                 }
-                else if(value.validate instanceof ValidateGreater) {
+                else if(value.validate == ValidateGreater || value.validate instanceof ValidateGreater) {
                     if(value.options.max) argv.push(value.options.max);
                 }
-                else if(value.validate instanceof ValidateLess) {
+                else if(value.validate == ValidateLess || value.validate instanceof ValidateLess) {
                     if(value.options.min) argv.push(value.options.min);
                 }
                 if(!value.validate.behaviour(value.value.value, ...argv)) {
+                    console.error(`field had error, ${value.title.value}`)
+                    value.options.validateMessage.value = value.validate.getMessage(...argv)
                     result = false
                 }
             }
@@ -79,18 +81,20 @@ export default class FormModel extends StateManager {
         const data = this._fields[name]
         if(data.validate != null) {
             const argv: any[] = []
-            if(data.validate == ValidateRange) {
+            // console.log(data.validate == ValidateRange)
+            if(data.validate == ValidateRange || data.validate instanceof ValidateRange) {
                 if(data.options.min) argv.push(data.options.min);
                 else argv.push(null);
                 if(data.options.max) argv.push(data.options.max);
                 else argv.push(null);
             }
-            else if(data.validate == ValidateGreater) {
+            else if(data.validate == ValidateGreater || data.validate instanceof ValidateGreater) {
                 if(data.options.max) argv.push(data.options.max);
             }
-            else if(data.validate == ValidateLess) {
+            else if(data.validate == ValidateLess || data.validate instanceof ValidateLess) {
                 if(data.options.min) argv.push(data.options.min);
             }
+            // console.log(argv)
             if(data.validate.behaviour(data.value.value, ...argv)) {
                 data.options.validateMessage.value = ""
             }
@@ -182,7 +186,24 @@ export default class FormModel extends StateManager {
 
                 return data
             },
-            // select(title: string, )
+            select(title: string, content: {name?: string, value?: any, title?: string}[], validate?:IValidate) {
+                const data = {
+                    type: 'select',
+                    content: ref(content),
+                    value: ref(0),
+                    title: ref(title),
+                    options: { 
+                        validateMessage: ref("")
+                    },
+                    validate: null as any
+                }
+
+                if(validate) {
+                    data['validate'] = validate
+                }
+
+                return data
+            }
         }
     }
 }

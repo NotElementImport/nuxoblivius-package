@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { useFetch } from 'nuxt/app';
+import NxEmpty from '../../NxEmpty/index.vue'
+import NxBlock from '../../NxBlock/index.vue'
 import { Inputs } from '../../index.js';
 import { ref } from 'vue';
 const props = defineProps<{
@@ -8,7 +9,7 @@ const props = defineProps<{
     class?: string
     title?: string
     width?: string
-    content?: {name: string, value: any}[]
+    content?: {name?: string, value?: any, title?: string}[]
     options?: {
         fileAccept?: Inputs.FileAccess[]
         prefix?: string
@@ -24,6 +25,8 @@ const emitFake = defineEmits(['vptUpdate'])
 
 const prefix = ref("")
 let inputValue = ref("" as any)
+const isOpened = ref(false)
+const ValueTitle = ref("")
 
 if(props.value) {
     inputValue = props.value as any
@@ -31,10 +34,15 @@ if(props.value) {
 else {
     if(props.type == 'number') inputValue.value = 0
     else if(props.type == 'checkbox') inputValue.value = false
+    else if(props.type == 'select') inputValue.value = 0
+    else if(props.type == 'email') {
+        inputValue.value = "";
+        ValueTitle.value = "";
+        prefix.value = "";
+    }
 }
 
 const Title = ref("")
-const Value = ref("")
 
 const incrimentValue = () => {
     inputValue.value += 1;
@@ -83,7 +91,7 @@ function getPlaceholder() {
 function getError() {
     if(props.options && props.options.validateMessage) {
         if(typeof props.options.validateMessage == 'object') {
-            return props.options.validateMessage.value
+            return (props.options.validateMessage as any).value
         }
         return props.options.validateMessage
     }
@@ -122,17 +130,27 @@ function getAccept() {
     return "image/*"
 }
 function getValue() {
+    const firstItem = (object: {name?: string, title?: string, value?: any}[]) => {
+        for(const item of object) {
+            if(item.name) {
+                return item as any
+            }
+        }
+    }
     if(props.type == 'select' && props.content) {
-        Value.value = `${props.content[0].name}`
+        const result = firstItem(props.content)
+        ValueTitle.value = result.name
+        inputValue.value = result.value
         if(props.value) {
             for(const item of props.content) {
-                if(item.value == props.value) {
-                    Value.value = `${item.name}`
+                if(item.value && item.value == props.value) {
+                    inputValue.value = item.value
+                    ValueTitle.value = `${item.name}`
                 }
             }
         }
     }
-    return Value
+    return ValueTitle.value
 }
 let lastStringTel = ''
 function inputTel() {
@@ -176,8 +194,33 @@ function inputTel() {
         lastStringTel = inputValue.value
     }
 }
+const input1Element = ref(null as any as HTMLInputElement)
+const input2Element = ref(null as any as HTMLInputElement)
+function emailPart1(event: Event) {
+    const val = prefix.value as string
+    if(val[val.length - 1] == '@') {
+        prefix.value = val.slice(0, -1)
+        input2Element.value.focus()
+    }
+    inputValue.value = prefix.value + '@' + ValueTitle.value
+}
+function emailPart2(event: Event) {
+    const val = ValueTitle.value as string
+    inputValue.value = prefix.value + '@' + ValueTitle.value
+    if(val.length == 0) input1Element.value.focus()
+}
+function updateSelect(id: number|string, name: string) {
+    ValueTitle.value = name
+    inputValue.value = id
+    isOpened.value = false
+}
 
-getPrefix()
+if(props.type == 'tel') {
+    getPrefix()
+}
+else if(props.type == 'select') {
+    getValue()
+}
 </script>
 <template>
     <div :class="getClass() + (getError().length > 0 && ' err' || '')" :style="`width: ${getWidth()}`">
@@ -210,21 +253,28 @@ getPrefix()
             </div>
             <span class="title">{{ getTitle() }}</span>
         </div>
-        <div v-else-if="type == 'select'" class="select">
-            <div class="visual">
-                {{ getValue().value }}
+        <NxBlock @lose="() => {isOpened = false}" @click="(event: MouseEvent) => {if(event.target == event.currentTarget) isOpened = true}" v-else-if="type == 'select'" class="select">
+            <div style="pointer-events: none;">
+                {{ ValueTitle }}
             </div>
-            <div class="accardeon">
-                <button v-for="data of props.content">
-                    {{ data.name }}
-                </button>
+            <div class="accardeon" :class="isOpened && 'opened' || ''">
+                <NxEmpty v-for="data of props.content">
+                    <button class="item" v-if="data.name" @click="() => {updateSelect(data.value as any, data.name as any)}">
+                        {{ data.name }}
+                    </button>
+                    <div class="group" v-else-if="data.title">
+                        {{ data.title }}
+                    </div>
+                </NxEmpty>
             </div>
-            <span class="title">{{ getTitle() }}</span>
-        </div>
+            <input v-model="inputValue" :hidden="true">
+            <span style="pointer-events: none;" class="title">{{ getTitle() }}</span>
+        </NxBlock>
         <div v-else-if="type == 'email'" class="email">
             <div class="visual">
-                <input type="text">
-                <input type="text">
+                <input ref="input1Element" @input="emailPart1" v-model="prefix" type="text" style="flex: 2.5 1;">
+                <div class="seperate">@</div>
+                <input ref="input2Element" @input="emailPart2" v-model="ValueTitle" class="postfix" type="text">
             </div>
             <span class="title">{{ getTitle() }}</span>
         </div>
@@ -275,6 +325,53 @@ getPrefix()
         pointer-events: none;
         transform: translateY(-0%);
     }
+    /** Number */
+    .vpt-input .email {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        font-family: Arial, Helvetica, sans-serif;
+        border: 1px solid lightgray;
+        padding: 3px;
+        border-radius: 7px;
+        padding: 0.65em;
+        padding-top: 1.5em;
+        padding-bottom: 0.5em;
+        min-width: 0px;
+    }
+    .vpt-input .visual {
+        position: relative;
+        display: flex;
+        flex-direction: row;
+        box-sizing: border-box;
+        
+        & input {
+            display: block;
+            border: none;
+            flex: 1 1;
+            box-sizing: border-box;
+            padding: 0.3em;
+            min-width: 0;
+            border: 1px solid lightgray;
+            &:first-child {
+                border-bottom-left-radius: 5px;
+                border-top-left-radius: 5px;
+            }
+            &:last-child {
+                border-bottom-right-radius: 5px;
+                border-top-right-radius: 5px;
+            }
+            outline: none;
+        }
+        & .seperate {
+            flex: 0 0;
+            pointer-events: none;
+            user-select: none;
+            color: gray;
+            background: lightgray;
+            padding: 0.3em;
+        }
+    }
     /** Select */
     .vpt-input .select {
         position: relative;
@@ -298,20 +395,60 @@ getPrefix()
         border-radius: 7px;
         top: 100%;
         left: 0px;
+        overflow-y: auto;
         width: 100%;
         max-height: 300px;
         background: white;
         z-index: 99;
+        pointer-events: none;
+        box-shadow: 0px 15px 50px -40px #086dd1;
+        transition: transform 0.3s ease-in-out, opacity 0.25s ease-in;
+        opacity: 0;
+        transform: translateY(-50px) scaleY(0.9);
+        &::-webkit-scrollbar {
+            appearance: none;
+            width: 9px;
+            border-radius: 3px;
+            background: white;
+        }
+        &::-webkit-scrollbar-thumb {
+            background: #80808060;
+            border-radius: 3px;
+            border: 2px solid white;
+        }
+        &.opened {
+            pointer-events: unset;
+            transform: translateY(0px) scaleY(1);
+            opacity: 1;
+        }
     }
-    .vpt-input .select .accardeon button {
+    .vpt-input .select .accardeon .group {
+        text-align: left;
+        padding: 0.5em;
+        padding-block: 0.6em;
+        padding-inline: 0.6em;
+        border-radius: 8px;
+        margin: 0.3em;
+    }
+    .vpt-input .select .accardeon .item {
         text-align: left;
         padding: 0.5em;
         cursor: pointer;
-        
-        padding-block: 0.9em;
-        margin-inline: 0.5em;
-        border: none;
+        padding-block: 0.6em;
+        padding-inline: 0.6em;
+        border-radius: 8px;
+        margin: 0.3em;
+        margin-block: 0;
+        border: 1px solid transparent;
+        margin-bottom: 0;
+        color: gray;
         background: none;
+        &:last-child {
+            margin-bottom: 0.3em;
+        }
+        &:hover {
+            border: 1px solid lightgrey;
+        }
     }
     /** Files */
     .vpt-input .files {

@@ -1,3 +1,6 @@
+import { IFilter } from "../filter"
+import IValidate from "./validate"
+
 export declare class IStateManager<K> {
     protected static globalName: string
     constructor(name: string)
@@ -21,9 +24,9 @@ interface IFormField {
     tel(title: string, prefix?: string): object
     number(title: string, options: {max?: number, min?: number, validate?: IValidate}): object
     checkbox(title: string, validate?: IValidate): object
+    select(title: string, content: {name?: string, value?: any, title?: string}[], validate?:IValidate): object
+    files(title: string, accept: string[]|string, optional?: boolean): object
 }
-
-import { IFilter } from "../filter"
 
 export type PatternsApi = "yii2-data-provider" | ""
 export type PlaceKeep = "cookie" | "localStorage" | "cache"

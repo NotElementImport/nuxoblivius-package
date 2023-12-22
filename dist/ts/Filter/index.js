@@ -1,13 +1,5 @@
 import { ref } from "vue";
 const instancesFilters = new Map();
-// export const registerFilter = (name: string, filter: typeof Filter) => {
-//     instancesFilters.set(
-//         name, new filter({
-//             'name': name,
-//             '__special': 1
-//         })
-//     )
-// }
 export default class Filter {
     static globalName = '';
     __values = new Map();
@@ -42,45 +34,30 @@ export default class Filter {
                 case 0:
                     { // Number
                         const valueRef = ref(null);
-                        // watch(valueRef, (nw,ov) => {
-                        //     if(nw != ov) this.callSubs()
-                        // })
                         this.__values.set(key, valueRef);
                     }
                     break;
                 case 1:
                     { // Array
                         const valueRef = ref([]);
-                        // watch(valueRef, (nw,ov) => {
-                        //     if(nw != ov) this.callSubs()
-                        // })
                         this.__values.set(key, valueRef);
                     }
                     break;
                 case 2:
                     { // String
                         const valueRef = ref('');
-                        // watch(valueRef, (nw,ov) => {
-                        //     if(nw != ov) this.callSubs()
-                        // })
                         this.__values.set(key, valueRef);
                     }
                     break;
                 case 3:
                     { // Boolean
                         const valueRef = ref(false);
-                        // watch(valueRef, (nw,ov) => {
-                        //     if(nw != ov) this.callSubs()
-                        // })
                         this.__values.set(key, valueRef);
                     }
                     break;
                 case 4:
                     { // Binary
                         const valueRef = ref(0);
-                        // watch(valueRef, (nw,ov) => {
-                        //     if(nw != ov) this.callSubs()
-                        // })
                         this.__values.set(key, valueRef);
                     }
                     break;
