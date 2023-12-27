@@ -18,8 +18,9 @@ export default class Translate {
         this.config = config
 
         this.current = config.default
-
-        const object = config.stateManager.object.getParams(config.stateManager.field) 
+        const instc = new (config.stateManager.object as any)()
+        const object = instc.getParams(config.stateManager.field.split('.')[1]);
+        console.log(object)
         object.subs.push(() => {
             this.current = object.get()
             this.listeners.forEach((uni) => {
@@ -37,7 +38,7 @@ export default class Translate {
                 object = object[this.current]
             }
             if(part in object) {
-                object = object[this.current]
+                object = object[part]
             }
             else {
                 throw `Translate: In imports not find part ${part}`

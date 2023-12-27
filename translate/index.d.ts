@@ -72,13 +72,15 @@ export declare interface ILanguageConfig {
      *    ...
      *    stateManager: {
      *       object: Lang,
-     *       field: 'current'
+     *       field: Lang.ref('current')
      *    }
      * }
      * ```
      */
     stateManager: {
-        object: IStateManager<any>,
+        object: typeof IStateManager<any>,
         field: string 
     }
 }
+
+export const languageConfig: (config: ILanguageConfig) => void
