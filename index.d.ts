@@ -25,13 +25,14 @@ interface IFormField {
     number(title: string, options: {max?: number, min?: number, validate?: IValidate}): object
     checkbox(title: string, validate?: IValidate): object
     select(title: string, content: {name?: string, value?: any, title?: string}[], validate?:IValidate): object
-    files(title: string, accept: string[]|string, optional?: boolean): object
+    api(title: string, modelItem: string, fields: string[], notEmpty?: boolean): object
 }
 
 export type PatternsApi = "yii2-data-provider" | ""
 export type PlaceKeep = "cookie" | "localStorage" | "cache"
 export type AuthType = "bearer-token" | "login-password" | "api-key"
 type JoinMethod = 'only-filter'| 'only-sort' | 'only-process'
+type Hooks = 'on instance' | 'on awake' | 'before process' | 'after process' | 'on end'
 
 export type StateValue<T> = T
 export type StateQuery = {[name: string]: string|number|boolean|StateQuery}
@@ -98,6 +99,7 @@ export interface IStateApi<T> {
     sort<K extends any>(func: (a: K, b: K) => number): IStateApi<T>
     has(func: (a: T) => boolean): IStateApi<T>
     has<K extends any>(func: (a: K) => boolean): IStateApi<T>
+    hook(type: Hooks, func: (...args: any[]) => void)
     pagination(size: number, append?: boolean): IStateApiPagi<T>
     /**
      * Auth to Backend or API
@@ -172,6 +174,7 @@ export interface IStateApiPagi<T> {
     template(type:PatternsApi): IStateApiPagi<T>
     caching(duration: number):  IStateApiPagi<T>
     flat(): IStateApiPagi<T>
+    hook(type: Hooks, func: (...args: any[]) => void)
     map(func: (value: T) => any): IStateApiPagi<T>
     map<K extends any>(func: (value: K) => any): IStateApiPagi<T>
     sort(func: (a: T, b: T) => number): IStateApiPagi<T>
@@ -203,6 +206,8 @@ export interface IStateApiPagiMany<T> {
     setQuery(query: StateQuery): IStateApiPagiMany<T>
     isLoading: boolean
     isFinished: boolean
+    max: number
+    current: number
 }
 
 export type IStateAny = IState<any> | IStateFin<any> | IStateApi<any> | IStateApiPagi<any> | StateValue<any> | IStateApiPagiMany<any> | IStateApiOne<any> | IStateApiMany<any>
@@ -244,3 +249,9 @@ declare export const setCustomRouter: (func: Function) => void
 declare export const setCustomFetch: (func: Function) => void
 declare export const setHeaders: (data: any) => void
 declare export const EmulateRobots: () => void
+declare export const setDefaultsConfig: (conf: {
+    template?: PatternsApi,
+    keep?: {
+        cachePlace?: PlaceKeep|PlaceKeep[]
+    },
+}) => void

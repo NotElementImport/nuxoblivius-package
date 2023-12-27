@@ -1,6 +1,6 @@
 import Filter from "./Filter/index.js";
 import StateManager from "./StateManager/index.js";
-import { config } from "./config.js";
+import { config, _defaults } from "./config.js";
 import { addToPath, buildUrl, queryToApi } from "./utilits.js";
 export default class CompositionBuilder {
     _currentArgs = [];
@@ -93,6 +93,17 @@ export default class CompositionBuilder {
     }
 }
 export class StateComposition extends CompositionBuilder {
+    raiseMethod(composition, name, args, func) {
+        if (name in composition.hook) {
+            let result = composition.hook[name](...args);
+            if (typeof result != 'undefined' && func) {
+                func(result);
+            }
+        }
+    }
+    subsMethod(composition, name, func) {
+        composition.hook[name] = func;
+    }
     compileQuery(composition) {
         let query = Object.assign({}, composition.api.query, composition.api.userQuery);
         if (composition.api.pagination.size > 0) {
@@ -107,7 +118,6 @@ export class StateComposition extends CompositionBuilder {
         }
         for (const [key, val] of Object.entries(composition.api.joined.query)) {
             if (typeof val == 'object') {
-                // console.log(val.object)
                 query[key] = val.object.getParams(val.field).get();
             }
             else {
@@ -117,6 +127,10 @@ export class StateComposition extends CompositionBuilder {
         return query;
     }
     doApi(composition, args) {
+        let _template = '';
+        if ('template' in _defaults) {
+            _template = _defaults.template;
+        }
         this.setType(composition, 2)
             .dynamicAdd(composition, 'api', {
             watching: false,
@@ -146,7 +160,8 @@ export class StateComposition extends CompositionBuilder {
             }
         })
             .dynamicAdd(composition, 'parent', null)
-            .dynamicAdd(composition, 'template', '')
+            .dynamicAdd(composition, 'hook', {})
+            .dynamicAdd(composition, 'template', _template)
             .dynamicAdd(composition, 'convert', {
             map: [],
             sort: [],
@@ -214,6 +229,9 @@ export class StateComposition extends CompositionBuilder {
         this.argument(1, (value) => {
             composition.api.pagination.append = value;
         });
+    }
+    doHook(composition, args) {
+        this.subsMethod(composition, args[0], args[1]);
     }
     doMap(composition, args) {
         composition.convert.map.push(args[0]);
@@ -421,9 +439,19 @@ export class StateComposition extends CompositionBuilder {
                     }
                 }
                 config.set(_fetching, true);
+                _pthis.raiseMethod(composition, 'on awake', []);
                 get(value).then((ival) => {
+                    _pthis.raiseMethod(composition, 'before process', [ival], (res) => {
+                        ival = res;
+                    });
                     composition.convert.map.forEach((value) => {
                         ival = value(ival);
+                    });
+                    _pthis.raiseMethod(composition, 'after process', [ival], (res) => {
+                        ival = res;
+                    });
+                    _pthis.raiseMethod(composition, 'on end', [ival], (res) => {
+                        ival = res;
                     });
                     composition.set(ival);
                     config.set(_fetching, false);
@@ -471,9 +499,19 @@ export class StateComposition extends CompositionBuilder {
                 }
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
+                _pthis.raiseMethod(composition, 'on awake', []);
                 queryToApi(url, params, composition.template, composition).then((ival) => {
+                    _pthis.raiseMethod(composition, 'before process', [ival], (res) => {
+                        ival = res;
+                    });
                     composition.convert.map.forEach((value) => {
                         ival = value(ival);
+                    });
+                    _pthis.raiseMethod(composition, 'after process', [ival], (res) => {
+                        ival = res;
+                    });
+                    _pthis.raiseMethod(composition, 'on end', [ival], (res) => {
+                        ival = res;
                     });
                     composition.set(ival);
                     config.set(_fetching, false);
@@ -647,6 +685,8 @@ export class StateComposition extends CompositionBuilder {
         const _isEnd = config.init(false);
         const _originalValue = config.init([]);
         const _allInstances = [];
+        const _max = config.init(0);
+        const _current = config.init(1);
         const updateFilter = () => {
             composition.set(config.get(_originalValue)
                 .filter((value) => {
@@ -694,9 +734,11 @@ export class StateComposition extends CompositionBuilder {
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
+                _pthis.raiseMethod(composition, 'on awake', []);
                 try {
                     queryToApi(url, params, composition.template, composition).then((ival) => {
                         _pthis.subsToPart('proccess', composition, () => {
+                            _pthis.raiseMethod(composition, 'before process', [ival], (res) => { ival = res; });
                             composition.convert.map.forEach((value) => {
                                 ival = ival.map(value);
                             });
@@ -719,6 +761,13 @@ export class StateComposition extends CompositionBuilder {
                             composition.convert.has.forEach((value) => {
                                 ival = ival.filter(value);
                             });
+                            _pthis.raiseMethod(composition, 'after process', [ival], (res) => {
+                                ival = res;
+                            });
+                            _pthis.raiseMethod(composition, 'on end', [ival], (res) => {
+                                ival = res;
+                            });
+                            config.set(_max, composition.api.pagination.maxOffset);
                             config.set(_fetching, false);
                             setValue(ival);
                         }, true);
@@ -739,6 +788,7 @@ export class StateComposition extends CompositionBuilder {
                 if (composition.api.pagination.maxOffset > 0) {
                     if (composition.api.pagination.offset < composition.api.pagination.maxOffset) {
                         composition.api.pagination.offset += 1;
+                        config.set(_current, composition.api.pagination.offset);
                         config.set(_isEnd, false);
                     }
                     else {
@@ -754,9 +804,11 @@ export class StateComposition extends CompositionBuilder {
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
+                _pthis.raiseMethod(composition, 'on awake', []);
                 try {
                     queryToApi(url, params, composition.template, composition).then((ival) => {
                         _pthis.subsToPart('proccess', composition, () => {
+                            _pthis.raiseMethod(composition, 'before process', [ival], (res) => { ival = res; });
                             composition.convert.map.forEach((value) => {
                                 ival = ival.map(value);
                             });
@@ -769,6 +821,13 @@ export class StateComposition extends CompositionBuilder {
                             composition.convert.has.forEach((value) => {
                                 ival = ival.filter(value);
                             });
+                            _pthis.raiseMethod(composition, 'after process', [ival], (res) => {
+                                ival = res;
+                            });
+                            _pthis.raiseMethod(composition, 'on end', [ival], (res) => {
+                                ival = res;
+                            });
+                            config.set(_max, composition.api.pagination.maxOffset);
                             config.set(_fetching, false);
                             if (composition.api.pagination.append) {
                                 if (localFilterEnabled)
@@ -794,9 +853,10 @@ export class StateComposition extends CompositionBuilder {
             prev() {
                 composition.lastStep = () => { property.user().page(1, false); };
                 config.set(_fetching, true);
-                composition.set([]);
-                if (composition.api.pagination.offset > 2) {
+                if (composition.api.pagination.offset > 1) {
+                    composition.set([]);
                     composition.api.pagination.offset -= 1;
+                    config.set(_current, composition.api.pagination.offset);
                 }
                 else {
                     config.set(_fetching, false);
@@ -806,9 +866,11 @@ export class StateComposition extends CompositionBuilder {
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
+                _pthis.raiseMethod(composition, 'on awake', []);
                 try {
                     queryToApi(url, params, composition.template, composition).then((ival) => {
                         _pthis.subsToPart('proccess', composition, () => {
+                            _pthis.raiseMethod(composition, 'before process', [ival], (res) => { ival = res; });
                             composition.convert.map.forEach((value) => {
                                 ival = ival.map(value);
                             });
@@ -821,6 +883,13 @@ export class StateComposition extends CompositionBuilder {
                             composition.convert.has.forEach((value) => {
                                 ival = ival.filter(value);
                             });
+                            _pthis.raiseMethod(composition, 'after process', [ival], (res) => {
+                                ival = res;
+                            });
+                            _pthis.raiseMethod(composition, 'on end', [ival], (res) => {
+                                ival = res;
+                            });
+                            config.set(_max, composition.api.pagination.maxOffset);
                             config.set(_fetching, false);
                             setValue(ival);
                         }, true);
@@ -846,12 +915,15 @@ export class StateComposition extends CompositionBuilder {
                 composition.set([]);
                 config.set(_fetching, true);
                 composition.api.pagination.offset = number;
+                config.set(_current, composition.api.pagination.offset);
                 let query = _pthis.compileQuery(composition);
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
+                _pthis.raiseMethod(composition, 'on awake', []);
                 queryToApi(url, params, composition.template, composition).then((ival) => {
                     _pthis.subsToPart('proccess', composition, () => {
+                        _pthis.raiseMethod(composition, 'before process', [ival], (res) => { ival = res; });
                         composition.convert.map.forEach((value) => {
                             ival = ival.map(value);
                         });
@@ -864,6 +936,13 @@ export class StateComposition extends CompositionBuilder {
                         composition.convert.has.forEach((value) => {
                             ival = ival.filter(value);
                         });
+                        _pthis.raiseMethod(composition, 'after process', [ival], (res) => {
+                            ival = res;
+                        });
+                        _pthis.raiseMethod(composition, 'on end', [ival], (res) => {
+                            ival = res;
+                        });
+                        config.set(_max, composition.api.pagination.maxOffset);
                         config.set(_fetching, false);
                         setValue(ival);
                     }, true);
@@ -890,8 +969,11 @@ export class StateComposition extends CompositionBuilder {
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
                 let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
+                config.set(_current, composition.api.pagination.offset);
+                _pthis.raiseMethod(composition, 'on awake', []);
                 queryToApi(url, params, composition.template, composition).then((ival) => {
                     _pthis.subsToPart('proccess', composition, () => {
+                        _pthis.raiseMethod(composition, 'before process', [ival], (res) => { ival = res; });
                         composition.convert.map.forEach((value) => {
                             ival = ival.map(value);
                         });
@@ -904,6 +986,13 @@ export class StateComposition extends CompositionBuilder {
                         composition.convert.has.forEach((value) => {
                             ival = ival.filter(value);
                         });
+                        _pthis.raiseMethod(composition, 'after process', [ival], (res) => {
+                            ival = res;
+                        });
+                        _pthis.raiseMethod(composition, 'on end', [ival], (res) => {
+                            ival = res;
+                        });
+                        config.set(_max, composition.api.pagination.maxOffset);
                         config.set(_fetching, false);
                         setValue(ival);
                     }, true);
@@ -936,6 +1025,12 @@ export class StateComposition extends CompositionBuilder {
         });
         Object.defineProperty(property, 'isFinished', {
             get() { return config.get(_isEnd); },
+        });
+        Object.defineProperty(property, 'max', {
+            get() { return config.get(_max); },
+        });
+        Object.defineProperty(property, 'current', {
+            get() { return config.get(_current); },
         });
         return property;
     }

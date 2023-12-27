@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import NxEmpty from '../../NxEmpty/index.vue'
 import NxBlock from '../../NxBlock/index.vue'
+import NxPagination from '../../NxPagination/index.vue'
 import { Inputs } from '../../index.js';
 import { ref } from 'vue';
+import { IStateApiPagiMany } from '../../../index';
 const props = defineProps<{
     type: Inputs.InputType
     value?: boolean|string|number
     class?: string
     title?: string
     width?: string
-    content?: {name?: string, value?: any, title?: string}[]
+    fields?: string[]
+    content?: {name?: string, value?: any, title?: string}[] & IStateApiPagiMany<any>
     options?: {
         fileAccept?: Inputs.FileAccess[]
         prefix?: string
@@ -23,13 +26,26 @@ const props = defineProps<{
 }>()
 const emitFake = defineEmits(['vptUpdate'])
 
-const prefix = ref("")
+let prefix = ref("")
 let inputValue = ref("" as any)
 const isOpened = ref(false)
 const ValueTitle = ref("")
 
 if(props.value) {
-    inputValue = props.value as any
+    if(typeof props.value == 'object') {
+        inputValue = props.value as any
+        if(props.type == 'email') {
+            inputValue.value = "";
+            ValueTitle.value = "";
+            prefix.value = "";
+        }
+        else if(props.type == 'api') {
+            ValueTitle.value = "..."
+        }
+    }
+    else {
+        inputValue.value = props.value
+    }
 }
 else {
     if(props.type == 'number') inputValue.value = 0
@@ -39,6 +55,9 @@ else {
         inputValue.value = "";
         ValueTitle.value = "";
         prefix.value = "";
+    }
+    else if(props.type == 'api') {
+        ValueTitle.value = "..."
     }
 }
 
@@ -138,16 +157,18 @@ function getValue() {
         }
     }
     if(props.type == 'select' && props.content) {
-        const result = firstItem(props.content)
-        ValueTitle.value = result.name
-        inputValue.value = result.value
         if(props.value) {
-            for(const item of props.content) {
-                if(item.value && item.value == props.value) {
+            for(const item of props.content as any) {
+                if(item.name && item.value == inputValue.value) {
                     inputValue.value = item.value
-                    ValueTitle.value = `${item.name}`
+                    ValueTitle.value = item.name
                 }
             }
+        }
+        else {
+            const result = firstItem(props.content as any)
+            ValueTitle.value = result.name
+            inputValue.value = result.value
         }
     }
     return ValueTitle.value
@@ -157,7 +178,6 @@ function inputTel() {
     if(inputValue.value[0] == '+') {
         if(inputValue.value[inputValue.value.length - 1] == ' ') {
             prefix.value = inputValue.value.trim()
-            console.log(prefix.value)
             inputValue.value = ""
         }
     }
@@ -196,6 +216,14 @@ function inputTel() {
 }
 const input1Element = ref(null as any as HTMLInputElement)
 const input2Element = ref(null as any as HTMLInputElement)
+function dropValidate() {
+    if(typeof (props.options as any).validateMessage == 'object') {
+        (props.options as any).validateMessage.value = ''
+    }
+    else {
+        (props.options as any).validateMessage = ''
+    }
+}
 function emailPart1(event: Event) {
     const val = prefix.value as string
     if(val[val.length - 1] == '@') {
@@ -210,11 +238,36 @@ function emailPart2(event: Event) {
     if(val.length == 0) input1Element.value.focus()
 }
 function updateSelect(id: number|string, name: string) {
-    ValueTitle.value = name
-    inputValue.value = id
-    isOpened.value = false
+    ValueTitle.value = name;
+    inputValue.value = id;
+    isOpened.value = false;
+    dropValidate()
 }
+function openApiPanel() {
+    isOpened.value = true
+    if(props.content) {
+        props.content.page(1)
+    }
+}
+function selectApi(item: any) {
+    isOpened.value = false
+    inputValue.value = item.id
 
+    if('title' in item) {
+        ValueTitle.value = item.title
+    }
+    else if('name' in item) {
+        ValueTitle.value = item.name
+    }
+    else if('slug' in item) {
+        ValueTitle.value = item.slug
+    }
+    else {
+        ValueTitle.value = item.id
+    }
+
+    dropValidate()
+}
 if(props.type == 'tel') {
     getPrefix()
 }
@@ -237,7 +290,7 @@ else if(props.type == 'select') {
         </div>
         <div v-else-if="type == 'checkbox'" class="checkbox"  @click="() => {inputValue = !inputValue}">
             <label class="visual">
-                <input hidden="true" type="checkbox" @change="()=>{emitFake(`vptUpdate`)}" v-model="inputValue"/>
+                <input style="display: none;" type="checkbox" @change="()=>{emitFake(`vptUpdate`)}" v-model="inputValue"/>
                 <div>
                     &#x2714;
                 </div>
@@ -257,24 +310,79 @@ else if(props.type == 'select') {
             <div style="pointer-events: none;">
                 {{ ValueTitle }}
             </div>
+            <span class="validate">{{ getError() }}</span>
             <div class="accardeon" :class="isOpened && 'opened' || ''">
                 <NxEmpty v-for="data of props.content">
-                    <button class="item" v-if="data.name" @click="() => {updateSelect(data.value as any, data.name as any)}">
+                    <button class="item" v-if="data.name" @click="() => {updateSelect((data as any).value as any, (data as any).name as any)}">
                         {{ data.name }}
                     </button>
-                    <div class="group" v-else-if="data.title">
-                        {{ data.title }}
+                    <div class="group" v-else-if="(data as any).title">
+                        {{ (data as any).title }}
                     </div>
                 </NxEmpty>
             </div>
             <input v-model="inputValue" :hidden="true">
             <span style="pointer-events: none;" class="title">{{ getTitle() }}</span>
         </NxBlock>
+        <NxBlock @click="(event: MouseEvent) => {if(event.target == event.currentTarget) openApiPanel(); }" v-else-if="type == 'api'" class="api">
+            <div style="pointer-events: none;">
+                {{ ValueTitle }}
+            </div>
+            <span class="validate">{{ getError() }}</span>
+            <div class="window" @click="(event) => {if(event.target == event.currentTarget) isOpened = false}" :class="isOpened && 'opened' || ''">
+                <div class="content">
+                    <header>
+                        <span style="display: flex; align-items: center;">
+                            {{ getTitle() }}
+                        </span>
+                        <span style="margin-left: auto; cursor: pointer;" @click="()=>{isOpened = false}">
+                            ╳
+                        </span>
+                    </header>
+                    <table class="data" v-if="props.content && !props.content.isLoading && props.content.value.length > 0">
+                        <thead>
+                            <th v-for="val of fields">
+                                {{ val }}
+                            </th>
+                        </thead>
+                        <tbody>
+                            <tr @click="()=>selectApi(data)" v-for="data of props.content.value">
+                                <td v-for="val of fields">
+                                    {{ data[val] }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="empty" v-else-if="props.content && !props.content.isLoading && props.content.value.length == 0">
+                        No data from server
+                    </div>
+                    <div class="loading" v-else>
+                        <i>○</i>
+                        <i>○</i>
+                        <i>○</i>
+                    </div>
+                    <footer 
+                        :hidden="props.content && !props.content.isLoading && props.content.value.length == 0" 
+                        :class="props.content?.isLoading && 'deactivate'" 
+                        style="justify-content: center;">
+                        <NxPagination 
+                            @prev="()=>{props.content?.user().prev()}"
+                            @page="(index)=>{props.content?.user().page(index)}"
+                            @next="()=>{props.content?.user().next()}"
+                            :current="(props.content as any).current"
+                            :max="(props.content as any).max" />
+                    </footer>
+                </div>
+            </div>
+            <input v-model="inputValue" :hidden="true">
+            <span style="pointer-events: none;" class="title">{{ getTitle() }}</span>      
+        </NxBlock>
         <div v-else-if="type == 'email'" class="email">
             <div class="visual">
-                <input ref="input1Element" @input="emailPart1" v-model="prefix" type="text" style="flex: 2.5 1;">
+                <input ref="input1Element" @click="dropValidate" @input="emailPart1" v-model="prefix" type="text" style="flex: 2.5 1;">
                 <div class="seperate">@</div>
-                <input ref="input2Element" @input="emailPart2" v-model="ValueTitle" class="postfix" type="text">
+                <input ref="input2Element" @click="dropValidate" @input="emailPart2" v-model="ValueTitle" class="postfix" type="text">
+                <span class="validate">{{ getError() }}</span>
             </div>
             <span class="title">{{ getTitle() }}</span>
         </div>
@@ -299,6 +407,25 @@ else if(props.type == 'select') {
     </div>
 </template>
 <style>
+    @keyframes loadingBubble {
+        0% {
+            transform: scale(1);
+            /* box-shadow: 0px 0px 0px #3d8ee086; */
+        } 
+        33% {
+            transform: scale(1.2);
+            /* box-shadow: 0px 0px 12px #3d8ee086; */
+        } 
+        100% {
+            transform: scale(1);
+            /* box-shadow: 0px 0px 0px #3d8ee086; */
+        } 
+    }
+    .deactivate {
+        pointer-events: none !important;
+        user-select: none !important;
+        opacity: 0.5;
+    }
     .vpt-input .placeholder {
         opacity: 0;
         position: absolute;
@@ -339,6 +466,36 @@ else if(props.type == 'select') {
         padding-bottom: 0.5em;
         min-width: 0px;
     }
+    .vpt-input.err .email {
+        border-color: #a52924;
+        & .validate {
+            opacity: 1;
+            top: 6px;
+            left: 0px;
+            color: #a52924;
+        }
+        & .title {
+            color: #a52924;
+        }
+        & input {
+            opacity: 0;
+        }
+        & .visual div {
+            opacity: 0;
+        }
+        & input:focus {
+            opacity: 1;
+            & + div {
+                opacity: 1;
+            }
+            & + div + input + .validate {
+                opacity: 0;
+            }
+            & + .validate {
+                opacity: 0;
+            }
+        }
+    }
     .vpt-input .visual {
         position: relative;
         display: flex;
@@ -372,6 +529,137 @@ else if(props.type == 'select') {
             padding: 0.3em;
         }
     }
+    /** Api */
+    .vpt-input .api {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        font-family: Arial, Helvetica, sans-serif;
+        border: 1px solid lightgray;
+        padding: 0.65em;
+        padding-top: 1.5em;
+        padding-bottom: 0.5em;
+        user-select: none;
+        cursor: pointer;
+        border-radius: 7px;
+    }
+    .vpt-input.err .api {
+        border-color: #a52924;
+
+        & .title {
+            color: #a52924;
+        }
+
+        & > div {
+            opacity: 0;
+        }
+
+        & .validate {
+            opacity: 1;
+            color: #a52924;
+        }
+    }
+    .vpt-input .api .window {
+        position: fixed;
+        top: 0px;
+        left: 0px;
+        width: 100%;
+        height: 100%;
+        background: #1f1f1f54;
+        z-index: 90;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-family: Arial, Helvetica, sans-serif;
+        opacity: 0;
+        cursor: default;
+        pointer-events: none;
+        display: flex;
+        transition: opacity 0.15s ease-in-out;
+        &.opened {
+            pointer-events: all;
+            opacity: 1;
+        }
+    }
+    .vpt-input .api .window .content .loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        & i {
+            font-size: 20px;
+        }
+        & i:nth-child(1) {
+            animation: loadingBubble 1.5s infinite;
+        }
+        & i:nth-child(2) {
+            animation: loadingBubble 1.5s infinite;
+            animation-delay: 0.5s;
+        }
+        & i:nth-child(3) {
+            animation: loadingBubble 1.5s infinite;
+            animation-delay: 1s;
+        }
+    }
+    .vpt-input .api .window .content .empty {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: #3d8fe0;
+    }
+    .vpt-input .api .window .content {
+        background: white;
+        width: min(790px, 100%);
+        border-radius: 1em;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0px 35px 45px -35px #3d8fe0;
+        height: min(520px, 100%);
+        box-sizing: border-box;
+        overflow-y: auto;
+        & header, & footer {
+            display: flex;
+            flex-direction: row;
+            padding: 1em;
+        }
+        & > header + * {
+            flex: 1 1;
+        }
+    }
+    .vpt-input .api .window .content .data {
+        margin: 1em;
+        margin-block: 0em;
+        box-sizing: border-box;
+        border: 1px solid gray;
+        border-radius: 5px;
+        color: gray;
+        & th:nth-child(even) {
+            color: #313131;
+            background: lightgray;
+        }
+        & td {
+            color: #313131;
+        }
+        & th {
+            border-bottom: 1px solid gray;
+        }
+        & tr:nth-child(odd) {
+            & td:nth-child(odd) {
+                background: #d3d3d371;
+            }
+        }
+        & tr:nth-child(even) {
+            & td:nth-child(even) {
+                background: #d3d3d371;
+            }
+        }
+        & th, & td {
+            text-align: left;
+            padding: 0.4em;
+        }
+        & tr:hover {
+            background: #3d8ee06e;
+        }
+    }
     /** Select */
     .vpt-input .select {
         position: relative;
@@ -385,6 +673,22 @@ else if(props.type == 'select') {
         user-select: none;
         cursor: pointer;
         border-radius: 7px;
+    }
+    .vpt-input.err .select {
+        border-color: #a52924;
+
+        & .title {
+            color: #a52924;
+        }
+
+        & > div {
+            opacity: 0;
+        }
+
+        & .validate {
+            opacity: 1;
+            color: #a52924;
+        }
     }
     .vpt-input .select .accardeon {
         box-sizing: border-box;
@@ -519,7 +823,7 @@ else if(props.type == 'select') {
         color: transparent;
     }
     .vpt-input .tel .validate {
-        top: 52%;
+        top: 28%;
         transform: translateY(-0%);
         color: #a52924;
         left: 3.3em;
