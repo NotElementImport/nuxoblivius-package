@@ -21,10 +21,8 @@ export default class Translate {
         const object = instc.getParams(config.stateManager.field.split('.')[1]);
         console.log(object);
         object.subs.push(() => {
-            console.log('test lang translate');
-            Translate.current = object.get();
-            Translate.listeners.forEach((uni) => {
-                console.log('test lang translate');
+            this.current = object.get();
+            this.listeners.forEach((uni) => {
                 uni();
             });
         });
@@ -63,7 +61,7 @@ export default class Translate {
         const translate = () => {
             config.set(text, this._t(splitName, args));
         };
-        Translate.listeners.push(translate);
+        this.listeners.push(translate);
         translate();
         return config.get(text);
     }
@@ -85,7 +83,7 @@ export default class Translate {
                 return config.get(text);
             }
         });
-        Translate.listeners.push(toolbox.update);
+        this.listeners.push(toolbox.update);
         toolbox.update();
         return toolbox;
     }
