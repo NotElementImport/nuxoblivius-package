@@ -1,6 +1,6 @@
 export declare namespace Inputs {
     export type FileAccess = ".mp4" | ".mp3" | ".flac" | ".avif" | ".avi" | ".wav" | ".jpg" | ".jpeg" | ".png" | ".gif" | ".bmp" | ".log" | ".txt" | ".webm" | ".pdf" | ".csv" | ".json" | "audio/*" | "video/*" | "image/*"
-    export type InputType = "select" | "basic" | "number" | "alert" | "checkbox" | "multiline" | "email" | "tel" | "files"
+    export type InputType = "array" | "api" | "select" | "basic" | "number" | "checkbox" | "multiline" | "email" | "tel" | "files"
     export interface InputBasic {
         value: string,
         placeholder?: string

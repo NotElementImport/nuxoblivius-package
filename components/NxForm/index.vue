@@ -24,6 +24,7 @@ function getClass() {
                     :type="info.type" 
                     :title="info.title.value" 
                     :content="info.content ? info.content.value : undefined"
+                    :fields="info.fields ? info.fields : undefined"
                     :value="info.value" 
                     :name="index"
                     :class="getClass()"

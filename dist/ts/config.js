@@ -6,6 +6,12 @@ export const settings = {
     headers: null,
     useServerFetch: false
 };
+export let _defaults = {
+    template: ''
+};
+export const configDefaults = (conf) => {
+    _defaults = conf;
+};
 export const setCustomFetch = (value) => {
     settings.fetch = value;
 };
@@ -56,7 +62,7 @@ export const config = {
 };
 config.request = async (url, params) => {
     if (settings.useServerFetch || config.isRobot) {
-        const fetchData = await settings.fetch(url, { credentials: 'include', responseType: 'text', cache: 'no-cache', server: true, ...params });
+        const fetchData = await settings.fetch(url, { credentials: 'include', responseType: 'text', cache: 'no-cache', ...params });
         return fetchData.data.value;
     }
     else {

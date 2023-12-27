@@ -1,6 +1,7 @@
 import ValidateEmail from "../../validate/ValidateEmail.js"
 import ValidateGreater from "../../validate/ValidateGreater.js"
 import ValidateLess from "../../validate/ValidateLess.js"
+import ValidateSelect from "../../validate/ValidateSelect.js"
 import ValidateRange from "../../validate/ValidateRange.js"
 import ValidateTelephone from "../../validate/ValidateTelephone.js"
 import IValidate from "../../validate/index.js"
@@ -37,7 +38,13 @@ export default class FormModel extends StateManager {
         return this._fields
     } 
 
-    public getValues() {}
+    public getValues() {
+        const data: {[name: string]: any} = {}
+        for(const [key, value] of Object.entries(this._fields)) {
+            data[key] = value.value.value
+        }
+        return data
+    }
 
     public setValues(data: {[name: string]: any}|IStateApiOne<any>) {
         if('value' in data) {
@@ -143,7 +150,7 @@ export default class FormModel extends StateManager {
                 return {
                     type: 'tel',
                     value: ref(""),
-                    title: ref(""),
+                    title: ref(title),
                     options: { 
                         prefix: prefix,
                         validateMessage: ref("")
@@ -200,6 +207,28 @@ export default class FormModel extends StateManager {
 
                 if(validate) {
                     data['validate'] = validate
+                }
+
+                return data
+            },
+            api(title: string, modelItem: string, fields: string[], notEmpty: boolean = false) {
+                const splitData = modelItem.split('.')
+                const model = (StateManager.manager(splitData[0]) as any)[splitData[1]]
+
+                const data = {
+                    type: 'api',
+                    content: ref(model),
+                    fields: fields,
+                    value: ref(-1),
+                    title: ref(title),
+                    options: { 
+                        validateMessage: ref("")
+                    },
+                    validate: null as any
+                }
+
+                if(notEmpty) {
+                    data['validate'] = ValidateSelect
                 }
 
                 return data

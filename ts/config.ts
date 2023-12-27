@@ -8,6 +8,14 @@ export const settings = {
     useServerFetch: false
 }
 
+export let _defaults = {
+    template: ''
+}
+
+export const configDefaults = (conf: any) => {
+    _defaults = conf
+}
+
 export const setCustomFetch = (value: Function) => {
     settings.fetch = value as any
 }
@@ -63,7 +71,7 @@ export const config = {
 
 config.request = async (url: string, params: any) => {
     if (settings.useServerFetch || config.isRobot) {
-        const fetchData = await settings.fetch(url, { credentials: 'include', responseType: 'text', cache: 'no-cache', server: true, ...params }) as any
+        const fetchData = await settings.fetch(url, { credentials: 'include', responseType: 'text', cache: 'no-cache', ...params }) as any
         return fetchData.data.value
     }
     else {

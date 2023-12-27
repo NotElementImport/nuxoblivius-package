@@ -125,7 +125,6 @@ export default class StateManager {
                                 return dataContains;
                             }
                         });
-                        console.log(objectGet.__ref);
                         objectGet.__ref.buxt = this;
                         objectGet.__ref.buxtName = name;
                         this._paramsObjects.set(name, objectGet.__ref);
