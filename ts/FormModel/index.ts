@@ -8,6 +8,7 @@ import IValidate from "../../validate/index.js"
 import StateManager, { _instances } from "../StateManager/index.js"
 import { IStateApiOne } from "../interfaces.js"
 import { ref } from 'vue'
+import Translate from "../Translate/index.js"
 
 export default class FormModel extends StateManager {
     private _fields: {[key: string]: any} = {}
@@ -113,7 +114,7 @@ export default class FormModel extends StateManager {
 
     protected get field() {
         return {
-            text(title: string, options: {multiline?: boolean, placeholder?: string, maxLength?: number, validate?: IValidate}) {
+            text(title: string, options: {multiline?: boolean, placeholder?: string, maxLength?: number, validate?: IValidate}) {                
                 const data = {
                     type: 'basic',
                     value: ref(""),
