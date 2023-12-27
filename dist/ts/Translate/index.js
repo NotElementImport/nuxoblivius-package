@@ -38,9 +38,8 @@ export default class Translate {
             if (part in object) {
                 object = object[part];
             }
-            else {
-                throw `Translate: In imports not find part ${part}`;
-            }
+            else
+                return '';
         }
         if (args.length > 0) {
             let text = object;
