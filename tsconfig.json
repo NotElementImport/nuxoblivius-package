@@ -1,5 +1,5 @@
 {
-  "exclude": ["node_modules", "validate/*.js", "Nuxt", "Vue", "index.js", "filter.js", "dist", "./dist/**/*"],
+  "exclude": ["node_modules", "validate/*.js", "Nuxt", "translate", "dynamic", "Vue", "index.js", "filter.js", "dist", "./dist/**/*"],
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig to read more about this file */
 

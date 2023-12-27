@@ -15,25 +15,29 @@ export default class Translate {
             throw 'Translate config: supports not set';
         else if (!('stateManager' in config) || Object.keys(config.stateManager).length == 0)
             throw 'Translate config: stateManager not set';
-        this.config = config;
-        this.current = config.default;
+        globalThis['$tts'] = {
+            config: {},
+            listeners: [],
+            current: ''
+        };
+        globalThis['$tts'].config = config;
         const instc = new config.stateManager.object();
         const object = instc.getParams(config.stateManager.field.split('.')[1]);
-        console.log(object);
+        globalThis['$tts'].current = object.get();
         object.subs.push(() => {
-            this.current = object.get();
-            this.listeners.forEach((uni) => {
+            globalThis['$tts'].current = object.get();
+            globalThis['$tts'].listeners.forEach((uni) => {
                 uni();
             });
         });
     }
     static _t(name, args) {
-        let object = this.config.imports;
+        let object = globalThis['$tts'].config.imports;
         let index = -1;
         for (const part of name) {
             index += 1;
             if (index == 1) {
-                object = object[this.current];
+                object = object[globalThis['$tts'].current];
             }
             if (part in object) {
                 object = object[part];
@@ -60,7 +64,7 @@ export default class Translate {
         const translate = () => {
             config.set(text, this._t(splitName, args));
         };
-        this.listeners.push(translate);
+        globalThis['$tts'].listeners.push(translate);
         translate();
         return config.get(text);
     }
@@ -82,7 +86,7 @@ export default class Translate {
                 return config.get(text);
             }
         });
-        this.listeners.push(toolbox.update);
+        globalThis['$tts'].listeners.push(toolbox.update);
         toolbox.update();
         return toolbox;
     }

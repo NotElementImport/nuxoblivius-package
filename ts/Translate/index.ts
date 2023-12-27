@@ -14,28 +14,33 @@ export default class Translate {
         if(!('default' in config) || config.default == '') throw 'Translate config: default not set'
         else if(!('imports' in config) || Object.keys(config.imports).length == 0) throw 'Translate config: imports not set'
         else if(!('supports' in config) || Object.keys(config.supports).length == 0) throw 'Translate config: supports not set'
-        else if(!('stateManager' in config) || Object.keys(config.stateManager).length == 0) throw 'Translate config: stateManager not set'
-        this.config = config
+        else if(!('stateManager' in config) || Object.keys(config.stateManager).length == 0) throw 'Translate config: stateManager not set';
+        (globalThis as any)['$tts'] = {
+            config: {},
+            listeners: [],
+            current: ''
+        };
 
-        this.current = config.default
+        (globalThis as any)['$tts'].config = config
+
         const instc = new (config.stateManager.object as any)()
         const object = instc.getParams(config.stateManager.field.split('.')[1]);
-        console.log(object)
-        object.subs.push(() => {
-            this.current = object.get()
-            this.listeners.forEach((uni) => {
+        (globalThis as any)['$tts'].current = object.get()
+        object.subs.push(async () => {
+            (globalThis as any)['$tts'].current = object.get();
+            (globalThis as any)['$tts'].listeners.forEach((uni: Function) => {
                 uni()
             })
         })
     }
 
     private static _t(name: string[], args: any[]) {
-        let object = this.config.imports as any
+        let object = (globalThis as any)['$tts'].config.imports as any
         let index = -1
         for (const part of name) {
             index += 1
             if(index == 1) {
-                object = object[this.current]
+                object = object[(globalThis as any)['$tts'].current]
             }
             if(part in object) {
                 object = object[part]
@@ -63,7 +68,7 @@ export default class Translate {
         const translate = () => {
             config.set(text, this._t(splitName, args))
         }
-        this.listeners.push(translate)
+        (globalThis as any)['$tts'].listeners.push(translate as never)
         translate()
 
         return config.get(text)
@@ -85,13 +90,14 @@ export default class Translate {
                 _args = args
             }
         }
+
         Object.defineProperty(toolbox, 'value', {
             get() {
                 return config.get(text)
             }
-        })
+        });
 
-        this.listeners.push(toolbox.update)
+        (globalThis as any)['$tts'].listeners.push(toolbox.update as never)
         toolbox.update()
 
         return toolbox as any
