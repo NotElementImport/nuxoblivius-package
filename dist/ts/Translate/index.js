@@ -24,7 +24,7 @@ export default class Translate {
         const instc = new config.stateManager.object();
         const object = instc.getParams(config.stateManager.field.split('.')[1]);
         globalThis['$tts'].current = object.get();
-        object.subs.push(() => {
+        object.subs.push(async () => {
             globalThis['$tts'].current = object.get();
             globalThis['$tts'].listeners.forEach((uni) => {
                 uni();

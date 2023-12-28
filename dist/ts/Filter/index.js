@@ -91,6 +91,10 @@ export default class Filter {
             const valueRef = instance?.__values.get(key);
             if (value == 1) {
                 const arrayToolbox = {
+                    reset() {
+                        valueRef.value = [];
+                        instance?.callSubs();
+                    },
                     toggle(value, state = null) {
                         if (state == null) {
                             const index = valueRef.value.findIndex((subvalue) => subvalue == value);
