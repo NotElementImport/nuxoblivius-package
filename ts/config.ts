@@ -4,14 +4,13 @@ export const settings = {
     fetch: async (...args: any[]) => {},
     router: () => {},
     cookie: (...args: any[]) => {},
-    headers: null,
     useServerFetch: false
 }
 
 export let _defaults = {
     template: ''
-}
-
+};
+(globalThis as any).headers = null;
 export const configDefaults = (conf: any) => {
     _defaults = conf
 }
@@ -26,20 +25,20 @@ export const setCustomCookie = (value: Function) => {
     settings.cookie = value as any
 }
 export const setHeaders = (value: any) => {
-    settings.headers = value
+    (globalThis as any).headers = value;
 }
 export const detectRobots = () => {
     return config.isRobot
 }
 export const checkForRobots = () => {
-    if(settings.headers != null) {
-        config.isRobot = /bot|googlebot|crawler|spider|robot|crawling/i.test(settings.headers['user-agent'])
+    if((globalThis as any).headers != null) {
+        config.isRobot = /bot|googlebot|crawler|spider|robot|crawling/i.test((globalThis as any).headers['user-agent'])
     }
     return config.isRobot
 }
 export const EmulationRobots = () => {
-    if(settings.headers != null) {
-        settings.headers['user-agent'] = settings.headers['user-agent'] + '; spider' as never
+    if((globalThis as any).headers != null) {
+        (globalThis as any).headers['user-agent'] = (globalThis as any).headers['user-agent'] + '; spider' as never
     }
 }
 export const setIsServer = (value: boolean) => {

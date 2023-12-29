@@ -3,8 +3,6 @@ export const settings = {
     fetch: async (...args) => { },
     router: () => { },
     cookie: (...args) => { },
-    headers: null,
-    useServerFetch: false
 };
 export let _defaults = {
     template: ''
@@ -23,19 +21,21 @@ export const setCustomCookie = (value) => {
 };
 export const setHeaders = (value) => {
     settings.headers = value;
+    globalThis.headers = value
+    globalThis.useServerFetch = true
 };
 export const detectRobots = () => {
     return config.isRobot;
 };
 export const checkForRobots = () => {
-    if (settings.headers != null) {
-        config.isRobot = /bot|googlebot|crawler|spider|robot|crawling/i.test(settings.headers['user-agent']);
+    if (globalThis.headers != null) {
+        config.isRobot = /bot|googlebot|crawler|spider|robot|crawling/i.test(globalThis.headers['user-agent']);
     }
     return config.isRobot;
 };
 export const EmulationRobots = () => {
-    if (settings.headers != null) {
-        settings.headers['user-agent'] = settings.headers['user-agent'] + '; spider';
+    if (globalThis.headers != null) {
+        globalThis.headers['user-agent'] = settings.headers['user-agent'] + '; spider';
     }
 };
 export const setIsServer = (value) => {
