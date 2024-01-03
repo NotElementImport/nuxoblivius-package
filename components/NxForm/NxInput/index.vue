@@ -10,8 +10,8 @@ const props = defineProps<{
     value?: boolean|string|number
     class?: string
     title?: string
-    width?: string
     fields?: string[]
+    required?: boolean
     content?: {name?: string, value?: any, title?: string}[] & IStateApiPagiMany<any>
     options?: {
         fileAccept?: Inputs.FileAccess[]
@@ -72,13 +72,6 @@ const dicrimentValue = () => {
     emitFake(`vptUpdate`)
 }
 
-function getWidth() {
-    if(props.width) {
-        return props.width
-    }
-    return "350px"
-}
-
 function getClass() {
     if(props.class) {
         return props.class
@@ -101,14 +94,18 @@ function getTitle() {
     }
     return Title.value
 }
+function getRequired() {
+    if (props.required) { return '  *' }
+    return ''
+}
 function getPlaceholder() {
-    if(props.options && props.options.placeholder) {
+    if(props.options?.placeholder) {
         return props.options.placeholder
     }
     return ""
 }
 function getError() {
-    if(props.options && props.options.validateMessage) {
+    if(props.options?.validateMessage) {
         if(typeof props.options.validateMessage == 'object') {
             return (props.options.validateMessage as any).value
         }
@@ -117,25 +114,25 @@ function getError() {
     return ""
 }
 function getMax() {
-    if(props.options && props.options.max) {
+    if(props.options?.max) {
         return props.options.max
     }
     return undefined
 }
 function getMin() {
-    if(props.options && props.options.min) {
+    if(props.options?.min) {
         return props.options.min
     }
     return undefined
 }
 function getMaxLength() {
-    if(props.options && props.options.maxLength) {
+    if(props.options?.maxLength) {
         return props.options.maxLength
     }
     return undefined
 }
 function getPrefix() {
-    if(props.options && props.options.prefix) {
+    if(props.options?.prefix) {
         prefix.value = props.options.prefix 
         return prefix.value
     }
@@ -143,7 +140,7 @@ function getPrefix() {
     return prefix.value
 }
 function getAccept() {
-    if(props.options && props.options.fileAccept) {
+    if(props.options?.fileAccept) {
         return props.options.fileAccept.join(',')
     }
     return "image/*"
@@ -276,35 +273,35 @@ else if(props.type == 'select') {
 }
 </script>
 <template>
-    <div :class="getClass() + (getError().length > 0 && ' err' || '')" :style="`width: ${getWidth()}`">
+    <div :class="getClass() + (getError().length > 0 && ' err' || '')">
         <div v-if="type == 'basic'" class="basic">
-            <input type="text" :maxLength="getMaxLength()" @change="()=>{emitFake(`vptUpdate`)}" v-model="inputValue" placeholder="test">
-            <span class="title" :class="getError().length > 0 && 'err'">{{ getTitle() }}</span>
+            <input type="text" :maxLength="getMaxLength()" @input="()=>{emitFake(`vptUpdate`)}" v-model="inputValue">
+            <span class="title" :class="getError().length > 0 && 'err'">{{ getTitle() }}<span class="required">{{ getRequired() }}</span></span>
             <span class="placeholder" :class="getError().length > 0 && 'err'">{{ getPlaceholder() }}</span>
             <span class="validate">{{ getError() }}</span>
         </div>
         <div v-else-if="type == 'multiline'" class="multiline">
-            <textarea type="text" :maxLength="getMaxLength()" @change="()=>{emitFake(`vptUpdate`)}" v-model="inputValue" :placeholder="getPlaceholder()"> </textarea>
-            <span class="title" :class="getError().length > 0 && 'err'">{{ getTitle() }}</span>
+            <textarea type="text" :maxLength="getMaxLength()" @input="()=>{emitFake(`vptUpdate`)}" v-model="inputValue" :placeholder="getPlaceholder()"> </textarea>
+            <span class="title" :class="getError().length > 0 && 'err'">{{ getTitle() }}<span class="required">{{ getRequired() }}</span></span>
             <span class="validate">{{ getError() }}</span>
         </div>
         <div v-else-if="type == 'checkbox'" class="checkbox"  @click="() => {inputValue = !inputValue}">
             <label class="visual">
-                <input style="display: none;" type="checkbox" @change="()=>{emitFake(`vptUpdate`)}" v-model="inputValue"/>
+                <input style="display: none;" type="checkbox" @input="()=>{emitFake(`vptUpdate`)}" v-model="inputValue"/>
                 <div>
                     &#x2714;
                 </div>
             </label>
-            <span class="title">{{ getTitle() }}</span>
+            <span class="title">{{ getTitle() }}<span class="required">{{ getRequired() }}</span></span>
         </div>
         <div v-else-if="type == 'number'" class="number">
             <div class="inputPanel">
                 <button @click="dicrimentValue">&#8249;</button>
-                <input v-model="inputValue" :max="getMax()" @change="()=>{emitFake(`vptUpdate`)}" :min="getMin()" type="number"/>
+                <input v-model="inputValue" :max="getMax()" @input="()=>{emitFake(`vptUpdate`)}" :min="getMin()" type="number"/>
                 <span class="validate">{{ getError() }}</span>
                 <button @click="incrimentValue">&#8250;</button>
             </div>
-            <span class="title">{{ getTitle() }}</span>
+            <span class="title">{{ getTitle() }}<span class="required">{{ getRequired() }}</span></span>
         </div>
         <NxBlock @lose="() => {isOpened = false}" @click="(event: MouseEvent) => {if(event.target == event.currentTarget) isOpened = true}" v-else-if="type == 'select'" class="select">
             <div style="pointer-events: none;">
@@ -322,7 +319,7 @@ else if(props.type == 'select') {
                 </NxEmpty>
             </div>
             <input v-model="inputValue" :hidden="true">
-            <span style="pointer-events: none;" class="title">{{ getTitle() }}</span>
+            <span style="pointer-events: none;" class="title">{{ getTitle() }}<span class="required">{{ getRequired() }}</span></span>
         </NxBlock>
         <NxBlock @click="(event: MouseEvent) => {if(event.target == event.currentTarget) openApiPanel(); }" v-else-if="type == 'api'" class="api">
             <div style="pointer-events: none;">
@@ -333,7 +330,7 @@ else if(props.type == 'select') {
                 <div class="content">
                     <header>
                         <span style="display: flex; align-items: center;">
-                            {{ getTitle() }}
+                            {{ getTitle() }}<span class="required">{{ getRequired() }}</span>
                         </span>
                         <span style="margin-left: auto; cursor: pointer;" @click="()=>{isOpened = false}">
                             ╳
@@ -375,7 +372,7 @@ else if(props.type == 'select') {
                 </div>
             </div>
             <input v-model="inputValue" :hidden="true">
-            <span style="pointer-events: none;" class="title">{{ getTitle() }}</span>      
+            <span style="pointer-events: none;" class="title">{{ getTitle() }}<span class="required">{{ getRequired() }}</span></span>      
         </NxBlock>
         <div v-else-if="type == 'email'" class="email">
             <div class="visual">
@@ -384,17 +381,17 @@ else if(props.type == 'select') {
                 <input ref="input2Element" @click="dropValidate" @input="emailPart2" v-model="ValueTitle" class="postfix" type="text">
                 <span class="validate">{{ getError() }}</span>
             </div>
-            <span class="title">{{ getTitle() }}</span>
+            <span class="title">{{ getTitle() }}<span class="required">{{ getRequired() }}</span></span>
         </div>
         <div v-else-if="type == 'tel'" class="tel">
             <div class="visual">
-                <span>
+                <span class="prefix">
                     {{ prefix }}
                 </span>
-                <input v-model="inputValue" maxlength="15" @change="()=>{emitFake(`vptUpdate`)}" @input="inputTel" type="text">
-                <span class="validate">{{ getError() }}</span>
+                <input v-model="inputValue" maxlength="15" @input="()=>{emitFake(`vptUpdate`); inputTel()}" type="text">
             </div>
-            <span class="title">{{ getTitle() }}</span>
+            <span class="validate">{{ getError() }}</span>
+            <span class="title">{{ getTitle() }}<span class="required">{{ getRequired() }}</span></span>
         </div>
         <div v-else-if="type == 'files'" class="files">
             <label>
@@ -402,7 +399,7 @@ else if(props.type == 'select') {
             </label>
         </div>
         <div v-else>
-            <span class="title">{{ getTitle() }}</span>
+            <span class="title">{{ getTitle() }}<span class="required">{{ getRequired() }}</span></span>
         </div>
     </div>
 </template>
@@ -425,6 +422,9 @@ else if(props.type == 'select') {
         pointer-events: none !important;
         user-select: none !important;
         opacity: 0.5;
+    }
+    .vpt-input {
+        width: 350px;
     }
     .vpt-input .placeholder {
         opacity: 0;
@@ -451,6 +451,9 @@ else if(props.type == 'select') {
         font-size: 12px;
         pointer-events: none;
         transform: translateY(-0%);
+    }
+    .vpt-input .title .required {
+        color: red;
     }
     /** Number */
     .vpt-input .email {
@@ -1043,5 +1046,13 @@ else if(props.type == 'select') {
         left: 15%;
         font-size: 16px;
         color: #1f1f1f;
+    }
+
+
+
+
+
+    .tel .visual {
+        position: relative;
     }
 </style>
