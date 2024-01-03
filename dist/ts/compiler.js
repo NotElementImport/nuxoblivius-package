@@ -175,6 +175,11 @@ export class StateComposition extends CompositionBuilder {
         else {
             composition.api.path = args[0];
         }
+        if (this.argumentExist(1)) {
+            if (typeof args[1] == 'object') {
+                composition.api.customParams = args[1];
+            }
+        }
     }
     doKeep(composition, args) {
         this.setType(composition, 1)
