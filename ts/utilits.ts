@@ -93,6 +93,8 @@ export const buildUrl =  (path: string, query: any, pagiantion: any, template: P
 }
 
 export const queryToApi = async (url: string, params: RequestInit, template: PatternsApi, composition: any): Promise<any> => {
+    if(composition.cache)
+
     let raw = await config.request(url, params) as any
 
     let dry = JSON.parse(raw) as {[name: string]: any}

@@ -37,6 +37,14 @@ type Hooks = 'on instance' | 'on awake' | 'before process' | 'after process' | '
 export type StateValue<T> = T
 export type StateQuery = {[name: string]: string|number|boolean|StateQuery}
 
+interface ICache {
+    [path: string]: {
+        duration: 30
+        onlyOnSession?: false
+        
+    }
+}
+
 export interface IState<T> {
     /**
      * Fetch data from API
@@ -91,7 +99,7 @@ export interface IStateApi<T> {
      * @param type Type
      */
     template(type:PatternsApi): IStateApi<T>
-    caching(duration: number):  IStateApi<T>
+    caching(config: {}):  IStateApi<T>
     flat(): IStateApi<T>
     map(func: (value: T) => any): IStateApi<T>
     map<K extends any>(func: (value: K) => any): IStateApi<T>
@@ -99,7 +107,7 @@ export interface IStateApi<T> {
     sort<K extends any>(func: (a: K, b: K) => number): IStateApi<T>
     has(func: (a: T) => boolean): IStateApi<T>
     has<K extends any>(func: (a: K) => boolean): IStateApi<T>
-    hook(type: Hooks, func: (...args: any[]) => void)
+    hook(type: Hooks, func: (...args: any[]) => void): IStateApi<T>
     pagination(size: number, append?: boolean): IStateApiPagi<T>
     /**
      * Auth to Backend or API
@@ -174,7 +182,7 @@ export interface IStateApiPagi<T> {
     template(type:PatternsApi): IStateApiPagi<T>
     caching(duration: number):  IStateApiPagi<T>
     flat(): IStateApiPagi<T>
-    hook(type: Hooks, func: (...args: any[]) => void)
+    hook(type: Hooks, func: (...args: any[]) => void): IStateApiPagi<T>
     map(func: (value: T) => any): IStateApiPagi<T>
     map<K extends any>(func: (value: K) => any): IStateApiPagi<T>
     sort(func: (a: T, b: T) => number): IStateApiPagi<T>
@@ -214,6 +222,7 @@ export type IStateAny = IState<any> | IStateFin<any> | IStateApi<any> | IStateAp
 export type IApiState = IStateApiOne<any> | IStateApiPagiMany<any> | IStateApiMany<any>
 
 declare class IFormModel extends IStateManager<IFormModel> {
+    public get isValidate(): boolean
     protected createForm(description: {[key: string]: any}): void
     public get formData(): FormData
     public get form(): {[name: string]: {[key: string]: any}}

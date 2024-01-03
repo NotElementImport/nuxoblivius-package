@@ -384,6 +384,21 @@ export class StateComposition extends CompositionBuilder {
     doCacheType(composition, args) {
         composition.cache.type = args[0];
     }
+    // Cache for API
+    doCache(composition, args) {
+        this.dynamicAdd(composition, 'cache', {
+            loaded: false,
+            type: "json",
+            where: {
+                isLocalStorage: false,
+                isCache: true,
+                isCookie: false
+            },
+            name: "dynamic",
+            duration: args[0],
+            safe: async () => { }
+        });
+    }
     // Segment doOne
     doOne(composition, args) {
         return this.createWay('One', composition, composition.__obbsv);

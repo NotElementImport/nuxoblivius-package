@@ -7,11 +7,12 @@ import ValidateTelephone from "../../validate/ValidateTelephone.js"
 import IValidate from "../../validate/index.js"
 import StateManager, { _instances } from "../StateManager/index.js"
 import { IStateApiOne } from "../interfaces.js"
-import { ref } from 'vue'
+import { Ref, ref } from 'vue'
 import Translate from "../Translate/index.js"
 
 export default class FormModel extends StateManager {
     private _fields: {[key: string]: any} = {}
+    private _isValidate: Ref<boolean> = ref(false)
 
     protected createForm(description: {[key: string]: any}) {
         if(this._isServer) {
@@ -38,6 +39,10 @@ export default class FormModel extends StateManager {
     public get form() {
         return this._fields
     } 
+
+    public get isValidate() {
+        return this._isValidate.value
+    }
 
     public getValues() {
         const data: {[name: string]: any} = {}
@@ -82,6 +87,29 @@ export default class FormModel extends StateManager {
                 }
             }
         }
+        this._isValidate.value = result
+        return result
+    }
+
+    private silentValidate(): boolean {
+        let result = true
+        for (const [key, value] of Object.entries(this._fields)) {
+            if(value.validate != null) {
+                const argv: any[] = []
+                if(value.validate == ValidateRange || value.validate instanceof ValidateRange) {
+                    if(value.options.min) argv.push(value.options.min);
+                    else argv.push(null);
+                    if(value.options.max) argv.push(value.options.max);
+                    else argv.push(null);
+                }
+                else if(value.validate == ValidateGreater || value.validate instanceof ValidateGreater) {
+                    if(value.options.max) argv.push(value.options.max);
+                }
+                else if(value.validate == ValidateLess || value.validate instanceof ValidateLess) {
+                    if(value.options.min) argv.push(value.options.min);
+                }
+            }
+        }
         return result
     }
 
@@ -110,6 +138,8 @@ export default class FormModel extends StateManager {
                 data.options.validateMessage.value = data.validate.getMessage(...argv)
             }
         }
+
+        this._isValidate.value = this.silentValidate()
     }
 
     protected get field() {
@@ -233,7 +263,8 @@ export default class FormModel extends StateManager {
                 }
 
                 return data
-            }
+            },
+            
         }
     }
 }

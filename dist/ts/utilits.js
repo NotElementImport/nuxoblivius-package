@@ -93,7 +93,8 @@ export const buildUrl = (path, query, pagiantion, template) => {
     return fullURL;
 };
 export const queryToApi = async (url, params, template, composition) => {
-    let raw = await config.request(url, params);
+    if (composition.cache)
+        let raw = await config.request(url, params);
     let dry = JSON.parse(raw);
     if (template == 'yii2-data-provider') {
         if ('meta' in dry) {

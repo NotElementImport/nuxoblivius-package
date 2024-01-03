@@ -8,6 +8,7 @@ import StateManager, { _instances } from "../StateManager/index.js";
 import { ref } from 'vue';
 export default class FormModel extends StateManager {
     _fields = {};
+    _isValidate = ref(false);
     createForm(description) {
         if (this._isServer) {
             this._fields = description;
@@ -30,6 +31,9 @@ export default class FormModel extends StateManager {
     }
     get form() {
         return this._fields;
+    }
+    get isValidate() {
+        return this._isValidate.value;
     }
     getValues() {
         const data = {};
@@ -77,6 +81,39 @@ export default class FormModel extends StateManager {
                 }
             }
         }
+        this._isValidate.value = result;
+        return result;
+    }
+    silentValidate() {
+        let result = true;
+        for (const [key, value] of Object.entries(this._fields)) {
+            if (value.validate != null) {
+                const argv = [];
+                if (value.validate == ValidateRange || value.validate instanceof ValidateRange) {
+                    if (value.options.min)
+                        argv.push(value.options.min);
+                    else
+                        argv.push(null);
+                    if (value.options.max)
+                        argv.push(value.options.max);
+                    else
+                        argv.push(null);
+                }
+                else if (value.validate == ValidateGreater || value.validate instanceof ValidateGreater) {
+                    if (value.options.max)
+                        argv.push(value.options.max);
+                }
+                else if (value.validate == ValidateLess || value.validate instanceof ValidateLess) {
+                    if (value.options.min)
+                        argv.push(value.options.min);
+                }
+                // if(!value.validate.behaviour(value.value.value, ...argv)) {
+                //     console.error(`field had error, ${value.title.value}`)
+                //     value.options.validateMessage.value = value.validate.getMessage(...argv)
+                //     result = false
+                // }
+            }
+        }
         return result;
     }
     localValidate(name) {
@@ -110,6 +147,7 @@ export default class FormModel extends StateManager {
                 data.options.validateMessage.value = data.validate.getMessage(...argv);
             }
         }
+        this._isValidate.value = this.silentValidate();
     }
     get field() {
         return {
@@ -221,7 +259,7 @@ export default class FormModel extends StateManager {
                     data['validate'] = ValidateSelect;
                 }
                 return data;
-            }
+            },
         };
     }
 }

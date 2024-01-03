@@ -2,9 +2,9 @@
 import NxEmpty from '../../NxEmpty/index.vue'
 import NxBlock from '../../NxBlock/index.vue'
 import NxPagination from '../../NxPagination/index.vue'
-import { Inputs } from '../../index.js';
+import type { Inputs } from '../../index';
 import { ref } from 'vue';
-import { IStateApiPagiMany } from '../../../index';
+import type { IStateApiPagiMany } from '../../../index';
 const props = defineProps<{
     type: Inputs.InputType
     value?: boolean|string|number
