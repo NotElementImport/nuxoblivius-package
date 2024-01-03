@@ -26,6 +26,7 @@ function getClass() {
                     :required="info.validate ? true : false"
                     :content="info.content ? info.content.value : undefined"
                     :fields="info.fields ? info.fields : undefined"
+                    :required="info.validate"
                     :value="info.value"
                     :name="index"
                     :class="getClass()"
