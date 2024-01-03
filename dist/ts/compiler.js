@@ -558,13 +558,22 @@ export class StateComposition extends CompositionBuilder {
             sync() {
                 return {
                     async send(body) {
-                        return await send(body);
+                        config.set(_fetching, true);
+                        const response = await send(body);
+                        config.set(_fetching, false);
+                        return response;
                     },
                     async multipart(formData) {
-                        return await send(formData, true);
+                        config.set(_fetching, true);
+                        const response = await send(formData, true);
+                        config.set(_fetching, false);
+                        return response;
                     },
                     async get(value) {
-                        return await get(value);
+                        config.set(_fetching, true);
+                        const response = await get(value);
+                        config.set(_fetching, false);
+                        return response;
                     }
                 };
             },
