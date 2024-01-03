@@ -147,7 +147,7 @@ export interface IStateApiOne<T> {
      * @param form Form Data
      */
     multipart(form: FormData): StateValue<T>
-    method(type: "GET"|"POST"|"PUT"|"DELETE"): StateValue<T>
+    method(type: "GET"|"POST"|"PUT"|"DELETE"): IStateApiOne<T>
     value: StateValue<T>
     isLoading: boolean
 }
@@ -224,6 +224,7 @@ export type IApiState = IStateApiOne<any> | IStateApiPagiMany<any> | IStateApiMa
 declare class IFormModel extends IStateManager<IFormModel> {
     public get isValidate(): boolean
     protected createForm(description: {[key: string]: any}): void
+    public get json(): {[name: string]: any}
     public get formData(): FormData
     public get form(): {[name: string]: {[key: string]: any}}
     public setValues(data: {[name: string]: any}|IStateApiOne<any>): void
