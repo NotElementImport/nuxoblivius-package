@@ -36,6 +36,14 @@ export default class FormModel extends StateManager {
         return form
     }
 
+    public get json() {
+        const result = {} as any
+        for(const [key, value] of Object.entries(this._fields)) {
+            result[key] = value.value.value
+        }
+        return result
+    }
+
     public get form() {
         return this._fields
     } 
@@ -107,6 +115,12 @@ export default class FormModel extends StateManager {
                 }
                 else if(value.validate == ValidateLess || value.validate instanceof ValidateLess) {
                     if(value.options.min) argv.push(value.options.min);
+                }
+                if(!value.validate.behaviour(value.value.value, ...argv)) {
+                    // console.error(`field had error, ${value.title.value}`)
+                    // value.options.validateMessage.value = value.validate.getMessage(...argv)
+                    result = false
+                    break;
                 }
             }
         }

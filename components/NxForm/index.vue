@@ -22,7 +22,8 @@ function getClass() {
             <div v-for="info, index in (model.form as any)">
                 <vpt-input 
                     :type="info.type" 
-                    :title="info.title.value" 
+                    :title="info.title.value"
+                    :required="info.validate ? true : false"
                     :content="info.content ? info.content.value : undefined"
                     :fields="info.fields ? info.fields : undefined"
                     :required="info.validate"
