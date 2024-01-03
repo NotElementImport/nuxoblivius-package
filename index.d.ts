@@ -221,16 +221,16 @@ export interface IStateApiPagiMany<T> {
 export type IStateAny = IState<any> | IStateFin<any> | IStateApi<any> | IStateApiPagi<any> | StateValue<any> | IStateApiPagiMany<any> | IStateApiOne<any> | IStateApiMany<any>
 export type IApiState = IStateApiOne<any> | IStateApiPagiMany<any> | IStateApiMany<any>
 
-declare class IFormModel extends IStateManager<IFormModel> {
+declare class IFormModel<T extends any> extends IStateManager<IFormModel> {
     public get isValidate(): boolean
     protected createForm(description: {[key: string]: any}): void
-    public get json(): {[name: string]: any}
+    public get json(): {[name: keyof T]: any}
     public get formData(): FormData
-    public get form(): {[name: string]: {[key: string]: any}}
+    public get form(): {[name: keyof T]: {[key: string]: any}}
     public setValues(data: {[name: string]: any}|IStateApiOne<any>): void
     public setValues(data: {[name: string]: any}|IStateApiOne<any>): void
     public validate(): boolean
-    public localValidate(name: string): void
+    public localValidate(name: keyof T): void
     protected get field(): IFormField
 }
 

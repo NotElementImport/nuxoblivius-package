@@ -435,7 +435,7 @@ export class StateComposition extends CompositionBuilder {
             let path = composition.api.path;
             if (typeof body == 'object' && multipart == false) {
                 try {
-                    body = JSON.parse(body);
+                    body = JSON.stringify(body);
                 }
                 catch (e) { }
             }
