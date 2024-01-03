@@ -107,11 +107,12 @@ export default class FormModel extends StateManager {
                     if (value.options.min)
                         argv.push(value.options.min);
                 }
-                // if(!value.validate.behaviour(value.value.value, ...argv)) {
-                //     console.error(`field had error, ${value.title.value}`)
-                //     value.options.validateMessage.value = value.validate.getMessage(...argv)
-                //     result = false
-                // }
+                if(!value.validate.behaviour(value.value.value, ...argv)) {
+                    console.error(`field had error, ${value.title.value}`)
+                    // value.options.validateMessage.value = value.validate.getMessage(...argv)
+                    result = false
+                    break;
+                }
             }
         }
         return result;
