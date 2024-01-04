@@ -104,6 +104,7 @@ export default class Translate {
 
         const toolbox = {
             dynamicAttribute(el: HTMLElement, attribute: string) {
+                el.setAttribute(attribute, config.get(text))
                 subs.push(() => {
                     el.setAttribute(attribute, config.get(text))
                 })
