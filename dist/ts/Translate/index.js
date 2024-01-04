@@ -89,10 +89,19 @@ export default class Translate {
         const _pthis = this;
         let emptyText = false;
         let _args = args;
+        let subs = [];
         const toolbox = {
+            dynamicAttribute(el, attribute) {
+                subs.push(() => {
+                    el.setAttribute(attribute, config.get(text));
+                });
+            },
             update() {
                 if (!emptyText) {
                     config.set(text, _pthis._t(splitName, _args));
+                    for (const itemSub of subs) {
+                        itemSub();
+                    }
                 }
             },
             args(...args) {

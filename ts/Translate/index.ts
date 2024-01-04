@@ -100,11 +100,21 @@ export default class Translate {
         let emptyText = false
 
         let _args = args
+        let subs: Function[] = [];
 
         const toolbox = {
+            dynamicAttribute(el: HTMLElement, attribute: string) {
+                subs.push(() => {
+                    el.setAttribute(attribute, config.get(text))
+                })
+            },
             update() {
                 if(!emptyText) {
-                    config.set(text, _pthis._t(splitName, _args))                    
+                    config.set(text, _pthis._t(splitName, _args))
+                    
+                    for(const itemSub of subs) {
+                        itemSub()
+                    }
                 }
             },
             args(...args: any[]) {
