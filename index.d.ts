@@ -19,13 +19,13 @@ export declare class IStateManager<K> {
 }
 
 interface IFormField {
-    text(title: string, options: {multiline?: boolean, placeholder?: string, maxLength?: number, validate?: IValidate}): object
-    email(title: string, options: {placeholder?: string}): object
-    tel(title: string, prefix?: string): object
-    number(title: string, options: {max?: number, min?: number, validate?: IValidate}): object
-    checkbox(title: string, validate?: IValidate): object
-    select(title: string, content: {name?: string, value?: any, title?: string}[], validate?:IValidate): object
-    api(title: string, modelItem: string, fields: string[], notEmpty?: boolean): object
+    text(title: string, options: {multiline?: boolean, placeholder?: string, maxLength?: number, validate?: IValidate, customMessage?: string}): object
+    email(title: string, options: {placeholder?: string, customMessage?: string}): object
+    tel(title: string, prefix?: string, customMessage?: string): object
+    number(title: string, options: {max?: number, min?: number, validate?: IValidate, customMessage?: string}): object
+    checkbox(title: string, validate?: IValidate, customMessage?: string): object
+    select(title: string, content: {name?: string, value?: any, title?: string}[], validate?:IValidate, customMessage?: string): object
+    api(title: string, modelItem: string, fields: string[], notEmpty?: boolean, customMessage?: string): object
 }
 
 export type PatternsApi = "yii2-data-provider" | ""

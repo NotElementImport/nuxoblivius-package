@@ -1,7 +1,16 @@
 import { config } from '../config.js';
 export const languageConfig = (value, nuxtApp) => {
-    console.log(nuxtApp);
-    
+    console.log(nuxtApp, nuxtApp.vueApp, nuxtApp.vueApp.directive);
+    nuxtApp.vueApp.directive('translate-placeholder', {
+        mounted(el, biding) {
+            Translate.c(biding.value).dynamicAttribute(el, 'placeholder');
+        }
+    });
+    nuxtApp.vueApp.directive('translate-title', {
+        mounted(el, biding) {
+            Translate.c(biding.value).dynamicAttribute(el, 'title');
+        }
+    });
     Translate.loadConfig(value);
 };
 export default class Translate {
@@ -70,18 +79,59 @@ export default class Translate {
         translate();
         return config.get(text);
     }
+    static smartTranslate(name, ...args) {
+        if (name.startsWith('.')) {
+            const translate = this.c(name.slice(1), ...args);
+            return translate.raw();
+        }
+        return null;
+    }
+    static openSmartTranslate(name, args, func) {
+        if (name.startsWith('.')) {
+            const translate = this.c(name.slice(1), ...args);
+            func(translate);
+            return translate.raw();
+        }
+        return null;
+    }
     static c(name, ...args) {
         const text = config.init('');
         const splitName = name.split('.');
         const _pthis = this;
+        let emptyText = false;
         let _args = args;
+        let subs = [];
         const toolbox = {
+            dynamicAttribute(el, attribute) {
+                el.setAttribute(attribute, config.get(text));
+                subs.push(() => {
+                    el.setAttribute(attribute, config.get(text));
+                });
+            },
             update() {
-                config.set(text, _pthis._t(splitName, _args));
+                if (!emptyText) {
+                    config.set(text, _pthis._t(splitName, _args));
+                    for (const itemSub of subs) {
+                        itemSub();
+                    }
+                }
             },
             args(...args) {
                 _args = args;
-            }
+            },
+            raw() {
+                return text;
+            },
+            toggle(empty) {
+                emptyText = empty;
+                if (empty) {
+                    text.value = '';
+                }
+                else {
+                    toolbox.update();
+                }
+            },
+            value: ''
         };
         Object.defineProperty(toolbox, 'value', {
             get() {

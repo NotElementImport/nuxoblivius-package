@@ -22,9 +22,8 @@ export default class StateManager {
         return _instances.get(name);
     }
     static set(variable, value) {
-        console.log(variable, value);
         if (this.globalName != '') {
-            let server = null
+            let server = null;
             if (!_instances.has(this.globalName)) {
                 _instances.set(this.globalName, null);
                 server = new this();
@@ -32,16 +31,13 @@ export default class StateManager {
             }
             else {
                 server = _instances.get(this.globalName);
-                console.log(server);
             }
             server[variable] = value;
-            console.log(server[variable])
             return;
         }
         throw "static.globalName not set: SM.set(), " + this.name + ", name: " + this.globalName;
     }
     static get(variable) {
-        console.log(variable);
         if (this.globalName != '') {
             let server = null;
             if (!_instances.has(this.globalName)) {

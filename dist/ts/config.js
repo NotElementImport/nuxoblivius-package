@@ -9,7 +9,6 @@ export let _defaults = {
     template: ''
 };
 globalThis.headers = null;
-globalThis.cookie = null;
 export const configDefaults = (conf) => {
     _defaults = conf;
 };
@@ -21,7 +20,6 @@ export const setCustomRouter = (value) => {
 };
 export const setCustomCookie = (value) => {
     settings.cookie = value;
-    globalThis.cookie = value
 };
 export const setHeaders = (value) => {
     globalThis.headers = value;
@@ -49,13 +47,13 @@ export const config = {
     init: (value) => ref(value),
     request: async (url, params) => { },
     saveCookie: (name, value, expr) => {
-        let data = globalThis.cookie(name, {
+        let data = settings.cookie(name, {
             maxAge: expr
         });
         data.value = value;
     },
     getCookie: (name) => {
-        return globalThis.cookie(name).value;
+        return settings.cookie(name).value;
     },
     router: () => {
         return settings.router();

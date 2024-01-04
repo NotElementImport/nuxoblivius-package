@@ -1,23 +1,20 @@
+import { Ref } from 'vue';
 import { DirectiveBinding } from 'vue';
 import { ILanguageConfig } from '../../translate/index.js'
 import { config } from '../config.js';
 
 export const languageConfig = (value: ILanguageConfig, nuxtApp: any) => {
-    console.log(nuxtApp);
-    nuxtApp?.vueApp.directive('translate-placeholder', {
+    console.log(nuxtApp,nuxtApp.vueApp, nuxtApp.vueApp.directive);
+    nuxtApp.vueApp.directive('translate-placeholder', {
         mounted(el: HTMLInputElement, biding: DirectiveBinding) {
-            sub2global('currentLang', () => {
-                el.placeholder = _translate.t(biding.value) || biding.value
-            })
+            Translate.c(biding.value).dynamicAttribute(el, 'placeholder')
         }
-    })
-    nuxtApp?.vueApp.directive('translate-title', {
+    });
+    nuxtApp.vueApp.directive('translate-title', {
         mounted(el: HTMLElement, biding: DirectiveBinding) {
-            sub2global('currentLang', () => {
-                el.title = _translate.t(biding.value) || biding.value
-            })
+            Translate.c(biding.value).dynamicAttribute(el, 'title')
         }
-    })
+    });
     (Translate as any).loadConfig(value)
 }
 
@@ -90,21 +87,65 @@ export default class Translate {
         return config.get(text)
     }
 
-    public static c(name: string, ...args: any[]): {update: ()=>void, value: string} {
+    public static smartTranslate(name: string, ...args: any[]): Ref<string>|null {
+        if(name.startsWith('.')) {
+            const translate = this.c(name.slice(1), ...args)
+            return translate.raw()
+        }
+        return null
+    }
+
+    public static openSmartTranslate(name: string, args: any[], func: (remote: any) => void): Ref<string>|null {
+        if(name.startsWith('.')) {
+            const translate = this.c(name.slice(1), ...args)
+            func(translate)
+            return translate.raw()
+        }
+        return null
+    }
+
+    public static c(name: string, ...args: any[]) {
         const text = config.init('')
 
         const splitName = name.split('.')
         const _pthis = this
+        let emptyText = false
 
         let _args = args
+        let subs: Function[] = [];
 
         const toolbox = {
+            dynamicAttribute(el: HTMLElement, attribute: string) {
+                el.setAttribute(attribute, config.get(text))
+                subs.push(() => {
+                    el.setAttribute(attribute, config.get(text))
+                })
+            },
             update() {
-                config.set(text, _pthis._t(splitName, _args))
+                if(!emptyText) {
+                    config.set(text, _pthis._t(splitName, _args))
+                    
+                    for(const itemSub of subs) {
+                        itemSub()
+                    }
+                }
             },
             args(...args: any[]) {
                 _args = args
-            }
+            },
+            raw() {
+                return text
+            },
+            toggle(empty: boolean) {
+                emptyText = empty
+                if(empty) {
+                    text.value = ''
+                }
+                else {
+                    toolbox.update()
+                }
+            },
+            value: ''
         }
 
         Object.defineProperty(toolbox, 'value', {
@@ -116,6 +157,6 @@ export default class Translate {
         (globalThis as any)['$tts'].listeners.push(toolbox.update as never)
         toolbox.update()
 
-        return toolbox as any
+        return toolbox
     }
 }

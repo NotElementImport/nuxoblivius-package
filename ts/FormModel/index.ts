@@ -147,9 +147,22 @@ export default class FormModel extends StateManager {
             // console.log(argv)
             if(data.validate.behaviour(data.value.value, ...argv)) {
                 data.options.validateMessage.value = ""
+                if(data.remote) {
+                    data.remote.toggle(true)
+                }
             }
             else {
-                data.options.validateMessage.value = data.validate.getMessage(...argv)
+                if(data.remote) {
+                    data.remote.toggle(false)
+                }
+                if(data.options.customMessage && data.options.customMessage != null) {
+                    if(data.options.customMessage[0] != '.') {
+                        data.options.validateMessage.value = data.options.customMessage
+                    }
+                }
+                else {
+                    data.options.validateMessage.value = data.validate.getMessage(...argv)
+                }
             }
         }
 
@@ -158,7 +171,7 @@ export default class FormModel extends StateManager {
 
     protected get field() {
         return {
-            text(title: string, options: {multiline?: boolean, placeholder?: string, maxLength?: number, validate?: IValidate}) {                
+            text(title: string, options: {multiline?: boolean, placeholder?: string, maxLength?: number, validate?: IValidate, customMessage?: string}) {                
                 const data = {
                     type: 'basic',
                     value: ref(""),
@@ -167,7 +180,15 @@ export default class FormModel extends StateManager {
                         ...options,
                         validateMessage: ref("")
                     },
+                    remote: null,
                     validate: null as any
+                }
+                data.title = Translate.smartTranslate(title) as any || data.title
+
+                if(options.customMessage) {
+                    data.options.validateMessage = Translate.openSmartTranslate(options.customMessage, [], (remote) => {
+                        data.remote = remote
+                    }) || data.options.validateMessage
                 }
 
                 if(options.validate) {
@@ -179,8 +200,8 @@ export default class FormModel extends StateManager {
 
                 return data
             },
-            email(title: string, options: {placeholder?: string}) {
-                return {
+            email(title: string, options: {placeholder?: string, customMessage?: string}) {
+                const data = {
                     type: 'email',
                     value: ref(""),
                     title: ref(title),
@@ -188,22 +209,48 @@ export default class FormModel extends StateManager {
                         ...options,
                         validateMessage: ref("")
                     },
+                    remote: null,
                     validate: ValidateEmail
                 }
+                data.title = Translate.smartTranslate(title) as any || data.title
+
+                if(options.customMessage) {
+                    data.options.validateMessage = Translate.openSmartTranslate(options.customMessage, [], (remote) => {
+                        data.remote = remote
+                    }) || data.options.validateMessage
+                }
+
+                return data
             },
-            tel(title: string, prefix: string = "+1") {
-                return {
+            tel(title: string, prefix: string = "+1", customMessage: string|null = null) {
+                const data = {
                     type: 'tel',
                     value: ref(""),
                     title: ref(title),
                     options: { 
                         prefix: prefix,
-                        validateMessage: ref("")
+                        validateMessage: ref(""),
+                        customMessage: null
                     },
+                    remote: null,
                     validate: ValidateTelephone
                 }
+
+                if(customMessage) {
+                    data.options.validateMessage = Translate.openSmartTranslate(customMessage, [], (remote) => {
+                        data.remote = remote
+                    }) || data.options.validateMessage
+                }
+                
+                if(customMessage) {
+                    data.options.customMessage = customMessage as any
+                }
+
+                data.title = Translate.smartTranslate(title) as any || data.title
+
+                return data
             },
-            number(title: string, options: {max?: number, min?: number, validate?: IValidate}) {
+            number(title: string, options: {max?: number, min?: number, validate?: IValidate, customMessage?: string}) {
                 const data = {
                     type: 'number',
                     value: ref(0),
@@ -212,7 +259,15 @@ export default class FormModel extends StateManager {
                         ...options,
                         validateMessage: ref("")
                     },
+                    remote: null,
                     validate: null as any
+                }
+                data.title = Translate.smartTranslate(title) as any || data.title
+
+                if(options.customMessage) {
+                    data.options.validateMessage = Translate.openSmartTranslate(options.customMessage, [], (remote) => {
+                        data.remote = remote
+                    }) || data.options.validateMessage
                 }
 
                 if(options.validate) {
@@ -221,15 +276,28 @@ export default class FormModel extends StateManager {
 
                 return data
             },
-            checkbox(title: string, validate?: IValidate) {
+            checkbox(title: string, validate?: IValidate, customMessage: string|null = null) {
                 const data = {
                     type: 'checkbox',
                     value: ref(false),
                     title: ref(title),
                     options: { 
-                        validateMessage: ref("")
+                        validateMessage: ref(""),
+                        customMessage: null
                     },
+                    remote: null,
                     validate: null as any
+                }
+                data.title = Translate.smartTranslate(title) as any || data.title
+
+                if(customMessage) {
+                    data.options.validateMessage = Translate.openSmartTranslate(customMessage, [], (remote) => {
+                        data.remote = remote
+                    }) || data.options.validateMessage
+                }
+
+                if(customMessage) {
+                    data.options.customMessage = customMessage as any
                 }
 
                 if(validate) {
@@ -238,16 +306,29 @@ export default class FormModel extends StateManager {
 
                 return data
             },
-            select(title: string, content: {name?: string, value?: any, title?: string}[], validate?:IValidate) {
+            select(title: string, content: {name?: string, value?: any, title?: string}[], validate?:IValidate, customMessage: string|null = null) {
                 const data = {
                     type: 'select',
                     content: ref(content),
                     value: ref(0),
                     title: ref(title),
                     options: { 
-                        validateMessage: ref("")
+                        validateMessage: ref(""),
+                        customMessage: null
                     },
+                    remote: null,
                     validate: null as any
+                }
+                data.title = Translate.smartTranslate(title) as any || data.title
+
+                if(customMessage) {
+                    data.options.validateMessage = Translate.openSmartTranslate(customMessage, [], (remote) => {
+                        data.remote = remote
+                    }) || data.options.validateMessage
+                }
+
+                if(customMessage) {
+                    data.options.customMessage = customMessage as any
                 }
 
                 if(validate) {
@@ -256,7 +337,7 @@ export default class FormModel extends StateManager {
 
                 return data
             },
-            api(title: string, modelItem: string, fields: string[], notEmpty: boolean = false) {
+            api(title: string, modelItem: string, fields: string[], notEmpty: boolean = false, customMessage: string|null = null) {
                 const splitData = modelItem.split('.')
                 const model = (StateManager.manager(splitData[0]) as any)[splitData[1]]
 
@@ -267,9 +348,22 @@ export default class FormModel extends StateManager {
                     value: ref(-1),
                     title: ref(title),
                     options: { 
-                        validateMessage: ref("")
+                        validateMessage: ref(""),
+                        customMessage: null
                     },
+                    remote: null,
                     validate: null as any
+                }
+                data.title = Translate.smartTranslate(title) as any || data.title
+
+                if(customMessage) {
+                    data.options.validateMessage = Translate.openSmartTranslate(customMessage, [], (remote) => {
+                        data.remote = remote
+                    }) || data.options.validateMessage
+                }
+                
+                if(customMessage) {
+                    data.options.customMessage = customMessage as any
                 }
 
                 if(notEmpty) {
