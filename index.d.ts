@@ -51,6 +51,7 @@ export interface IState<T> {
      * @param url Url to Fetch from API
      */
     api(url:string|{path:string,query:{[name:string]: any}}): IStateApi<T>
+    api(url:string|{path:string,query:{[name:string]: any}}, params: RequestInit): IStateApi<T>
     /**
      * Keep data on Client gadget
      * ```ts

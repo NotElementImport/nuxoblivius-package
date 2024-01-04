@@ -268,6 +268,12 @@ export class StateComposition extends CompositionBuilder {
         else {
             composition.api.path = args[0]
         }
+
+        if(this.argumentExist(1)) {
+            if(typeof args[1] == 'object') {
+                composition.api.customParams = args[1]
+            }
+        }
     }
 
     protected doKeep(composition: IStateComposition, args: any[]) {
@@ -696,13 +702,23 @@ export class StateComposition extends CompositionBuilder {
             sync() {
                 return {
                     async send(body: {[name: string]: any}|string) {
-                        return await send(body)
+                        config.set(_fetching, true)
+                        const response = await send(body)
+                        config.set(_fetching, false)
+                        return response
+                        
                     },
                     async multipart(formData: FormData) {
-                        return await send(formData, true)
+                        config.set(_fetching, true)
+                        const response = await send(formData, true)
+                        config.set(_fetching, false)
+                        return response
                     },
                     async get(value: string|number|{[param:string]:any}) {
-                        return await get(value)
+                        config.set(_fetching, true)
+                        const response = await get(value)
+                        config.set(_fetching, false)
+                        return response
                     }
                 }
             },
