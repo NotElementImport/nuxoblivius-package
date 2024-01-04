@@ -83,4 +83,4 @@ export declare interface ILanguageConfig {
     }
 }
 
-export const languageConfig: (config: ILanguageConfig) => void
+export const languageConfig: (config: ILanguageConfig, nuxtApp: any) => void
