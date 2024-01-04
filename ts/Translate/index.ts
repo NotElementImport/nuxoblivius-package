@@ -1,3 +1,4 @@
+import { Ref } from 'vue';
 import { ILanguageConfig } from '../../translate/index.js'
 import { config } from '../config.js';
 
@@ -74,21 +75,54 @@ export default class Translate {
         return config.get(text)
     }
 
-    public static c(name: string, ...args: any[]): {update: ()=>void, value: string} {
+    public static smartTranslate(name: string, ...args: any[]): Ref<string>|null {
+        if(name.startsWith('.')) {
+            const translate = this.c(name.slice(1), ...args)
+            return translate.raw()
+        }
+        return null
+    }
+
+    public static openSmartTranslate(name: string, args: any[], func: (remote: any) => void): Ref<string>|null {
+        if(name.startsWith('.')) {
+            const translate = this.c(name.slice(1), ...args)
+            func(translate)
+            return translate.raw()
+        }
+        return null
+    }
+
+    public static c(name: string, ...args: any[]) {
         const text = config.init('')
 
         const splitName = name.split('.')
         const _pthis = this
+        let emptyText = false
 
         let _args = args
 
         const toolbox = {
             update() {
-                config.set(text, _pthis._t(splitName, _args))
+                if(!emptyText) {
+                    config.set(text, _pthis._t(splitName, _args))                    
+                }
             },
             args(...args: any[]) {
                 _args = args
-            }
+            },
+            raw() {
+                return text
+            },
+            toggle(empty: boolean) {
+                emptyText = empty
+                if(empty) {
+                    text.value = ''
+                }
+                else {
+                    toolbox.update()
+                }
+            },
+            value: ''
         }
 
         Object.defineProperty(toolbox, 'value', {
@@ -100,6 +134,6 @@ export default class Translate {
         (globalThis as any)['$tts'].listeners.push(toolbox.update as never)
         toolbox.update()
 
-        return toolbox as any
+        return toolbox
     }
 }

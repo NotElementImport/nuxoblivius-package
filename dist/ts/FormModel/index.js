@@ -6,6 +6,7 @@ import ValidateRange from "../../validate/ValidateRange.js";
 import ValidateTelephone from "../../validate/ValidateTelephone.js";
 import StateManager, { _instances } from "../StateManager/index.js";
 import { ref } from 'vue';
+import Translate from "../Translate/index.js";
 export default class FormModel extends StateManager {
     _fields = {};
     _isValidate = ref(false);
@@ -150,9 +151,22 @@ export default class FormModel extends StateManager {
             // console.log(argv)
             if (data.validate.behaviour(data.value.value, ...argv)) {
                 data.options.validateMessage.value = "";
+                if (data.remote) {
+                    data.remote.toggle(true);
+                }
             }
             else {
-                data.options.validateMessage.value = data.validate.getMessage(...argv);
+                if (data.remote) {
+                    data.remote.toggle(false);
+                }
+                if (data.options.customMessage && data.options.customMessage != null) {
+                    if (data.options.customMessage[0] != '.') {
+                        data.options.validateMessage.value = data.options.customMessage;
+                    }
+                }
+                else {
+                    data.options.validateMessage.value = data.validate.getMessage(...argv);
+                }
             }
         }
         this._isValidate.value = this.silentValidate();
@@ -168,8 +182,15 @@ export default class FormModel extends StateManager {
                         ...options,
                         validateMessage: ref("")
                     },
+                    remote: null,
                     validate: null
                 };
+                data.title = Translate.smartTranslate(title) || data.title;
+                if (options.customMessage) {
+                    data.options.validateMessage = Translate.openSmartTranslate(options.customMessage, [], (remote) => {
+                        data.remote = remote;
+                    }) || data.options.validateMessage;
+                }
                 if (options.validate) {
                     data['validate'] = options.validate;
                 }
@@ -179,7 +200,7 @@ export default class FormModel extends StateManager {
                 return data;
             },
             email(title, options) {
-                return {
+                const data = {
                     type: 'email',
                     value: ref(""),
                     title: ref(title),
@@ -187,20 +208,40 @@ export default class FormModel extends StateManager {
                         ...options,
                         validateMessage: ref("")
                     },
+                    remote: null,
                     validate: ValidateEmail
                 };
+                data.title = Translate.smartTranslate(title) || data.title;
+                if (options.customMessage) {
+                    data.options.validateMessage = Translate.openSmartTranslate(options.customMessage, [], (remote) => {
+                        data.remote = remote;
+                    }) || data.options.validateMessage;
+                }
+                return data;
             },
-            tel(title, prefix = "+1") {
-                return {
+            tel(title, prefix = "+1", customMessage = null) {
+                const data = {
                     type: 'tel',
                     value: ref(""),
                     title: ref(title),
                     options: {
                         prefix: prefix,
-                        validateMessage: ref("")
+                        validateMessage: ref(""),
+                        customMessage: null
                     },
+                    remote: null,
                     validate: ValidateTelephone
                 };
+                if (customMessage) {
+                    data.options.validateMessage = Translate.openSmartTranslate(customMessage, [], (remote) => {
+                        data.remote = remote;
+                    }) || data.options.validateMessage;
+                }
+                if (customMessage) {
+                    data.options.customMessage = customMessage;
+                }
+                data.title = Translate.smartTranslate(title) || data.title;
+                return data;
             },
             number(title, options) {
                 const data = {
@@ -211,45 +252,74 @@ export default class FormModel extends StateManager {
                         ...options,
                         validateMessage: ref("")
                     },
+                    remote: null,
                     validate: null
                 };
+                data.title = Translate.smartTranslate(title) || data.title;
+                if (options.customMessage) {
+                    data.options.validateMessage = Translate.openSmartTranslate(options.customMessage, [], (remote) => {
+                        data.remote = remote;
+                    }) || data.options.validateMessage;
+                }
                 if (options.validate) {
                     data['validate'] = options.validate;
                 }
                 return data;
             },
-            checkbox(title, validate) {
+            checkbox(title, validate, customMessage = null) {
                 const data = {
                     type: 'checkbox',
                     value: ref(false),
                     title: ref(title),
                     options: {
-                        validateMessage: ref("")
+                        validateMessage: ref(""),
+                        customMessage: null
                     },
+                    remote: null,
                     validate: null
                 };
+                data.title = Translate.smartTranslate(title) || data.title;
+                if (customMessage) {
+                    data.options.validateMessage = Translate.openSmartTranslate(customMessage, [], (remote) => {
+                        data.remote = remote;
+                    }) || data.options.validateMessage;
+                }
+                if (customMessage) {
+                    data.options.customMessage = customMessage;
+                }
                 if (validate) {
                     data['validate'] = validate;
                 }
                 return data;
             },
-            select(title, content, validate) {
+            select(title, content, validate, customMessage = null) {
                 const data = {
                     type: 'select',
                     content: ref(content),
                     value: ref(0),
                     title: ref(title),
                     options: {
-                        validateMessage: ref("")
+                        validateMessage: ref(""),
+                        customMessage: null
                     },
+                    remote: null,
                     validate: null
                 };
+                data.title = Translate.smartTranslate(title) || data.title;
+                if (customMessage) {
+                    data.options.validateMessage = Translate.openSmartTranslate(customMessage, [], (remote) => {
+                        data.remote = remote;
+                    }) || data.options.validateMessage;
+                }
+                if (customMessage) {
+                    data.options.customMessage = customMessage;
+                }
                 if (validate) {
                     data['validate'] = validate;
                 }
                 return data;
             },
-            api(title, modelItem, fields, notEmpty = false) {
+            api(title, modelItem, fields, notEmpty = false, customMessage = null) {
                 const splitData = modelItem.split('.');
                 const model = StateManager.manager(splitData[0])[splitData[1]];
                 const data = {
@@ -259,10 +329,21 @@ export default class FormModel extends StateManager {
                     value: ref(-1),
                     title: ref(title),
                     options: {
-                        validateMessage: ref("")
+                        validateMessage: ref(""),
+                        customMessage: null
                     },
+                    remote: null,
                     validate: null
                 };
+                data.title = Translate.smartTranslate(title) || data.title;
+                if (customMessage) {
+                    data.options.validateMessage = Translate.openSmartTranslate(customMessage, [], (remote) => {
+                        data.remote = remote;
+                    }) || data.options.validateMessage;
+                }
+                if (customMessage) {
+                    data.options.customMessage = customMessage;
+                }
                 if (notEmpty) {
                     data['validate'] = ValidateSelect;
                 }

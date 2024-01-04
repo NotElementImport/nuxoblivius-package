@@ -68,18 +68,49 @@ export default class Translate {
         translate();
         return config.get(text);
     }
+    static smartTranslate(name, ...args) {
+        if (name.startsWith('.')) {
+            const translate = this.c(name.slice(1), ...args);
+            return translate.raw();
+        }
+        return null;
+    }
+    static openSmartTranslate(name, args, func) {
+        if (name.startsWith('.')) {
+            const translate = this.c(name.slice(1), ...args);
+            func(translate);
+            return translate.raw();
+        }
+        return null;
+    }
     static c(name, ...args) {
         const text = config.init('');
         const splitName = name.split('.');
         const _pthis = this;
+        let emptyText = false;
         let _args = args;
         const toolbox = {
             update() {
-                config.set(text, _pthis._t(splitName, _args));
+                if (!emptyText) {
+                    config.set(text, _pthis._t(splitName, _args));
+                }
             },
             args(...args) {
                 _args = args;
-            }
+            },
+            raw() {
+                return text;
+            },
+            toggle(empty) {
+                emptyText = empty;
+                if (empty) {
+                    text.value = '';
+                }
+                else {
+                    toolbox.update();
+                }
+            },
+            value: ''
         };
         Object.defineProperty(toolbox, 'value', {
             get() {
