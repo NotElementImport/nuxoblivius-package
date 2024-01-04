@@ -1,7 +1,23 @@
+import { DirectiveBinding } from 'vue';
 import { ILanguageConfig } from '../../translate/index.js'
 import { config } from '../config.js';
 
-export const languageConfig = (value: ILanguageConfig) => {
+export const languageConfig = (value: ILanguageConfig, nuxtApp: any) => {
+    console.log(nuxtApp);
+    nuxtApp?.vueApp.directive('translate-placeholder', {
+        mounted(el: HTMLInputElement, biding: DirectiveBinding) {
+            sub2global('currentLang', () => {
+                el.placeholder = _translate.t(biding.value) || biding.value
+            })
+        }
+    })
+    nuxtApp?.vueApp.directive('translate-title', {
+        mounted(el: HTMLElement, biding: DirectiveBinding) {
+            sub2global('currentLang', () => {
+                el.title = _translate.t(biding.value) || biding.value
+            })
+        }
+    })
     (Translate as any).loadConfig(value)
 }
 

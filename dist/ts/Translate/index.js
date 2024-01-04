@@ -1,5 +1,7 @@
 import { config } from '../config.js';
-export const languageConfig = (value) => {
+export const languageConfig = (value, nuxtApp) => {
+    console.log(nuxtApp);
+    
     Translate.loadConfig(value);
 };
 export default class Translate {
