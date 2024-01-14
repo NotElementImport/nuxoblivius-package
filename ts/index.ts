@@ -79,6 +79,11 @@ export default class SM {
                     console.log(name)
                     this._setDefaultRef(name, container)
                 }
+                else {
+                    this._containersDescription.set(name, {
+                        type: ETypeRender.STATIC
+                    })
+                }
             }
         }
 
