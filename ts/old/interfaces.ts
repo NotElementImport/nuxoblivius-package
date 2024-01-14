@@ -1,4 +1,4 @@
-import { IFilter } from "../filter"
+import { IFilter } from "../../filter"
 
 export type PatternsApi = "yii2-data-provider" | ""
 export type PlaceKeep = "cookie" | "localStorage" | "cache"
