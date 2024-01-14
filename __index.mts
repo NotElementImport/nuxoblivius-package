@@ -8,6 +8,9 @@ class Test extends SM {
     public myVal = 2
     public myAnother = this.static(5)
 
+    public posts = this.fetch('/api/test')
+        .one()
+
     public get myComputed() {
         return this.myVal + this.myAnother
     }
@@ -15,6 +18,6 @@ class Test extends SM {
 
 const testS = useStoreTest()
 
-console.log(testS.myAnother)
-console.log(testS.myVal)
+// console.log(testS.myAnother)
+// console.log(testS.myVal)
 console.log(testS.myComputed)

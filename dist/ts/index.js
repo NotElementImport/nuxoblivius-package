@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue';
-import { preProcces as fetchPreProc } from './compilationFetch.js';
+import { preProcces as fetchPreProc, renderProcces as fetchRender } from './compilationFetch.js';
 import { preProcces as storagePreProc } from './compilationStorage.js';
 import { preProcces as webSocketPreProc } from './compilationWebSocket.js';
 const _allStateManagers = new Map();
@@ -56,15 +56,23 @@ export default class SM {
         const funcNames = Object.getOwnPropertyNames(proto);
         for (const name of names) {
             const container = this[name];
-            if (typeof container == 'object' && 'of' in container) {
-                if (container.of == ETypeRender.STATIC) {
+            if (typeof container === 'object' && 'of' in container) {
+                if (container.of === ETypeRender.STATIC) {
                     this._setStatic(name, container.value);
+                }
+                else if (container.of === ETypeRender.FETCH) {
+                    fetchRender(this, name, container);
                 }
             }
             else {
                 if (name[0] != '_') {
                     console.log(name);
                     this._setDefaultRef(name, container);
+                }
+                else {
+                    this._containersDescription.set(name, {
+                        type: ETypeRender.STATIC
+                    });
                 }
             }
         }

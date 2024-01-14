@@ -1,5 +1,5 @@
 import { Ref, ref, computed } from 'vue';
-import { preProcces as fetchPreProc } from './compilationFetch.js'
+import { preProcces as fetchPreProc, renderProcces as fetchRender } from './compilationFetch.js'
 import { preProcces as storagePreProc } from './compilationStorage.js'
 import { preProcces as webSocketPreProc } from './compilationWebSocket.js'
 
@@ -32,7 +32,7 @@ export default class SM {
 
     constructor() {}
 
-    protected fetch<T>(url: string|{path: string, query: {[name: string]: any}}, options: RequestInit) {
+    protected fetch<T>(url: string|{path: string, query: {[name: string]: any}}, options?: RequestInit) {
         return fetchPreProc<T>(url, options)
     }
 
@@ -40,8 +40,8 @@ export default class SM {
         return storagePreProc<T>(name, defaultValue)
     }
 
-    protected webSoket(url: string|{path: string, query: {[name: string]: any}}, protocols: string|string[]) {
-        return webSocketPreProc(url, protocols)
+    protected webSoket(url: string|{path: string, query: {[name: string]: any}}, protocols?: string|string[]) {
+        return webSocketPreProc(url, protocols as any)
     }
 
     protected static<T>(value: T): T {
@@ -69,9 +69,12 @@ export default class SM {
 
         for(const name of names) {
             const container = (this as any)[name]
-            if(typeof container == 'object' && 'of' in container) {
-                if(container.of == ETypeRender.STATIC) {
+            if(typeof container === 'object' && 'of' in container) {
+                if(container.of === ETypeRender.STATIC) {
                     this._setStatic(name, container.value)
+                }
+                else if(container.of === ETypeRender.FETCH) {
+                    fetchRender(this, name, container)
                 }
             }
             else {

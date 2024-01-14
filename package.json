@@ -5,7 +5,8 @@
   "description": "Nuxt store smart  module",
   "main": "index.js",
   "scripts": {
-    "test": "node ./dist/__index.mjs"
+    "test": "node ./dist/__index.mjs",
+    "build": "npx tsc -p tsconfig.json"
   },
   "keywords": [
     "nuxt3"
