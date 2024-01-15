@@ -4,17 +4,19 @@ import { ILanguageConfig } from '../../translate/index.js'
 import { config } from '../config.js';
 
 export const languageConfig = (value: ILanguageConfig, nuxtApp: any) => {
-    console.log(nuxtApp,nuxtApp.vueApp, nuxtApp.vueApp.directive);
-    nuxtApp.vueApp.directive('translate-placeholder', {
-        mounted(el: HTMLInputElement, biding: DirectiveBinding) {
-            Translate.c(biding.value).dynamicAttribute(el, 'placeholder')
-        }
-    });
-    nuxtApp.vueApp.directive('translate-title', {
-        mounted(el: HTMLElement, biding: DirectiveBinding) {
-            Translate.c(biding.value).dynamicAttribute(el, 'title')
-        }
-    });
+    if(nuxtApp) {
+        console.log(nuxtApp,nuxtApp.vueApp, nuxtApp.vueApp.directive);
+        nuxtApp.vueApp.directive('translate-placeholder', {
+            mounted(el: HTMLInputElement, biding: DirectiveBinding) {
+                Translate.c(biding.value).dynamicAttribute(el, 'placeholder')
+            }
+        });
+        nuxtApp.vueApp.directive('translate-title', {
+            mounted(el: HTMLElement, biding: DirectiveBinding) {
+                Translate.c(biding.value).dynamicAttribute(el, 'title')
+            }
+        });
+    }
     (Translate as any).loadConfig(value)
 }
 

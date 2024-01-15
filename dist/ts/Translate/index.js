@@ -1,16 +1,18 @@
 import { config } from '../config.js';
 export const languageConfig = (value, nuxtApp) => {
-    console.log(nuxtApp, nuxtApp.vueApp, nuxtApp.vueApp.directive);
-    nuxtApp.vueApp.directive('translate-placeholder', {
-        mounted(el, biding) {
-            Translate.c(biding.value).dynamicAttribute(el, 'placeholder');
-        }
-    });
-    nuxtApp.vueApp.directive('translate-title', {
-        mounted(el, biding) {
-            Translate.c(biding.value).dynamicAttribute(el, 'title');
-        }
-    });
+    if (nuxtApp) {
+        console.log(nuxtApp, nuxtApp.vueApp, nuxtApp.vueApp.directive);
+        nuxtApp.vueApp.directive('translate-placeholder', {
+            mounted(el, biding) {
+                Translate.c(biding.value).dynamicAttribute(el, 'placeholder');
+            }
+        });
+        nuxtApp.vueApp.directive('translate-title', {
+            mounted(el, biding) {
+                Translate.c(biding.value).dynamicAttribute(el, 'title');
+            }
+        });
+    }
     Translate.loadConfig(value);
 };
 export default class Translate {
