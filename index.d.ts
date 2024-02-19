@@ -266,3 +266,14 @@ declare export const setDefaultsConfig: (conf: {
         cachePlace?: PlaceKeep|PlaceKeep[]
     },
 }) => void
+
+interface ICapsule<T> {
+    set(value: T): void
+    get(): T
+};
+
+declare export const createCustomTemplate: (
+    name: string,
+    fetchLogic: (dry: Record<string, unknown>|Array<Record<string, unknown>>) => { data: any, pageCount: number }?, 
+    paginationLogic: (query: ICapsule<Record<string, unknown>>, path: ICapsule<string>) => void) 
+    => void

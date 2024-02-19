@@ -1,6 +1,6 @@
 import Filter from "./Filter/index.js"
 import StateManager from "./StateManager/index.js"
-import { config, _defaults } from "./config.js"
+import { config, _defaults, useCustomTemplate } from "./config.js"
 import { PatternsApi, PlaceKeep } from "./interfaces.js"
 import { addToPath, buildUrl, queryToApi } from "./utilits.js"
 
@@ -197,6 +197,18 @@ export class StateComposition extends CompositionBuilder {
             if(composition.template == 'yii2-data-provider') {
                 query['page[number]'] = composition.api.pagination.offset
                 query['page[size]'] = composition.api.pagination.size
+            }
+            else if(composition.template != '') {
+                const logic = useCustomTemplate(composition.template)
+                if(logic) {
+                    logic.url( { 
+                        set: (value: Record<string, unknown>) => { query = Object.assign(query, value) },
+                        get: () => query
+                    }, { 
+                        set: (value: string) => { composition.api.path += value }, 
+                        get: () => composition.api.path
+                    })
+                }
             }
         }
 

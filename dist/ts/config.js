@@ -5,12 +5,25 @@ export const settings = {
     cookie: (...args) => { },
     useServerFetch: false
 };
+const customsTemplates = new Map();
 export let _defaults = {
     template: ''
 };
 globalThis.headers = null;
 export const configDefaults = (conf) => {
     _defaults = conf;
+};
+export const createCustomTemplate = (name, fetchLogic, paginationLogic) => {
+    customsTemplates.set(name, {
+        fetch: fetchLogic,
+        url: paginationLogic
+    });
+};
+export const useCustomTemplate = (name) => {
+    if (customsTemplates.has(name)) {
+        return customsTemplates.get(name);
+    }
+    return null;
 };
 export const setCustomFetch = (value) => {
     settings.fetch = value;

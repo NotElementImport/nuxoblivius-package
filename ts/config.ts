@@ -6,7 +6,7 @@ export const settings = {
     cookie: (...args: any[]) => {},
     useServerFetch: false
 }
-
+const customsTemplates = new Map<string, {fetch: Function, url: Function}>()
 export let _defaults = {
     template: ''
 };
@@ -14,7 +14,18 @@ export let _defaults = {
 export const configDefaults = (conf: any) => {
     _defaults = conf
 }
-
+export const createCustomTemplate = (name: string, fetchLogic: Function, paginationLogic: Function) => {
+    customsTemplates.set(name, {
+        fetch: fetchLogic,
+        url: paginationLogic
+    })
+}
+export const useCustomTemplate = (name: string) => {
+    if(customsTemplates.has(name)) {
+        return customsTemplates.get(name)
+    }
+    return null
+}
 export const setCustomFetch = (value: Function) => {
     settings.fetch = value as any
 }

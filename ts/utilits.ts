@@ -1,4 +1,4 @@
-import { config } from "./config.js"
+import { config, useCustomTemplate } from "./config.js"
 import { PatternsApi } from "./interfaces.js"
 
 export const validateObject = (data: any): boolean => {
@@ -112,6 +112,24 @@ export const queryToApi = async (url: string, params: RequestInit, template: Pat
             return dry.data.attributes
         }
     }
+    else if(template != '') {
+        const logic = useCustomTemplate(template)
+        if(logic) {
+            const parsed = logic.fetch(dry);
+
+            if(typeof parsed != 'undefined') {
+                if('pageCount' in parsed) {
+                    composition.api.pagination.maxOffset = parsed['pageCount']
+                }
+                else {
+                    composition.api.pagination.maxOffset = 1
+                }
+
+                return parsed['data'];
+            }
+        }
+    }
+
     return dry
 }
 

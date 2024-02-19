@@ -1,4 +1,4 @@
-import { config } from "./config.js";
+import { config, useCustomTemplate } from "./config.js";
 export const validateObject = (data) => {
     if (typeof data == 'boolean')
         return true;
@@ -107,6 +107,21 @@ export const queryToApi = async (url, params, template, composition) => {
                 return dry.data.map((value) => value.attributes);
             }
             return dry.data.attributes;
+        }
+    }
+    else if (template != '') {
+        const logic = useCustomTemplate(template);
+        if (logic) {
+            const parsed = logic.fetch(dry);
+            if (typeof parsed != 'undefined') {
+                if ('pageCount' in parsed) {
+                    composition.api.pagination.maxOffset = parsed['pageCount'];
+                }
+                else {
+                    composition.api.pagination.maxOffset = 1;
+                }
+                return parsed['data'];
+            }
         }
     }
     return dry;
