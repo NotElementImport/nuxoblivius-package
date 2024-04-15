@@ -1,2 +1,3 @@
 ts/
 validate/*.ts
+node_modules

@@ -1,23 +1,16 @@
 {
-  "name": "nuxoblivius",
+  "name": "av2",
+  "version": "1.0.0",
   "type": "module",
-  "version": "0.3.4",
-  "description": "Nuxt store smart  module",
+  "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node index.js",
-    "build": "npx tsc -p tsconfig.json"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [
-    "nuxt3"
-  ],
-  
-  "author": "Not Element Import",
+  "author": "",
   "license": "ISC",
   "dependencies": {
-    "minify": "^10.5.2",
-    "nuxt": "^3.8.2",
-    "typescript": "^5.3.3",
-    "vue": "^3.3.9"
+    "typescript": "^5.4.4",
+    "vue": "^3.4.21"
   }
 }
