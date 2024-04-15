@@ -1,13 +1,13 @@
 {
-  "name": "av2",
+  "name": "nuxoblivius",
   "version": "1.0.0",
   "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"test\" && exit 0"
   },
-  "author": "",
+  "author": "notelementimport",
   "license": "ISC",
   "dependencies": {
     "typescript": "^5.4.4",
