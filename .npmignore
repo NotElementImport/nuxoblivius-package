@@ -1,3 +1,4 @@
 ts/
 validate/*.ts
 node_modules
+package-lock.json
