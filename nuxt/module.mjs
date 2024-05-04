@@ -14,7 +14,7 @@ const module = defineNuxtModule({
   setup(_options, _nuxt) {
     const resolver = createResolver(import.meta.url);
     _nuxt.options.appConfig.nuxoblivius = {
-      api: _options.api
+      api: _options.api,
     };
     _nuxt.hook("nitro:config", (nitro) => {
       nitro.plugins = nitro.plugins || [];

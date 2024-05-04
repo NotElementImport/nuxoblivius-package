@@ -1,7 +1,7 @@
 // import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery, urlPathParams } from "./Utils.js"
 import { options as ConfigOptions } from "./Config.js";
 import { reactive } from "vue";
-import { afterConfig, later } from "./index.js";
+import { later } from "./index.js";
 export default class Storage {
     static COOKIE = 2;
     static LOCALSTORAGE = 4;
@@ -24,10 +24,7 @@ export default class Storage {
         const storage = new Storage(value);
         storage._name = name;
         storage._where = this.COOKIE;
-        console.log(ConfigOptions.cookie);
-        afterConfig(() => {
-            storage.loadToStorage(ConfigOptions.cookie.get(name));
-        });
+        storage.loadToStorage(ConfigOptions.cookie.get(name));
         return storage;
     }
     constructor(value) {
@@ -51,7 +48,6 @@ export default class Storage {
     }
     loadToStorage(value) {
         if (typeof value == 'undefined' || value == null) {
-            console.log('empty');
             return;
         }
         if (typeof value === "string") {

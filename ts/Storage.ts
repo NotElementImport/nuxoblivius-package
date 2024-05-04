@@ -34,11 +34,9 @@ export default class Storage {
         storage._name = name
         storage._where = this.COOKIE
 
-        afterConfig(() => {
-            storage.loadToStorage(
-                ConfigOptions.cookie.get(name)
-            )
-        })
+        storage.loadToStorage(
+            ConfigOptions.cookie.get(name)
+        )
 
         return storage
     }
