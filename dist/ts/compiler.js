@@ -691,7 +691,7 @@ export class StateComposition extends CompositionBuilder {
                 });
             }
             config.set(composition.__value, v);
-            setTimeout(() => {
+            set(() => {
                 composition.subs.forEach((value) => {
                     value();
                 });
@@ -806,9 +806,9 @@ export class StateComposition extends CompositionBuilder {
                 }
                 catch (e) {
                     config.set(_fetching, false);
-                    setTimeout(() => {
-                        this.user().all();
-                    }, 1000);
+                    // setTimeout(() => {
+                    //     this.user().all();
+                    // }, 1000);
                 }
                 this._forceMode = false;
                 return composition.get();
@@ -873,11 +873,12 @@ export class StateComposition extends CompositionBuilder {
                     });
                 }
                 catch (e) {
-                    setTimeout(() => {
-                        config.set(_fetching, false);
-                        composition.api.pagination.offset -= 1;
-                        this.user().next();
-                    }, 1000);
+                    config.set(_fetching, false);
+                    // setTimeout(() => {
+                    //     config.set(_fetching, false);
+                    //     composition.api.pagination.offset -= 1;
+                    //     this.user().next();
+                    // }, 1000);
                 }
                 return composition.get();
             },
@@ -927,11 +928,12 @@ export class StateComposition extends CompositionBuilder {
                     });
                 }
                 catch (e) {
-                    setTimeout(() => {
-                        config.set(_fetching, false);
-                        composition.api.pagination.offset += 1;
-                        this.user().next();
-                    }, 1000);
+                    config.set(_fetching, false);
+                    // setTimeout(() => {
+                    //     config.set(_fetching, false);
+                    //     composition.api.pagination.offset += 1;
+                    //     this.user().next();
+                    // }, 1000);
                 }
                 return composition.get();
             },
