@@ -17,7 +17,14 @@ export function refOrVar(value: any) {
         value = value()
     }
 
+    if(value == null) {
+        return null
+    }
+
     if(typeof value == 'object' && '_module_' in value) {
+        return value.value
+    }
+    else if(typeof value == 'object' && isRef(value)) {
         return value.value
     }
 

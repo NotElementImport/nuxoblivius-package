@@ -11,7 +11,11 @@ export const options = {
         }
         if (isblob)
             return response.blob();
-        return response.json();
+        const raw = await response.text();
+        if (raw.length > 0 && (raw[0] == '{' || raw[0] == '[')) {
+            return JSON.parse(raw);
+        }
+        return raw;
     },
     cookie: { get: (name) => '', set: (name, value) => null },
     router: {},
@@ -35,8 +39,11 @@ export function extendsPattern(parent, child) {
     if ('data' in child) {
         parent.data = child.data;
     }
-    else if ('pageCount' in child) {
+    if ('pageCount' in child) {
         parent.pageCount = child.pageCount;
+    }
+    if ('protocol' in child) {
+        parent.protocol = child.protocol;
     }
     return parent;
 }
@@ -56,20 +63,26 @@ export async function storeFetch(url, requestInit, isblob, pattern) {
             error: false,
             code: 200,
             errorText: '',
-            pageCount: 0
+            pageCount: 0,
+            protocol: null
         };
     }
-    if ('_errorCode' in response) {
+    if (typeof response == 'object' && !Array.isArray(response) && '_errorCode' in response) {
+        if (response._errorBody.length > 0 && response._errorBody[0] == '{') {
+            response._errorBody = JSON.parse(response._errorBody);
+        }
         return {
-            data: null,
+            data: response._errorBody || null,
             error: true,
-            code: response._errorCode,
-            errorText: response._errorText,
-            pageCount: 0
+            code: response._errorCode || 500,
+            errorText: response._errorText || 'Unknow',
+            pageCount: 0,
+            protocol: null
         };
     }
     let data = response;
     let pageCount = 0;
+    let protocol = null;
     if (isValidPattern(pattern)) {
         const result = callPattern(pattern, response) || {};
         if (result.data) {
@@ -78,6 +91,9 @@ export async function storeFetch(url, requestInit, isblob, pattern) {
         if (result.countPages) {
             pageCount = result.countPages;
         }
+        if (result.protocol) {
+            protocol = result.protocol;
+        }
     }
     return {
         data,
@@ -85,6 +101,7 @@ export async function storeFetch(url, requestInit, isblob, pattern) {
         error: false,
         pageCount,
         errorText: '',
+        protocol
     };
 }
 export const settings = {

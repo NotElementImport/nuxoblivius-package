@@ -1,6 +1,6 @@
 import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery, urlPathParams } from "./Utils.js";
 import { storeFetch } from "./Config.js";
-import { reactive } from "vue";
+import { reactive, watch } from "vue";
 export default class Record {
     _url = '';
     _queryStore = null;
@@ -12,16 +12,25 @@ export default class Record {
     _auth = null;
     _swapMethod = 0;
     _onNullCheck = false;
+    _rules = [];
+    _defaultRule = () => null;
     _forceBody = false;
     _awaitBlob = false;
-    _keepBy = { 'id': 'path' };
-    _keepingContainer = {};
     _template = '';
     _lastStep = {
         method: '',
         arg: null
     };
-    _borrow = {};
+    _protocol = {};
+    _proxies = {};
+    _keepBy = { 'id': 'path' };
+    _keepByMethod = { 'id': 0 };
+    _borrow = new Map();
+    _borrowAnother = new Map();
+    _keepingContainer = new Map();
+    _enabledBorrow = true;
+    _onError = null;
+    _onEnd = null;
     _paginationEnabled = false;
     _pagination = {
         where: 'path',
@@ -33,10 +42,24 @@ export default class Record {
         isLastPage: false,
         response: null,
         error: '',
+        frozenKey: 0,
         isError: false,
         isLoading: false
     });
+    _frozenResponse = null;
+    get frozenResponse() {
+        return this._frozenResponse;
+    }
+    get frozenKey() {
+        return this._variables.frozenKey;
+    }
     get response() {
+        return this._variables.response;
+    }
+    get one() {
+        return this._variables.response;
+    }
+    get many() {
         return this._variables.response;
     }
     get pagination() {
@@ -79,8 +102,25 @@ export default class Record {
             },
             get current() {
                 return pThis._variables.currentPage;
+            },
+            get lastPage() {
+                return pThis._variables.maxPages;
             }
         };
+    }
+    get params() {
+        const pthis = this;
+        return {
+            get path() {
+                return pthis._proxies.path;
+            },
+            get query() {
+                return pthis._proxies.query;
+            }
+        };
+    }
+    get protocol() {
+        return this._proxies.protocol;
     }
     get loading() {
         return this._variables.isLoading;
@@ -94,6 +134,25 @@ export default class Record {
     static new(url) {
         const instance = new Record();
         instance._url = url;
+        instance._proxies.query = new Proxy({}, {
+            get(t, p, r) {
+                if (p in instance._staticQuery)
+                    return instance._staticQuery[p];
+                else if (p in instance._query)
+                    return instance._query[p];
+                return undefined;
+            }
+        });
+        instance._proxies.path = new Proxy({}, {
+            get(t, p, r) {
+                return instance._pathParams[p];
+            }
+        });
+        instance._proxies.protocol = new Proxy({}, {
+            get(t, p, r) {
+                return instance._protocol[p];
+            }
+        });
         return instance;
     }
     static Bearer(token) {
@@ -102,23 +161,105 @@ export default class Record {
     static Basic(login, password) {
         return `Basic ${btoa(login + ":" + password)}`;
     }
-    keepBy(...fields) {
-        for (const field of fields) {
-            if (field.startsWith('query:')) {
-                this._keepBy[field.slice(6)] = 'query';
-            }
-            else if (field.startsWith("path:")) {
-                this._keepBy[field.slice(5)] = 'path';
-            }
+    keepBy(field, method = 'simple') {
+        method = method == 'simple' ? 0 : 1;
+        if (field.startsWith('query:')) {
+            const name = field.slice(6);
+            this._keepBy[name] = 'query';
+            this._keepByMethod[name] = method;
+        }
+        else if (field.startsWith("path:")) {
+            const name = field.slice(5);
+            this._keepBy[name] = 'path';
+            this._keepByMethod[name] = method;
         }
         return this;
     }
-    onlyOnEmpty() {
-        this._onNullCheck = true;
+    onlyOnEmpty(enabled = true) {
+        this._onNullCheck = enabled;
         return this;
     }
     clearResponse() {
         this._variables.response = null;
+        this._frozenResponse = null;
+        return this;
+    }
+    static ruleAndDescriptorEqual(rule, descriptor) {
+        let isEqual = true;
+        for (const [name, value] of Object.entries(rule)) {
+            if (!(name in descriptor)) {
+                isEqual = false;
+                break;
+            }
+            else if (value != descriptor[name] && value != '*') {
+                isEqual = false;
+                break;
+            }
+            else if (value == '*' && descriptor[name] == null) {
+                isEqual = false;
+                break;
+            }
+        }
+        return isEqual;
+    }
+    rule(rule, behaviour) {
+        const check = (descriptor) => {
+            if (typeof rule == 'function') {
+                return rule(this.params);
+            }
+            return Record.ruleAndDescriptorEqual(rule, descriptor);
+        };
+        this._rules.push((descriptor) => {
+            if (!check(descriptor)) {
+                return false;
+            }
+            behaviour(this);
+            return true;
+        });
+        return this;
+    }
+    defaultRule(behaviour) {
+        this._defaultRule = () => behaviour(this);
+        return this;
+    }
+    cached(rule, defaultIsnt = null) {
+        for (const [descriptor, value] of this._keepingContainer.entries()) {
+            if (Record.ruleAndDescriptorEqual(rule, descriptor)) {
+                return value;
+            }
+        }
+        return defaultIsnt;
+    }
+    deleteCached(rule) {
+        for (const [descriptor, value] of this._keepingContainer.entries()) {
+            if (Record.ruleAndDescriptorEqual(rule, descriptor)) {
+                this._keepingContainer.delete(descriptor);
+            }
+        }
+    }
+    url(path) {
+        this._url = path;
+        return this;
+    }
+    enableBorrow(value) {
+        this._enabledBorrow = value;
+        return this;
+    }
+    prepare(rule, behaviour = () => true) {
+        let data = this.cached(rule);
+        if (!behaviour())
+            return this;
+        if (data != null) {
+            this.setResponse(data);
+            this._variables.currentPage = 1;
+        }
+        else {
+            console.warn('prepare is empty');
+        }
+        return this;
+    }
+    frozenTick() {
+        this._variables.frozenKey += 1;
         return this;
     }
     swapMethod(method) {
@@ -133,11 +274,37 @@ export default class Record {
         }
         return this;
     }
-    borrowAtAnother(another, as) {
+    borrowAtAnother(logic, another, as) {
+        this._borrowAnother.set(logic, (response) => {
+            const object = refOrVar(another);
+            if (!Array.isArray(object)) {
+                console.warn('{value} is not array');
+                return null;
+            }
+            for (const part of object) {
+                const result = as(part);
+                if (typeof result != 'undefined' && result != null) {
+                    return result;
+                }
+            }
+            return null;
+        });
+        return this;
     }
-    borrowAtSelf(where, as) {
-        const response = () => {
-        };
+    borrowAtSelf(where, from, as) {
+        this._borrow.set(where, [from, (response) => {
+                if (!Array.isArray(response)) {
+                    console.warn('{value} is not array');
+                    return null;
+                }
+                for (const part of response) {
+                    const result = as(part);
+                    if (typeof result != 'undefined' && result != null) {
+                        return result;
+                    }
+                }
+                return null;
+            }]);
         return this;
     }
     template(template) {
@@ -163,6 +330,10 @@ export default class Record {
         }
         return this;
     }
+    defineProtocol(key, defaultValue = null) {
+        this._protocol[key] = defaultValue;
+        return this;
+    }
     header(name, value) {
         resolveOrLater(value, (result) => {
             this._headers[name] = result;
@@ -177,12 +348,31 @@ export default class Record {
         return this;
     }
     reloadBy(object) {
+        const pThis = this;
         resolveOrLater(object, (result) => {
-            if (typeof result != 'object' || !('_module_' in result))
+            if (typeof result != 'object')
                 throw `reloadBy: only ref support`;
-            result.watch(() => {
-                this[this._lastStep.method](this._lastStep.arg);
-            });
+            const objectClassName = Object.getPrototypeOf(result).constructor.name || 'none';
+            if (objectClassName == 'RefImpl') {
+                watch(result, () => {
+                    pThis.clearResponse();
+                    pThis.frozenTick();
+                    pThis.deleteCached(pThis.proccesDescriptor(this.compileQuery()));
+                    pThis[pThis._lastStep.method](pThis._lastStep.arg)
+                        .then((_) => pThis.frozenTick());
+                });
+            }
+            else {
+                if (!('_module_' in result))
+                    throw `reloadBy: only ref support`;
+                result.watch(() => {
+                    pThis.clearResponse();
+                    pThis.frozenTick();
+                    pThis.deleteCached(pThis.proccesDescriptor(this.compileQuery()));
+                    pThis[pThis._lastStep.method](pThis._lastStep.arg)
+                        .then((_) => pThis.frozenTick());
+                });
+            }
         });
         return this;
     }
@@ -200,17 +390,21 @@ export default class Record {
         this._query = {};
         return this;
     }
+    onFailure(method) {
+        this._onError = method;
+        return this;
+    }
+    onFinish(method) {
+        this._onError = method;
+        return this;
+    }
     async get(id = null) {
-        if (this._onNullCheck && this._variables.response != null) {
-            return this._variables.response;
-        }
         this.swapGreedy();
         if (!this._forceBody)
             this._body = null;
         this.pathParam('id', id);
         this._lastStep.method = 'get';
         this._lastStep.arg = id;
-        this.swapLazy();
         return this.doFetch('GET');
     }
     async post(body = null) {
@@ -222,33 +416,70 @@ export default class Record {
             this._body = body;
         this._lastStep.method = 'post';
         this._lastStep.arg = body;
-        this.swapLazy();
         return this.doFetch('POST');
     }
     async put(body = null) {
-        if (this._onNullCheck && this._variables.response != null) {
-            return this._variables.response;
-        }
         this.swapGreedy();
         if (!this._forceBody)
             this._body = body;
         this._lastStep.method = 'put';
         this._lastStep.arg = body;
-        this.swapLazy();
         return this.doFetch('PUT');
     }
     async delete(id = null) {
-        if (this._onNullCheck && this._variables.response != null) {
-            return this._variables.response;
-        }
         this.swapGreedy();
         if (!this._forceBody)
             this._body = null;
         this.pathParam('id', id);
         this._lastStep.method = 'delete';
         this._lastStep.arg = id;
-        this.swapLazy();
         return this.doFetch('DELETE');
+    }
+    borrowingFromAnother(descriptor, query) {
+        if (!this._enabledBorrow)
+            return null;
+        const resolveRule = (rule, descriptor) => {
+            if (typeof rule == 'function') {
+                return rule(this.params);
+            }
+            return Record.ruleAndDescriptorEqual(rule, descriptor);
+        };
+        if (this._borrowAnother.size > 0) {
+            for (const [rule, checking] of this._borrowAnother.entries()) {
+                if (!resolveRule(rule, descriptor)) {
+                    continue;
+                }
+                const result = checking(null);
+                if (result != null) {
+                    return result;
+                }
+            }
+        }
+        if (this._borrow.size > 0) {
+            for (const [rule, checking] of this._borrow.entries()) {
+                if (!resolveRule(rule, descriptor)) {
+                    continue;
+                }
+                let cached = this.cached(checking[0]);
+                if (cached != null) {
+                    const result = checking[1](cached);
+                    if (result != null) {
+                        return result;
+                    }
+                }
+                else {
+                    break;
+                }
+            }
+        }
+        return null;
+    }
+    compileQuery() {
+        const queryObject = this._queryStore != null
+            ? storeToQuery(this._queryStore)
+            : {};
+        const pagination = this.compilePagination();
+        return appendMerge(queryObject, this._staticQuery, this._query, pagination);
     }
     compilePagination() {
         if (this._paginationEnabled) {
@@ -263,17 +494,63 @@ export default class Record {
         }
         return {};
     }
+    proccesRules(descriptor) {
+        if (this._rules.length == 0) {
+            return;
+        }
+        let proccesed = false;
+        for (const rule of this._rules) {
+            let result = rule(descriptor);
+            if (result) {
+                proccesed = true;
+                break;
+            }
+        }
+        if (!proccesed)
+            this._defaultRule();
+    }
+    proccesDescriptor(query) {
+        const descriptor = {};
+        const getFrom = (where, key) => where == 'query'
+            ? (query[key] || null)
+            : (this._pathParams[key] || null);
+        for (const [key, value] of Object.entries(this._keepBy)) {
+            descriptor[key] = getFrom(value, key) != null
+                ? `*`
+                : null;
+        }
+        return descriptor;
+    }
     async doFetch(method = 'GET') {
         this._variables.isLoading = true;
-        const queryObject = this._queryStore != null
-            ? storeToQuery(this._queryStore)
-            : {};
-        const pagination = this.compilePagination();
-        const queries = appendMerge(queryObject, this._staticQuery, this._query, pagination);
+        method = method.toLocaleLowerCase();
+        const descriptor = this.proccesDescriptor(this.compileQuery());
+        this.proccesRules(descriptor);
+        let queries = this.compileQuery();
+        if (this._onNullCheck && this._variables.response != null) {
+            this._variables.isLoading = false;
+            return this._variables.response;
+        }
+        if (method == 'get' || method == "post") {
+            const result = this.borrowingFromAnother(descriptor, queries);
+            if (result != null) {
+                this.setResponse(result);
+                this._variables.error = '';
+                this._variables.maxPages = 1;
+                this._variables.isError = false;
+                this._variables.isLoading = false;
+                return result;
+            }
+        }
+        this.swapLazy();
         const url = urlPathParams(this._url, this._pathParams)
             + queryToUrl(queries);
+        const rebuildHeader = {};
+        for (const [key, value] of Object.entries(this._headers)) {
+            rebuildHeader[key] = refOrVar(value);
+        }
         const options = {
-            headers: appendMerge(this._headers, { 'Authorization': refOrVar(this._auth) }),
+            headers: appendMerge(rebuildHeader, { 'Authorization': refOrVar(this._auth) }),
             method,
         };
         if (this._body != null) {
@@ -282,13 +559,25 @@ export default class Record {
                 options['body'] = JSON.stringify(this._body);
             }
         }
-        const fetchResult = await storeFetch(url, options, this._awaitBlob, this._template);
-        this._variables.response = fetchResult.data;
+        let fetchResult = await storeFetch(url, options, this._awaitBlob, this._template);
+        if (fetchResult.error && this._onError != null) {
+            const answer = await this._onError({ text: fetchResult.errorText, code: fetchResult.code }, () => this.doFetch(method));
+            if (typeof answer == 'object') {
+                fetchResult.data = answer;
+                fetchResult.error = false;
+            }
+        }
+        this.setResponse(fetchResult.data);
         this._variables.error = fetchResult.errorText;
         this._variables.maxPages = fetchResult.pageCount;
         this._variables.isError = fetchResult.error;
         this._variables.isLoading = false;
+        if (fetchResult.protocol != null) {
+            this._protocol = fetchResult.protocol;
+        }
         this.keep(fetchResult.data, queries);
+        if (this._onEnd)
+            this._onEnd(fetchResult.data);
         return fetchResult.data;
     }
     swapGreedy() {
@@ -301,15 +590,28 @@ export default class Record {
             this.clearResponse();
         }
     }
+    setResponse(v) {
+        this._variables.response = v;
+        if (Array.isArray(v)) {
+            this._frozenResponse = [...v];
+        }
+        else {
+            this._frozenResponse = { ...v };
+        }
+        return this._variables.response;
+    }
     keep(response, query) {
+        const dataDescription = {};
         const getFrom = (where, key) => where == 'query'
             ? (query[key] || null)
             : (this._pathParams[key] || null);
-        const keyForKeeping = Object.entries(this._keepBy)
-            .map(([key, where]) => getFrom(where, key) != null
-            ? `${key}:sets`
-            : `${key}:null`)
-            .join(';');
-        this._keepingContainer[keyForKeeping] = response;
+        for (const [key, value] of Object.entries(this._keepBy)) {
+            const mode = this._keepByMethod[key];
+            const data = getFrom(value, key);
+            dataDescription[key] = data != null
+                ? (mode == 0 ? `*` : data)
+                : null;
+        }
+        this._keepingContainer.set(dataDescription, response);
     }
 }

@@ -1,5 +1,6 @@
 import { defineNuxtPlugin, useAppConfig, useCookie, useAsyncData } from "#app";
 import { settings, options as ConfigOptions } from "nuxoblivius/dist/ts/Config";
+import { deleteDump } from "nuxoblivius/dist/ts/index.js";
 export default defineNuxtPlugin({
     enforce: "pre",
     parallel: false,
@@ -18,11 +19,19 @@ export default defineNuxtPlugin({
             });
             settings.isServer(false);
         });
-        settings.apiRoot(useAppConfig().nuxoblivius.api);
-        settings.httpClient(async (url, options) => {
-            const { data } = await useAsyncData(url, () => $fetch(ConfigOptions.isServer ? ConfigOptions.apiRoot + url : url, options));
-            return data.value;
+        _nuxtApp.hook('app:rendered', function () {
+            deleteDump();
         });
-        settings.isServer(true);
+        _nuxtApp.hook('app:created', function () {
+            settings.apiRoot(useAppConfig().nuxoblivius.api);
+            settings.httpClient(async (url, options) => {
+                const { data } = await useAsyncData(url, () => (async () => {
+                    const data = await fetch(ConfigOptions.isServer ? ConfigOptions.apiRoot + url : url, options);
+                    return data.json();
+                })());
+                return data.value;
+            });
+            settings.isServer(true);
+        });
     }
 });

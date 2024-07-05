@@ -17,132 +17,32 @@ export const onConfigured = () => {
         func()
     }
 }
+export function deleteDump() {
+    const recursiveDeleteDump = (_value: any) => {
+        if(_value._variables) {
+            for (const [key, value] of Object.entries(_value._variables)) {
+                _value._variables[key] = _value._defaults[key]
+            }
+        }
 
-// export const hydrateDataFromStores = () => {
-//     let meta: any = {}
-//     const clearAllResponses: Function[] = []
+        if(_value._stores) {
+            for (const [key, value] of Object.entries(_value._stores)) {
+                recursiveDeleteDump(value)
+            }
+        }
 
-//     for (const [store, instance] of storageOfStores.entries()) {
-//         let isHad = ''
-//         const temp = {}
+        for (const name of Object.getOwnPropertyNames(_value)) {
+            const value = _value[name]
+            if(typeof value == 'object' && value != null && '_variables' in value && value._variables && typeof value._variables == 'object' && 'response' in value._variables) {
+                value._variables.response = null
+            }
+        }
+    }
 
-//         const notSystem = (p: string) => 
-//             p != 'ref' 
-//             && p != '_variables'
-//             && p != '_watcher'
-//             && p != '_stores'
-
-//         const writeTo = (to: any, object: any) => {
-//             const hyd = (p: string, value: any) => to[p] = value
-//             const existDuplicate = (p: string) => '_'+p in object
-//             const isRecord = (p: string) => object[p] instanceof StoreRecord
-//             const isStorage = (p: string) => object[p] instanceof Storage
-//             const isNotObject = (p: string) => typeof object[p] != "object"
-
-//             for (const property of Object.getOwnPropertyNames(object)) {
-//                 if(notSystem(property) && !existDuplicate(property)) {
-//                     if(isRecord(property)) {
-//                         hyd(property, object[property].response)
-//                         clearAllResponses.push(() => {object[property]._variables.response = null})
-//                     }
-//                     else if(isNotObject(property)) {
-//                         hyd(property, object[property])
-//                     }
-//                     else {
-//                         to[property] = {}
-//                         writeTo(to[property], object[property])
-//                     }
-//                     isHad += property.substring(0, 3)
-//                 }
-//             }
-//         }
-
-//         writeTo(temp, instance)
-
-//         meta[btoa(isHad.substring(0, 32))] = temp
-//     }
-
-//     const dataToReturn = JSON.stringify(meta)
-//     clearAllResponses.forEach((v) => v())
-//     return dataToReturn
-// }
-
-// export const hydrateOnClient = (data: Record<string, any>) => {
-//     const exist = (hash: string) => hash in data
-//     const storeHash = (store: object) => {
-//         let isHad = ''
-
-//         const notSystem = (p: string) => 
-//             p != 'ref' 
-//             && p != '_variables'
-//             && p != '_watcher'
-//             && p != '_stores'
-
-//         const readVariables = (object: any) => {
-//             const existDuplicate = (p: string) => '_'+p in object
-//             const isRecord = (p: string) => object[p] instanceof StoreRecord
-
-//             for (const property of Object.getOwnPropertyNames(object)) {
-//                 if(notSystem(property) && !existDuplicate(property)) {
-//                     if(typeof object[property] === "object" && object[property] != null && !isRecord(property)) {
-//                         readVariables(object[property])
-//                     }
-//                     isHad += property.substring(0, 3)
-//                 }
-//             }
-//         }
-
-//         readVariables(store)
-
-//         return btoa(isHad.substring(0, 32))
-//     }
-
-//     for (const [store, instance] of storageOfStores.entries()) {
-//         const hash = storeHash(instance)
-
-//         if(!exist(hash)) {
-//             continue;
-//         }
-
-//         const hydrateData = data[hash]
-
-//         const notSystem = (p: string) => 
-//             p != 'ref' 
-//             && p != '_variables'
-//             && p != '_watcher'
-//             && p != '_stores'
-
-//         const setAttributes = (to: Record<string, any>, object: Record<string, any>) => {
-//             const hyd = (p: string, value: any) => to[p] = value
-//             const existDuplicate = (p: string) => '_'+p in object
-//             const isRecord = (p: string) => to[p] instanceof StoreRecord
-//             const isNotObject = (p: string) => typeof to[p] != "object"
-
-//             for (const property of Object.getOwnPropertyNames(object)) {
-//                 if(notSystem(property) && !existDuplicate(property)) {
-//                     if(typeof object[property] == 'undefined' || object[property] == null)
-//                         continue;
-
-//                     if(isRecord(property)) {
-//                         if(object[property] != null) {
-//                             to[property]._isHydration = true;
-//                         }
-//                         to[property]._variables.response = object[property]
-//                     }
-//                     else if(isNotObject(property)) {
-//                         hyd(property, object[property])
-//                     }
-//                     else {
-//                         setAttributes(to[property], object[property])
-//                     }
-//                 }
-//             }
-//         }
-
-//         setAttributes(instance, hydrateData)
-//     }
-// }
-
+    for (const [key, value] of storageOfStores.entries()) {
+        recursiveDeleteDump(value);
+    }
+}
 function create_proxy(target: object, get: Function, has: Function = (t: any, p: any) => true) {
     return new Proxy({}, {
         get(target, p, receiver) {
@@ -163,9 +63,16 @@ function raise(store: any) {
         () => true)
     
     const instance = new store()
+    storageOfStores.set(store, instance)
 
+    const variables = reactive({})
+
+    Object.defineProperty(instance, '_defaults', {
+        value: {},
+        configurable: false
+    })
     Object.defineProperty(instance, '_variables', {
-        value: reactive({}),
+        get() {return variables},
         configurable: false
     })
     Object.defineProperty(instance, '_stores', {
@@ -216,8 +123,10 @@ function raise(store: any) {
     })
 
     const triggerToChanges = (nameObject: string) => {
-        for (const func of instance._watcher[nameObject]) {
-            func()
+        if(instance._watcher[nameObject]) {
+            for (const func of instance._watcher[nameObject]) {
+                func()
+            }
         }
     }
 
@@ -243,15 +152,25 @@ function raise(store: any) {
         instance._watcher[name] = []
     }
 
+    const isDefaultVar = (name: any) =>
+        name == 'ref' || name == '_defaults' || name == '_stores' || name == '_variables' || name == '_watcher'
+
     // Define property to reactive
     for (const propertyName of Object.getOwnPropertyNames(instance)) {
+        if(isDefaultVar(propertyName))
+            continue;
+
         const valueOfProperty = instance[propertyName]
         
+        const isNotClassObject = (v: any = valueOfProperty) =>
+            typeof v != 'undefined' && v != null && typeof v == 'object' && Object.getPrototypeOf(v).__proto__ == null || Array.isArray(v)
+
         // If Undefined
         if(typeof valueOfProperty == 'undefined') {
             if('_'+propertyName in instance) {
-                if(typeof instance['_'+propertyName] != 'object') {
+                if(isNotClassObject(instance['_'+propertyName])) {
                     instance._variables[propertyName] = instance['_'+propertyName]
+                    instance._defaults[propertyName] = instance['_'+propertyName]
 
                     objectDefineReadOnly(propertyName, propertyName)
                     objectDefine('_'+propertyName, propertyName)
@@ -259,6 +178,7 @@ function raise(store: any) {
                 else {
                     if(instance['_'+propertyName] instanceof Storage) {
                         instance._variables[propertyName] = instance['_'+propertyName]
+                        instance._defaults[propertyName] = instance['_'+propertyName]
                         Object.defineProperty(instance, propertyName, {
                             get() {
                                 return instance._variables[propertyName].value
@@ -282,14 +202,16 @@ function raise(store: any) {
             }
         }
         // Is Reactive value
-        else if((typeof valueOfProperty != 'object' || valueOfProperty == null) && propertyName[0] != '_') {
+        else if((isNotClassObject() || valueOfProperty == null) && propertyName[0] != '_') {
             instance._variables[propertyName] = valueOfProperty
+            instance._defaults[propertyName] = valueOfProperty
 
             objectDefine(propertyName, propertyName)
         }
         // Is Storage 
         else if(valueOfProperty instanceof Storage && propertyName[0] != '_') {
             instance._variables[propertyName] = valueOfProperty
+            instance._defaults[propertyName] = valueOfProperty
 
             Object.defineProperty(instance, propertyName, {
                 get() {
@@ -303,9 +225,13 @@ function raise(store: any) {
     }
 
     for (const [name, value] of Object.entries(Object.getOwnPropertyDescriptors(Object.getPrototypeOf(instance)))) {
+        if(isDefaultVar(name))
+            continue;
+
         if(typeof value.value == 'undefined' && typeof value.get == 'undefined') {
             if('_'+name in instance) {
                 instance._variables[name] = instance['_'+name]
+                instance._defaults[name] = instance['_'+name]
 
                 Object.defineProperty(instance, name, {
                     get() {
@@ -327,6 +253,10 @@ function raise(store: any) {
                 instance._watcher[name] = []
             }
         }
+    }
+
+    if('mounted' in instance) {
+        instance.mounted()
     }
 
     return instance

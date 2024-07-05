@@ -2,7 +2,7 @@ import { onConfigured } from "./index.js"
 
 type TemplateFunction = (raw: any) => {data?: any, countPages?: number}
 type TemplateLogic = {[key: string]: TemplateFunction}
-type FetchResult = {data: object|Blob|null, error: boolean, errorText: string, code: number, pageCount: number}
+type FetchResult = {data: object|Blob|null, error: boolean, errorText: string, code: number, pageCount: number, protocol?: object}
 
 export const options = {
     http: async (url: string, options: any, isblob: boolean) => {
@@ -18,7 +18,12 @@ export const options = {
 
         if(isblob)
             return response.blob()
-        return response.json() 
+        const raw = await response.text()
+        
+        if(raw.length > 0 && (raw[0] == '{' || raw[0] == '[')) {
+            return JSON.parse(raw)
+        }
+        return raw
     },
     cookie: { get: (name: string) => '', set: (name: string, value: any) => null as any} as any as { get(name: string): any, set(name: string, value: any): void },
     router: {} as any as { currentRoute: '', params: {}, query: {} },
@@ -45,8 +50,11 @@ export function extendsPattern(parent: any, child: any) {
     if('data' in child) {
         parent.data = child.data    
     }
-    else if('pageCount' in child) {
+    if('pageCount' in child) {
         parent.pageCount = child.pageCount
+    }
+    if('protocol' in child) {
+        parent.protocol = child.protocol
     }
 
     return parent
@@ -70,22 +78,29 @@ export async function storeFetch(url: string, requestInit: any, isblob: boolean,
             error: false,
             code: 200,
             errorText: '',
-            pageCount: 0
+            pageCount: 0,
+            protocol: null
         }
     }
 
-    if('_errorCode' in response) {
+    if(typeof response == 'object' && !Array.isArray(response) && '_errorCode' in response) {
+        if(response._errorBody.length > 0 && response._errorBody[0] == '{') {
+            response._errorBody = JSON.parse(response._errorBody)
+        }
+
         return {
-            data: null,
+            data: response._errorBody       || null,
             error: true,
-            code: response._errorCode,
-            errorText: response._errorText,
-            pageCount: 0
+            code: response._errorCode       || 500,
+            errorText: response._errorText  || 'Unknow',
+            pageCount: 0,
+            protocol: null
         }
     }
 
     let data = response
     let pageCount = 0
+    let protocol = null
 
     if(isValidPattern(pattern)) {
         const result = callPattern(pattern, response) || {}
@@ -97,6 +112,10 @@ export async function storeFetch(url: string, requestInit: any, isblob: boolean,
         if(result.countPages) {
             pageCount = result.countPages
         }
+
+        if(result.protocol) {
+            protocol = result.protocol
+        }
     }
 
     return {
@@ -105,6 +124,7 @@ export async function storeFetch(url: string, requestInit: any, isblob: boolean,
         error: false,
         pageCount,
         errorText: '',
+        protocol
     }
 }
 
