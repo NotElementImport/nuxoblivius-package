@@ -116,7 +116,7 @@ export interface IStateApi<T> {
      * @param login 
      * @param password 
      */
-    auth(type: AuthType, login: string, password: string): IStateApi<T>
+    auth(token: any): IStateApi<T>
     join(object: IState<T>|IStateFin<T>|string|StateValue<T>,  type?: JoinMethod): IStateApi<T>
     join(object: IStateApiMany<T>|IStateApiPagiMany<T>|IStateApiOne<T>, fieldLink: string): IStateApi<T>
     joinToQuery(name: string, object: IState<T>|IStateFin<T>|string): IStateApi<T>
@@ -130,6 +130,7 @@ export interface IStateApiOne<T> {
     get(value: string|number|{[param:string]:any}): StateValue<T>
     getBy(param: string|{[queryName:string]:string}): StateValue<T>
     setQuery(query: StateQuery): IStateApiOne<T>
+    customAuth(token: any): IStateApi<T>
     /**
      * Force mode
      */
@@ -169,6 +170,7 @@ export interface ISyncApiOne<T> {
 
 export interface IStateApiMany<T> {
     all(): StateValue<T>[]
+    customAuth(token: any): IStateApi<T>
     /**
      * Force mode
      */
@@ -190,7 +192,7 @@ export interface IStateApiPagi<T> {
     sort<K extends any>(func: (a: K, b: K) => number): IStateApiPagi<T>
     has(func: (a: T) => boolean): IStateApiPagi<T>
     has<K extends any>(func: (a: K) => boolean): IStateApiPagi<T>
-    auth(type: AuthType, login: string, password: string): IStateApiPagi<T>
+    auth(token: any): IStateApiPagi<T>
     filter(object: string, local?: boolean): IStateApiPagi<T>
     filter(object: string, cmd?: "emit-always"|"emit-localy"): IStateApiPagi<T>
     join(object: IState<T>|IStateFin<T>|string|StateValue<T>, type?: JoinMethod): IStateApiPagi<T>
@@ -203,6 +205,7 @@ export interface IStateApiPagiMany<T> {
     value: StateValue<T>[]
     next(): StateValue<T>[]
     prev(): StateValue<T>[]
+    customAuth(token: any): IStateApi<T>
     /**
      * Force mode
      */

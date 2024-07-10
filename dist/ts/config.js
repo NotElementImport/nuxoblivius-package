@@ -1,6 +1,6 @@
 import { ref } from "vue";
 export const settings = {
-    fetch: async (...args) => { },
+    fetch: null,
     router: () => { },
     cookie: (...args) => { },
     useServerFetch: false
@@ -74,7 +74,7 @@ export const config = {
     isRobot: false
 };
 config.request = async (url, params) => {
-    if (settings.useServerFetch || config.isRobot) {
+    if (settings.fetch) {
         const fetchData = await settings.fetch(url, { credentials: 'include', responseType: 'text', cache: 'no-cache', ...params });
         return fetchData.data.value;
     }

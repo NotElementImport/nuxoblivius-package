@@ -153,7 +153,8 @@ export class StateComposition extends CompositionBuilder {
             auth: {
                 use: false,
                 login: '',
-                password: ''
+                password: '',
+                update: () => { },
             },
             filters: [],
             localFilters: [],
@@ -162,7 +163,7 @@ export class StateComposition extends CompositionBuilder {
             },
             customParams: {},
             optimization: {
-                preventRepeat: true,
+                preventRepeat: process.client,
             },
             pagination: {
                 append: false,
@@ -297,8 +298,15 @@ export class StateComposition extends CompositionBuilder {
     }
     doAuth(composition, args) {
         composition.api.auth.use = true;
-        composition.api.auth.login = args[0];
-        composition.api.auth.password = args[1];
+        const delimeter = args[0].split('.');
+        const objectParams = StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim());
+        objectParams.subs.push(() => {
+            composition.api.auth.login = StateManager.manager(delimeter[0].trim())[delimeter[1].trim()];
+            if (composition.api.auth.update) {
+                composition.api.auth.update();
+            }
+        });
+        composition.api.auth.login = objectParams.get();
     }
     doJoin(composition, args) {
         if (typeof args[0] == 'string') {
@@ -328,9 +336,7 @@ export class StateComposition extends CompositionBuilder {
                 else {
                     StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
                         .subs.push(() => {
-                        setTimeout(() => {
-                            composition.lastStep();
-                        }, 100);
+                        composition.lastStep();
                     });
                 }
             }
@@ -344,11 +350,9 @@ export class StateComposition extends CompositionBuilder {
                 composition.api.linkMethod = args[1];
                 composition.api.optimization.preventRepeat = false;
                 args[0].__ref.subs.push(() => {
-                    setTimeout(() => {
-                        if (Object.keys(composition.get()).length != 0) {
-                            composition.lastStep();
-                        }
-                    }, 50);
+                    if (Object.keys(composition.get()).length != 0) {
+                        composition.lastStep();
+                    }
                 });
             }
             else {
@@ -372,9 +376,9 @@ export class StateComposition extends CompositionBuilder {
                 }
                 else {
                     args[0].__ref.subs.push(() => {
-                        setTimeout(() => {
-                            composition.lastStep();
-                        }, 100);
+                        // setTimeout(() => {
+                        composition.lastStep();
+                        // },100)
                     });
                 }
             }
@@ -425,6 +429,15 @@ export class StateComposition extends CompositionBuilder {
     wayOne2(composition, val) {
         const _pthis = this;
         const _fetching = config.init(false);
+        const customParams = {};
+        if (composition.api.auth.use) {
+            customParams.headers = {};
+            customParams.headers['Authorization'] = `Bearer ${composition.api.auth.login}`;
+        }
+        composition.api.auth.update = () => {
+            customParams.headers = {};
+            customParams.headers['Authorization'] = `Bearer ${composition.api.auth.login}`;
+        };
         if (composition.get() == null)
             composition.set({});
         const get = async (value) => {
@@ -444,7 +457,7 @@ export class StateComposition extends CompositionBuilder {
                 query = Object.assign(query, value);
             }
             let url = buildUrl(path, query, {}, composition.template);
-            let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
+            let params = Object.assign({ method: composition.api.method }, composition.api.customParams, customParams);
             return await queryToApi(url, params, composition.template, composition);
         };
         const send = async (body, multipart = false) => {
@@ -459,7 +472,7 @@ export class StateComposition extends CompositionBuilder {
             let url = buildUrl(path, query, {}, composition.template);
             let params = Object.assign({ method: composition.api.method, body: body, headers: {
                     'Content-Type': multipart ? undefined : 'application/json'
-                } }, composition.api.customParams);
+                } }, composition.api.customParams, customParams);
             return await queryToApi(url, params, composition.template, composition);
         };
         const property = {
@@ -597,6 +610,11 @@ export class StateComposition extends CompositionBuilder {
                 composition.api.query = params;
                 return this;
             },
+            customAuth(token) {
+                composition.api.auth.login = token;
+                composition.api.auth.use = true;
+                return this;
+            },
             user() {
                 this._forceMode = true;
                 return this;
@@ -621,9 +639,7 @@ export class StateComposition extends CompositionBuilder {
                     config.set(composition.__value, cook);
                 }
                 else {
-                    setTimeout(() => {
-                        config.set(composition.__value, config.getCookie(composition.cache.name));
-                    }, 100);
+                    config.set(composition.__value, config.getCookie(composition.cache.name));
                 }
                 composition.cache.loaded = true;
             }
@@ -703,11 +719,7 @@ export class StateComposition extends CompositionBuilder {
                 });
             }
             config.set(composition.__value, v);
-            setTimeout(() => {
-                composition.subs.forEach((value) => {
-                    value();
-                });
-            }, 50);
+            composition.subs.forEach((value) => value());
         };
         return composition;
     }
@@ -730,6 +742,15 @@ export class StateComposition extends CompositionBuilder {
         const _allInstances = [];
         const _max = config.init(0);
         const _current = config.init(1);
+        const customParams = {};
+        if (composition.api.auth.use) {
+            customParams.headers = {};
+            customParams.headers['Authorization'] = `Bearer ${composition.api.auth.login}`;
+        }
+        composition.api.auth.update = () => {
+            customParams.headers = {};
+            customParams.headers['Authorization'] = `Bearer ${composition.api.auth.login}`;
+        };
         const updateFilter = () => {
             composition.set(config.get(_originalValue)
                 .filter((value) => {
@@ -776,7 +797,7 @@ export class StateComposition extends CompositionBuilder {
                 let query = _pthis.compileQuery(composition);
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
-                let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
+                let params = Object.assign({ method: composition.api.method }, composition.api.customParams, customParams);
                 _pthis.raiseMethod(composition, 'on awake', []);
                 try {
                     queryToApi(url, params, composition.template, composition).then((ival) => {
@@ -818,9 +839,9 @@ export class StateComposition extends CompositionBuilder {
                 }
                 catch (e) {
                     config.set(_fetching, false);
-                    setTimeout(() => {
-                        this.user().all();
-                    }, 1000);
+                    // setTimeout(() => {
+                    //     this.user().all()
+                    // }, 1000)
                 }
                 this._forceMode = false;
                 return composition.get();
@@ -846,7 +867,7 @@ export class StateComposition extends CompositionBuilder {
                 let query = _pthis.compileQuery(composition);
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
-                let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
+                let params = Object.assign({ method: composition.api.method }, composition.api.customParams, customParams);
                 _pthis.raiseMethod(composition, 'on awake', []);
                 try {
                     queryToApi(url, params, composition.template, composition).then((ival) => {
@@ -885,11 +906,11 @@ export class StateComposition extends CompositionBuilder {
                     });
                 }
                 catch (e) {
-                    setTimeout(() => {
-                        config.set(_fetching, false);
-                        composition.api.pagination.offset -= 1;
-                        this.user().next();
-                    }, 1000);
+                    config.set(_fetching, false);
+                    // setTimeout(() => {
+                    //     composition.api.pagination.offset -= 1
+                    //     this.user().next()
+                    // }, 1000)
                 }
                 return composition.get();
             },
@@ -908,7 +929,7 @@ export class StateComposition extends CompositionBuilder {
                 let query = _pthis.compileQuery(composition);
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
-                let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
+                let params = Object.assign({ method: composition.api.method }, composition.api.customParams, customParams);
                 _pthis.raiseMethod(composition, 'on awake', []);
                 try {
                     queryToApi(url, params, composition.template, composition).then((ival) => {
@@ -939,11 +960,11 @@ export class StateComposition extends CompositionBuilder {
                     });
                 }
                 catch (e) {
-                    setTimeout(() => {
-                        config.set(_fetching, false);
-                        composition.api.pagination.offset += 1;
-                        this.user().next();
-                    }, 1000);
+                    config.set(_fetching, false);
+                    // setTimeout(() => {
+                    //     composition.api.pagination.offset += 1
+                    //     this.user().next()
+                    // }, 1000)
                 }
                 return composition.get();
             },
@@ -962,7 +983,7 @@ export class StateComposition extends CompositionBuilder {
                 let query = _pthis.compileQuery(composition);
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
-                let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
+                let params = Object.assign({ method: composition.api.method }, composition.api.customParams, customParams);
                 _pthis.raiseMethod(composition, 'on awake', []);
                 queryToApi(url, params, composition.template, composition).then((ival) => {
                     _pthis.subsToPart('proccess', composition, () => {
@@ -1011,7 +1032,7 @@ export class StateComposition extends CompositionBuilder {
                 let query = _pthis.compileQuery(composition);
                 let path = composition.api.path;
                 let url = buildUrl(path, query, {}, composition.template);
-                let params = Object.assign({ method: composition.api.method }, composition.api.customParams);
+                let params = Object.assign({ method: composition.api.method }, composition.api.customParams, customParams);
                 config.set(_current, composition.api.pagination.offset);
                 _pthis.raiseMethod(composition, 'on awake', []);
                 queryToApi(url, params, composition.template, composition).then((ival) => {
@@ -1048,6 +1069,11 @@ export class StateComposition extends CompositionBuilder {
             },
             method(type) {
                 composition.api.method = type;
+                return this;
+            },
+            customAuth(token) {
+                composition.api.auth.login = token;
+                composition.api.auth.use = true;
                 return this;
             },
             setQuery(params) {

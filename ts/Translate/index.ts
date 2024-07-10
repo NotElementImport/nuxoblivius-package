@@ -5,7 +5,6 @@ import { config } from '../config.js';
 
 export const languageConfig = (value: ILanguageConfig, nuxtApp: any) => {
     if(nuxtApp) {
-        console.log(nuxtApp,nuxtApp.vueApp, nuxtApp.vueApp.directive);
         nuxtApp.vueApp.directive('translate-placeholder', {
             mounted(el: HTMLInputElement, biding: DirectiveBinding) {
                 Translate.c(biding.value).dynamicAttribute(el, 'placeholder')
