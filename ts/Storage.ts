@@ -11,7 +11,7 @@ export default class Storage {
     private _name: string = ''
     private _watchers: Function[] = []
     private _reactvieVariables = reactive({
-        value: null
+        value: null as any
     })
 
     public static client<T>(name: string, value: T) {

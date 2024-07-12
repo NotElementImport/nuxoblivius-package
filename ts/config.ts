@@ -2,7 +2,7 @@ import { onConfigured } from "./index.js"
 
 type TemplateFunction = (raw: any) => {data?: any, countPages?: number}
 type TemplateLogic = {[key: string]: TemplateFunction}
-type FetchResult = {data: object|Blob|null, error: boolean, errorText: string, code: number, pageCount: number, protocol?: object}
+type FetchResult = {data: object|Blob|null, error: boolean, errorText: string, code: number, pageCount: number, protocol?: object, header: object}
 
 export const options = {
     http: async (url: string, options: any, isblob: boolean) => {
@@ -10,20 +10,23 @@ export const options = {
 
         if(!response.ok) {
             return {
-                _errorCode: response.status,
-                _errorText: response.statusText,
-                _errorBody: await response.text()
+                header: response.headers,
+                body: {
+                    _errorCode: response.status,
+                    _errorText: response.statusText,
+                    _errorBody: await response.text()
+                }
             }
         }
 
         if(isblob)
-            return response.blob()
+            return { header: response.headers, body: response.blob() }
         const raw = await response.text()
         
         if(raw.length > 0 && (raw[0] == '{' || raw[0] == '[')) {
-            return JSON.parse(raw)
+            return { header: response.headers, body: JSON.parse(raw) }
         }
-        return raw
+        return {header: response.headers, body: raw}
     },
     cookie: { get: (name: string) => '', set: (name: string, value: any) => null as any} as any as { get(name: string): any, set(name: string, value: any): void },
     router: {} as any as { currentRoute: '', params: {}, query: {} },
@@ -74,36 +77,38 @@ export async function storeFetch(url: string, requestInit: any, isblob: boolean,
 
     if(response instanceof Blob) {
         return {
-            data: response,
+            header: response.header,
+            data: response.body,
             error: false,
             code: 200,
             errorText: '',
             pageCount: 0,
-            protocol: null
+            protocol: null as any
         }
     }
 
-    if(typeof response == 'object' && !Array.isArray(response) && '_errorCode' in response) {
-        if(response._errorBody.length > 0 && response._errorBody[0] == '{') {
-            response._errorBody = JSON.parse(response._errorBody)
+    if(typeof response.body == 'object' && !Array.isArray(response.body) && '_errorCode' in response) {
+        if(response.body._errorBody.length > 0 && response.body._errorBody[0] == '{') {
+            response.body._errorBody = JSON.parse(response.body._errorBody)
         }
 
         return {
-            data: response._errorBody       || null,
+            header: response.header,
+            data: response.body._errorBody       || null,
             error: true,
-            code: response._errorCode       || 500,
-            errorText: response._errorText  || 'Unknow',
+            code: response.body._errorCode       || 500,
+            errorText: response.body._errorText  || 'Unknow',
             pageCount: 0,
-            protocol: null
+            protocol: null  as any
         }
     }
 
-    let data = response
+    let data = response.body
     let pageCount = 0
     let protocol = null
 
     if(isValidPattern(pattern)) {
-        const result = callPattern(pattern, response) || {}
+        const result = callPattern(pattern, response.body) || {}
 
         if(result.data) {
             data = result.data
@@ -119,6 +124,7 @@ export async function storeFetch(url: string, requestInit: any, isblob: boolean,
     }
 
     return {
+        header: response.header,
         data,
         code: 200,
         error: false,

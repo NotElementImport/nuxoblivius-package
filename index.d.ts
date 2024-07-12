@@ -154,6 +154,11 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     public keepBy<K extends PropertyKey, Q extends 'path'>(field: `${Q}:${PathParams|K}`, method?: 'simply'|'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
     public keepBy<K extends PropertyKey, Q extends 'query'>(field: `${Q}:${keyof QueryParams|K}`, method?: 'simply'|'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
     public keepBy(field: `path:`|`query:`, method?: 'simply'|'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
+
+    /**
+     * Is blob return type or not
+     */
+    public isBlob(value: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
     
     /**
      * Get cached `response`, by Pipeline, required setting `keepBy` to working
@@ -421,6 +426,11 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * Reactive response object
      */
     public get response(): ReturnType
+
+    /**
+     * Headers of response
+     */
+    public get headers(): Dict<string, any>
 
     /**
      * Reactive response object (unpacked from array)

@@ -65,6 +65,7 @@ export default class Record {
         isLastPage: false,
         
         response: null,
+        headers: {},
         error: '',
 
         frozenKey: 0,
@@ -84,6 +85,10 @@ export default class Record {
 
     public get response() {
         return this._variables.response
+    }
+
+    public get headers() {
+        return this._variables.headers
     }
 
     public get one() {
@@ -480,7 +485,7 @@ export default class Record {
     }
 
     public isBlob(value = true) {
-        this._awaitBlob = true
+        this._awaitBlob = value
         return this
     }
 
@@ -748,12 +753,13 @@ export default class Record {
         this._variables.maxPages = fetchResult.pageCount
         this._variables.isError = fetchResult.error
         this._variables.isLoading = false
+        this._variables.headers = fetchResult.header
 
         if(fetchResult.protocol != null) {
             this._protocol = fetchResult.protocol
         }
 
-        this.keep(fetchResult.data, queries)
+        this.keep(fetchResult.data as any, queries)
 
         if(this._onEnd)
             this._onEnd(fetchResult.data)
