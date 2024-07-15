@@ -1,6 +1,6 @@
 import Record1 from './dist/ts/Record.js'
 import Storage1 from './dist/ts/Storage.js'
-import { settings, callPattern, extendsPattern } from './dist/ts/Config.js'
+import { settings, callPattern, extendsPattern } from './dist/ts/config.js'
 
 export const ExtendsPattern = extendsPattern
 export const CallPattern = callPattern
