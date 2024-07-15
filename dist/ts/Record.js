@@ -41,6 +41,7 @@ export default class Record {
         maxPages: 1,
         isLastPage: false,
         response: null,
+        headers: {},
         error: '',
         frozenKey: 0,
         isError: false,
@@ -55,6 +56,9 @@ export default class Record {
     }
     get response() {
         return this._variables.response;
+    }
+    get headers() {
+        return this._variables.headers;
     }
     get one() {
         return this._variables.response;
@@ -383,7 +387,7 @@ export default class Record {
         return this;
     }
     isBlob(value = true) {
-        this._awaitBlob = true;
+        this._awaitBlob = value;
         return this;
     }
     clearDynamicQuery() {
@@ -572,6 +576,7 @@ export default class Record {
         this._variables.maxPages = fetchResult.pageCount;
         this._variables.isError = fetchResult.error;
         this._variables.isLoading = false;
+        this._variables.headers = fetchResult.header;
         if (fetchResult.protocol != null) {
             this._protocol = fetchResult.protocol;
         }

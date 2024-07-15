@@ -430,7 +430,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     /**
      * Headers of response
      */
-    public get headers(): Dict<string, any>
+    public get headers(): Headers
 
     /**
      * Reactive response object (unpacked from array)
