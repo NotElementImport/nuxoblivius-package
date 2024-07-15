@@ -595,10 +595,14 @@ export class StateComposition extends CompositionBuilder {
                 catch(e) { }
             }
 
+            const customHeaders = {} as any   
+
+            if(!multipart) {
+                customHeaders['Content-Type'] = "application/json"
+            }
+
             let url = buildUrl(path, query, {}, composition.template)
-            let params = Object.assign({method: composition.api.method, body: body, headers: {
-                'Content-Type': multipart ? undefined : 'application/json'
-            }}, composition.api.customParams, customParams);
+            let params = Object.assign({method: composition.api.method, body: body, headers: customHeaders}, composition.api.customParams, customParams);
 
             return await queryToApi(
                 url, params as any, composition.template, composition
