@@ -87,7 +87,7 @@ export async function storeFetch(url: string, requestInit: any, isblob: boolean,
         }
     }
 
-    if(typeof response.body == 'object' && !Array.isArray(response.body) && '_errorCode' in response) {
+    if(typeof response.body == 'object' && !Array.isArray(response.body) && '_errorCode' in response.body) {
         if(response.body._errorBody.length > 0 && response.body._errorBody[0] == '{') {
             response.body._errorBody = JSON.parse(response.body._errorBody)
         }

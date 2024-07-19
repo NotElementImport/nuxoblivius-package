@@ -1,5 +1,5 @@
 import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery, urlPathParams } from "./Utils.js";
-import { storeFetch } from "./Config.js";
+import { storeFetch } from "./config.js";
 import { reactive, watch } from "vue";
 export default class Record {
     _url = '';

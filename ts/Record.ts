@@ -1,5 +1,5 @@
 import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery, urlPathParams } from "./Utils.js"
-import { options as ConfigOptions, storeFetch } from "./Config.js"
+import { options as ConfigOptions, storeFetch } from "./config.js"
 import { reactive, watch } from "vue"
 
 type DynamicResponse = {[key: string]: any}
