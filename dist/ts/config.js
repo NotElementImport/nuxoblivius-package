@@ -1,4 +1,5 @@
 import { onConfigured } from "./index.js";
+export const defaultHeaders = {};
 export const options = {
     http: async (url, options, isblob) => {
         const response = await fetch(url, options);
@@ -29,6 +30,9 @@ export const options = {
     _apiRoot: '',
     get apiRoot() { return this._apiRoot; }
 };
+export function setDefaultHeader(name, value) {
+    defaultHeaders[name] = value;
+}
 export function callPattern(name, data) {
     if (typeof name == 'string' && name in options.templates) {
         return options.templates[name](data);

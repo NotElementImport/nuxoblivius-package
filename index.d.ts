@@ -1,3 +1,4 @@
+import { Ref } from 'vue'
 import {IHeaderAttribute} from './headers.js'
 
 interface IStoreRef<K> {
@@ -477,3 +478,4 @@ interface IReturnTemplate<T> {
 export declare function RegisterTemplate<T, E>(name: string, template: (raw: T) => IReturnTemplate<E>)
 export declare function CallPattern<I, E>(name: string, data: IReturnTemplate<T>): IReturnTemplate<E>
 export declare function ExtendsPattern<I, E>(parent: IReturnTemplate<I>, child: IReturnTemplate<E>): IReturnTemplate<I & E>
+export declare function SetDefaultHeader(name: string, value: (() => any)|string|Ref<any>): void

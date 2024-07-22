@@ -1,5 +1,5 @@
 import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery, urlPathParams } from "./Utils.js";
-import { storeFetch } from "./config.js";
+import { defaultHeaders, storeFetch } from "./config.js";
 import { reactive, watch } from "vue";
 export default class Record {
     _url = '';
@@ -550,6 +550,9 @@ export default class Record {
         const url = urlPathParams(this._url, this._pathParams)
             + queryToUrl(queries);
         const rebuildHeader = {};
+        for (const [key, value] of Object.entries(defaultHeaders)) {
+            rebuildHeader[key] = refOrVar(value);
+        }
         for (const [key, value] of Object.entries(this._headers)) {
             rebuildHeader[key] = refOrVar(value);
         }

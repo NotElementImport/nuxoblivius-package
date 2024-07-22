@@ -1,5 +1,5 @@
 import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery, urlPathParams } from "./Utils.js"
-import { options as ConfigOptions, storeFetch } from "./config.js"
+import { options as ConfigOptions, defaultHeaders, storeFetch } from "./config.js"
 import { reactive, watch } from "vue"
 
 type DynamicResponse = {[key: string]: any}
@@ -714,6 +714,9 @@ export default class Record {
             + queryToUrl(queries)
 
         const rebuildHeader = {} as any;
+        for (const [key, value] of Object.entries(defaultHeaders)) {
+            rebuildHeader[key] = refOrVar(value);
+        } 
         for (const [key, value] of Object.entries(this._headers)) {
             rebuildHeader[key] = refOrVar(value);
         } 

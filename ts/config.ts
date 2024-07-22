@@ -4,6 +4,8 @@ type TemplateFunction = (raw: any) => {data?: any, countPages?: number}
 type TemplateLogic = {[key: string]: TemplateFunction}
 type FetchResult = {data: object|Blob|null, error: boolean, errorText: string, code: number, pageCount: number, protocol?: object, header: object}
 
+export const defaultHeaders = {} as any
+
 export const options = {
     http: async (url: string, options: any, isblob: boolean) => {
         const response = await fetch(url, options)
@@ -36,6 +38,10 @@ export const options = {
     get isServer() { return this._isServer },
     _apiRoot: '',
     get apiRoot() { return this._apiRoot }
+}
+
+export function setDefaultHeader(name: string, value: any) {
+    defaultHeaders[name] = value
 }
 
 export function callPattern(name: string|Function, data: object) {
