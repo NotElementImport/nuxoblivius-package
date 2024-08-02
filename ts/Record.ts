@@ -500,7 +500,7 @@ export default class Record {
     }
 
     public onFinish(method: Function) {
-        this._onError = method
+        this._onEnd = method
         return this
     }
 

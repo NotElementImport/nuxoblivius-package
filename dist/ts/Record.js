@@ -399,7 +399,7 @@ export default class Record {
         return this;
     }
     onFinish(method) {
-        this._onError = method;
+        this._onEnd = method;
         return this;
     }
     async get(id = null) {
