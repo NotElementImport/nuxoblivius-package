@@ -1,7 +1,7 @@
 {
   "name": "nuxoblivius",
   "type": "module",
-  "version": "0.4.13",
+  "version": "0.5.2",
   "description": "Nuxt store smart  module",
   "main": "index.js",
   "scripts": {
@@ -11,7 +11,6 @@
   "keywords": [
     "nuxt3"
   ],
-  
   "author": "Not Element Import",
   "license": "ISC",
   "dependencies": {

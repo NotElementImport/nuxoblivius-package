@@ -423,7 +423,7 @@ export class StateComposition extends CompositionBuilder {
             const delimeter = args[0].split('.')
             try {
                 composition.api.watching = true
-                if(this.argumentExist(1)) {
+                if(this.argumentExist(1) && process.client) {
                     if(args[1] == 'only-filter') {
                         StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
                         .subs.push(() => {
@@ -444,10 +444,12 @@ export class StateComposition extends CompositionBuilder {
                     }
                 }
                 else {
-                    StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
-                    .subs.push(() => {
-                        composition.lastStep()
-                    })
+                    if(process.client) {
+                        StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
+                            .subs.push(() => {
+                                composition.lastStep()
+                            })
+                    }
                 }
             }
             catch(e) {
@@ -460,37 +462,40 @@ export class StateComposition extends CompositionBuilder {
                 composition.api.linkMethod = args[1]
                 composition.api.optimization.preventRepeat = false
 
-                args[0].__ref.subs.push(() => {
-                    if(Object.keys(composition.get()).length != 0) {
-                        composition.lastStep()
-                    }
-                })
+                // args[0].__ref.subs.push(() => {
+                //     if(Object.keys(composition.get()).length != 0) {
+                //         composition.lastStep()
+                //     }
+                // })
             }
             else {
                 composition.api.watching = true
                 if(this.argumentExist(1)) {
-                    if(args[1] == 'only-filter') {
-                        args[0].__ref.subs.push(() => {
-                            this.callPart('filter', composition)
-                        })
-                    }
-                    else if(args[1] == 'only-sort') {
-                        args[0].__ref.subs.push(() => {
-                            this.callPart('sort', composition)
-                        })
-                    }
-                    else if(args[1] == 'only-process') {
-                        args[0].__ref.subs.push(() => {
-                            this.callPart('proccess', composition)
-                        })
+                    if(process.client) {
+                        if(args[1] == 'only-filter') {
+                            args[0].__ref.subs.push(() => {
+                                this.callPart('filter', composition)
+                            })
+                        }
+                        else if(args[1] == 'only-sort') {
+                            args[0].__ref.subs.push(() => {
+                                this.callPart('sort', composition)
+                            })
+                        }
+                        else if(args[1] == 'only-process') {
+                            args[0].__ref.subs.push(() => {
+                                this.callPart('proccess', composition)
+                            })
+                        }
                     }
                 }
                 else {
-                    args[0].__ref.subs.push(() => {
-                        // setTimeout(() => {
-                        composition.lastStep()
-                        // },100)
-                    })
+                    if(process.client)
+                        args[0].__ref.subs.push(() => {
+                            // setTimeout(() => {
+                            composition.lastStep()
+                            // },100)
+                        })
                 }
             }
         }
@@ -678,11 +683,13 @@ export class StateComposition extends CompositionBuilder {
                     else if(router.currentRoute.value.query && param in router.currentRoute.value.query) val = router.currentRoute.value.query[param]
 
                     if(composition.parent != null) {
-                        for(const part of composition.parent.get()) {
-                            if(part[composition.api.linkMethod] == val) {
-                                config.set(_fetching, false)
-                                composition.set(part)
-                                return composition.get()
+                        if(process.client) {
+                            for(const part of composition.parent.get()) {
+                                if(part[composition.api.linkMethod] == val) {
+                                    config.set(_fetching, false)
+                                    composition.set(part)
+                                    return composition.get()
+                                }
                             }
                         }
                     }
