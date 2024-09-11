@@ -7,15 +7,23 @@ const module = defineNuxtModule({
   },
   // Default configuration options of the Nuxt module
   defaults: {
-    api: ""
+    rules: {},
+    logs:  false,
   },
   // hooks: {
   // }
   setup(_options, _nuxt) {
+    console.log(' ')
+    console.log(' ✅ Nuxt > Nuxoblivius start ')
+    console.log(' ')
+
     const resolver = createResolver(import.meta.url);
+
     _nuxt.options.appConfig.nuxoblivius = {
-      api: _options.api,
+      rules: _options.rules,
+      logs : _options.logs,
     };
+
     _nuxt.hook("nitro:config", (nitro) => {
       nitro.plugins = nitro.plugins || [];
       nitro.plugins.push(resolver.resolve("./runtime/nirtroPlugin"));
