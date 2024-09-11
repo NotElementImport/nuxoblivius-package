@@ -11,7 +11,7 @@ export default defineNuxtPlugin({
     _nuxtApp.hook('app:rendered',  function() {
       if(isUseLogs) {
         console.log(' ')
-        console.log(' 🪄 Nuxoblivius - Clearing trash after SSR ')
+        console.log(' 🪄  Nuxoblivius - Clearing trash after SSR ')
         console.log(' ')
       }
       deleteDump();
@@ -47,18 +47,18 @@ export default defineNuxtPlugin({
 
         if(!isClient && isUseLogs) {
           console.log(' ')
-          console.log(' 🔗 Nuxoblivius : SSR Fetch info ')
-          console.log(` 🔗 URL : ${fetchUrl} `)
+            console.log(' 🔗  Nuxoblivius : SSR Fetch info ')
+            console.log(` 🔗  URL         : ${(options.method ?? 'GET').toLocaleUpperCase()} ${fetchUrl} `)
           if(ruleURL != '') {
-            console.log(` 🔗 Rule Prefix : ${rule} `)
-            console.log(` 🔗 Rule To     : ${ruleURL} `)
+            console.log(` 🔗  Rule Prefix : ${rule} `)
+            console.log(` 🔗  Rule To     : ${ruleURL} `)
           }
+            console.log(` ⚠️  Code        : ${response._meta.code} / ${response._meta.text} `)
           if(typeof response.body == 'object' && response.body._errorCode) {
-            console.log(`  🚫 Error   : ${response.body._errorCode} / ${response.body._errorText} `)
-            console.log(`  🚫 Message : ${response.body._errorBody} `)
+            console.log(` 🚫  Error       : ${response.body._errorBody} `)
           }
           else {
-            console.log(`  ✅ OK `)
+            console.log(` ✅  OK `)
           }
           console.log(' ')
         }

@@ -9,9 +9,15 @@ export const defaultHeaders = {} as any
 export const options = {
     http: async (url: string, options: any, isblob: boolean) => {
         const response = await fetch(url, options)
+        
+        const _meta = {
+            code: response.status,
+            text: response.statusText,
+        }
 
         if(!response.ok) {
             return {
+                _meta,
                 header: response.headers,
                 body: {
                     _errorCode: response.status,
@@ -22,13 +28,13 @@ export const options = {
         }
 
         if(isblob)
-            return { header: response.headers, body: response.blob() }
+            return { header: response.headers, body: response.blob(), _meta }
         const raw = await response.text()
         
         if(raw.length > 0 && (raw[0] == '{' || raw[0] == '[')) {
-            return { header: response.headers, body: JSON.parse(raw) }
+            return { header: response.headers, body: JSON.parse(raw), _meta }
         }
-        return {header: response.headers, body: raw}
+        return {header: response.headers, body: raw, _meta}
     },
     cookie: { get: (name: string) => '', set: (name: string, value: any) => null as any} as any as { get(name: string): any, set(name: string, value: any): void },
     router: {} as any as { currentRoute: '', params: {}, query: {} },
