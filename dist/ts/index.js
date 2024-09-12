@@ -1,5 +1,6 @@
 import { reactive } from "vue";
 import Storage from "./Storage.js";
+const isClient = typeof document !== 'undefined';
 const storageOfStores = new Map();
 const laterAwaiter = [];
 const configAwaiter = [];
@@ -90,6 +91,8 @@ function raise(store) {
                             return p[0] == '$';
                         },
                         watch(func) {
+                            if (!isClient)
+                                return;
                             if (!(p in instance._watcher)) {
                                 later(() => instance._watcher[p].push(func));
                             }

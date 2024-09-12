@@ -1,6 +1,7 @@
 import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery, urlPathParams } from "./Utils.js";
 import { defaultHeaders, storeFetch } from "./config.js";
 import { reactive, watch } from "vue";
+const isClient = typeof document !== 'undefined';
 export default class Record {
     _url = '';
     _queryStore = null;
@@ -352,6 +353,8 @@ export default class Record {
         return this;
     }
     reloadBy(object) {
+        if (!isClient)
+            return this;
         const pThis = this;
         resolveOrLater(object, (result) => {
             if (typeof result != 'object')

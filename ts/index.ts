@@ -2,6 +2,8 @@ import { reactive, onMounted, onUnmounted, watch } from "vue"
 import Storage from "./Storage.js"
 import StoreRecord from "./Record.js"
 
+const isClient = typeof document !== 'undefined'
+
 const storageOfStores = new Map<object, any>()
 
 const laterAwaiter: Function[] = []
@@ -106,6 +108,9 @@ function raise(store: any) {
                                 return (p as string)[0] == '$'
                             },
                             watch(func: Function) {
+                                if(!isClient)
+                                    return
+
                                 if(!(p in instance._watcher)) {
                                     later(() => instance._watcher[p].push(func))
                                 }

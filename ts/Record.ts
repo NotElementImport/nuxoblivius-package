@@ -15,6 +15,8 @@ interface IRule {
     [key: string]: IRuleMethod
 }
 
+const isClient = typeof document !== 'undefined'
+
 export default class Record {
     private _url: string = ''
     private _queryStore: object = null
@@ -437,6 +439,9 @@ export default class Record {
     }
 
     public reloadBy(object: any) {
+        if(!isClient)
+            return this
+
         const pThis = this
         resolveOrLater(object, (result: any) => {
             if(typeof result != 'object') 
