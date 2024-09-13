@@ -2,6 +2,7 @@ import Filter from "./Filter/index.js";
 import StateManager from "./StateManager/index.js";
 import { config, _defaults, useCustomTemplate } from "./config.js";
 import { addToPath, buildUrl, queryToApi } from "./utilits.js";
+const isClient = typeof document !== 'undefined'
 export default class CompositionBuilder {
     _currentArgs = [];
     static instruction(defaultValue) {
@@ -62,13 +63,13 @@ export default class CompositionBuilder {
         }
     }
     callPart(name, composition) {
-        if (name in composition.call) {
+        if (isClient && name in composition.call) {
             composition.call[name]();
         }
     }
     subsToPart(name, composition, func, awake = false) {
         composition.call[name] = func;
-        if (awake)
+        if (isClient && awake)
             func();
     }
     createWay(name, composition, data) {
@@ -102,7 +103,8 @@ export class StateComposition extends CompositionBuilder {
         }
     }
     subsMethod(composition, name, func) {
-        composition.hook[name] = func;
+        if(isClient)
+            composition.hook[name] = func;
     }
     compileQuery(composition) {
         let query = Object.assign({}, composition.api.query, composition.api.userQuery);
@@ -145,6 +147,7 @@ export class StateComposition extends CompositionBuilder {
         }
         this.setType(composition, 2)
             .dynamicAdd(composition, 'api', {
+            enableJoin: true,
             watching: false,
             path: '',
             query: {},
@@ -300,12 +303,14 @@ export class StateComposition extends CompositionBuilder {
         composition.api.auth.use = true;
         const delimeter = args[0].split('.');
         const objectParams = StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim());
+
         objectParams.subs.push(() => {
             composition.api.auth.login = StateManager.manager(delimeter[0].trim())[delimeter[1].trim()];
             if (composition.api.auth.update) {
                 composition.api.auth.update();
             }
         });
+
         composition.api.auth.login = objectParams.get();
     }
     doJoin(composition, args) {
@@ -314,30 +319,34 @@ export class StateComposition extends CompositionBuilder {
             try {
                 composition.api.watching = true;
                 if (this.argumentExist(1) && process.client) {
-                    if (args[1] == 'only-filter') {
+                    if (args[1] == 'only-filter' && isClient) {
                         StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
                             .subs.push(() => {
-                            this.callPart('filter', composition);
+                                composition.api.enableJoin = false;
+                                this.callPart('filter', composition);
                         });
                     }
-                    else if (args[1] == 'only-sort') {
+                    else if (args[1] == 'only-sort' && isClient) {
                         StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
                             .subs.push(() => {
-                            this.callPart('sort', composition);
+                                composition.api.enableJoin = false;
+                                this.callPart('sort', composition);
                         });
                     }
-                    else if (args[1] == 'only-process') {
+                    else if (args[1] == 'only-process' && isClient) {
                         StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
                             .subs.push(() => {
-                            this.callPart('proccess', composition);
+                                composition.api.enableJoin = false;
+                                this.callPart('proccess', composition);
                         });
                     }
                 }
                 else {
-                    if (process.client) {
+                    if (isClient) {
                         StateManager.manager(delimeter[0].trim()).getParams(delimeter[1].trim())
                             .subs.push(() => {
-                            composition.lastStep();
+                                composition.api.enableJoin = false;
+                                composition.lastStep();
                         });
                     }
                 }
@@ -360,30 +369,34 @@ export class StateComposition extends CompositionBuilder {
             else {
                 composition.api.watching = true;
                 if (this.argumentExist(1)) {
-                    if (process.client) {
+                    if (isClient) {
                         if (args[1] == 'only-filter') {
                             args[0].__ref.subs.push(() => {
+                                composition.api.enableJoin = false;
                                 this.callPart('filter', composition);
                             });
                         }
                         else if (args[1] == 'only-sort') {
                             args[0].__ref.subs.push(() => {
+                                composition.api.enableJoin = false;
                                 this.callPart('sort', composition);
                             });
                         }
                         else if (args[1] == 'only-process') {
                             args[0].__ref.subs.push(() => {
+                                composition.api.enableJoin = false;
                                 this.callPart('proccess', composition);
                             });
                         }
                     }
                 }
                 else {
-                    if (process.client)
+                    if (isClient)
                         args[0].__ref.subs.push(() => {
-                            // setTimeout(() => {
-                            composition.lastStep();
-                            // },100)
+                            setTimeout(() => {
+                                composition.api.enableJoin = false;
+                                composition.lastStep();
+                            },100)
                         });
                 }
             }
@@ -463,6 +476,7 @@ export class StateComposition extends CompositionBuilder {
             }
             let url = buildUrl(path, query, {}, composition.template);
             let params = Object.assign({ method: composition.api.method }, composition.api.customParams, customParams);
+            composition.api.enableJoin = true;
             return await queryToApi(url, params, composition.template, composition);
         };
         const send = async (body, multipart = false) => {
@@ -480,6 +494,7 @@ export class StateComposition extends CompositionBuilder {
             }
             let url = buildUrl(path, query, {}, composition.template);
             let params = Object.assign({ method: composition.api.method, body: body, headers: customHeaders }, composition.api.customParams, customParams);
+            composition.api.enableJoin = true;
             return await queryToApi(url, params, composition.template, composition);
         };
         const property = {
@@ -510,6 +525,7 @@ export class StateComposition extends CompositionBuilder {
                     composition.set(ival);
                     this._forceMode = false;
                     config.set(_fetching, false);
+                    composition.api.enableJoin = true;
                     return ival;
                 });
             },
@@ -541,7 +557,7 @@ export class StateComposition extends CompositionBuilder {
                     else if (router.currentRoute.value.query && param in router.currentRoute.value.query)
                         val = router.currentRoute.value.query[param];
                     if (composition.parent != null) {
-                        if (process.client) {
+                        if (process.client && composition.api.enableJoin) {
                             for (const part of composition.parent.get()) {
                                 if (part[composition.api.linkMethod] == val) {
                                     config.set(_fetching, false);
@@ -572,6 +588,7 @@ export class StateComposition extends CompositionBuilder {
                     composition.set(ival);
                     this._forceMode = false;
                     config.set(_fetching, false);
+                    composition.api.enableJoin = true;
                     return ival;
                 });
             },
@@ -846,13 +863,14 @@ export class StateComposition extends CompositionBuilder {
                             config.set(_max, composition.api.pagination.maxOffset);
                             config.set(_fetching, false);
                             setValue(ival);
+                            composition.api.enableJoin = true;
                         }, true);
-                        return composition.get();
                     });
                 }
                 catch (e) {
                     this._forceMode = false;
                     config.set(_fetching, false);
+                    composition.api.enableJoin = true;
                     return composition.get();
                 }
             },
@@ -868,6 +886,7 @@ export class StateComposition extends CompositionBuilder {
                     else {
                         config.set(_isEnd, true);
                         config.set(_fetching, false);
+                        composition.api.enableJoin = true;
                         return composition.get();
                     }
                 }
@@ -912,8 +931,8 @@ export class StateComposition extends CompositionBuilder {
                             else {
                                 setValue(ival);
                             }
+                            composition.api.enableJoin = true;
                         }, true);
-                        return composition.get();
                     });
                 }
                 catch (e) {
@@ -963,12 +982,13 @@ export class StateComposition extends CompositionBuilder {
                             config.set(_max, composition.api.pagination.maxOffset);
                             config.set(_fetching, false);
                             setValue(ival);
+                            composition.api.enableJoin = true;
                         }, true);
-                        return composition.get();
                     });
                 }
                 catch (e) {
                     config.set(_fetching, false);
+                    composition.api.enableJoin = true;
                     return composition.get();
                 }
             },
@@ -1013,8 +1033,8 @@ export class StateComposition extends CompositionBuilder {
                         config.set(_max, composition.api.pagination.maxOffset);
                         config.set(_fetching, false);
                         setValue(ival);
+                        composition.api.enableJoin = true;
                     }, true);
-                    return composition.get();
                 });
             },
             pageBy(name) {
@@ -1063,8 +1083,8 @@ export class StateComposition extends CompositionBuilder {
                         config.set(_max, composition.api.pagination.maxOffset);
                         config.set(_fetching, false);
                         setValue(ival);
+                        composition.api.enableJoin = true;
                     }, true);
-                    return composition.get();
                 });
             },
             size(size) {

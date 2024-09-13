@@ -1,6 +1,7 @@
 import { StateComposition } from "../compiler.js";
 export const _instances = new Map();
 const _globalInstances = [];
+const isClient = typeof document !== 'undefined'
 export default class StateManager {
     _nameInstance = "";
     _isServer = false;
@@ -72,12 +73,17 @@ export default class StateManager {
         return _instances.get(this._nameInstance)?._paramsObjects.entries();
     }
     watch(name, func) {
-        _instances.get(this._nameInstance)?.getParams(name).subs.push(func);
+        if(isClient)
+            _instances.get(this._nameInstance)?.getParams(name).subs.push(func);
     }
     catchOnce(name, func) {
-        _instances.get(this._nameInstance)?.getParams(name).onceSubs.push(func);
+        if(isClient)
+            _instances.get(this._nameInstance)?.getParams(name).onceSubs.push(func);
     }
     static globalWatch(name, func) {
+        if(isClient)
+            return;
+
         if (this.globalName) {
             _instances.get(this.globalName)?.getParams(name).subs.push(func);
             return;
@@ -85,6 +91,9 @@ export default class StateManager {
         throw "static.globalName not set: SM.ref(), " + this.name + ", name: " + this.globalName;
     }
     static globalCatchOnce(name, func) {
+        if(isClient)
+            return;
+
         if (this.globalName) {
             _instances.get(this.globalName)?.getParams(name).onceSubs.push(func);
             return;
