@@ -1,7 +1,7 @@
 import { StateComposition } from "../compiler.js";
 export const _instances = new Map();
 const _globalInstances = [];
-const isClient = typeof document !== 'undefined'
+const isClient = true
 export default class StateManager {
     _nameInstance = "";
     _isServer = false;

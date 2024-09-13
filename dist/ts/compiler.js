@@ -2,7 +2,7 @@ import Filter from "./Filter/index.js";
 import StateManager from "./StateManager/index.js";
 import { config, _defaults, useCustomTemplate } from "./config.js";
 import { addToPath, buildUrl, queryToApi } from "./utilits.js";
-const isClient = typeof document !== 'undefined'
+const isClient = true
 export default class CompositionBuilder {
     _currentArgs = [];
     static instruction(defaultValue) {
