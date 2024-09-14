@@ -364,6 +364,13 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     public async delete(id?: number): Promise<ReturnType>
 
     /**
+     * Fetching data, with method PATCH.
+     * 
+     * @param id analog .pathParam('id', some_value)
+     */
+    public async patch(id?: number): Promise<ReturnType>
+
+    /**
      * All setting params earlier `pathParam`, `query`
      */
     public get params(): {

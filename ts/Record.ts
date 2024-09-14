@@ -565,6 +565,20 @@ export default class Record {
         return this.doFetch('DELETE')
     }
 
+    public async patch(id: number = null) {
+        this.swapGreedy()
+
+        if(!this._forceBody)
+            this._body = null
+
+        this.pathParam('id', id)
+        
+        this._lastStep.method = 'patch'
+        this._lastStep.arg = id
+
+        return this.doFetch('PATCH')
+    }
+
     private borrowingFromAnother(descriptor: {[key: string]: any}, query: any): any {
         if(!this._enabledBorrow)
             return null

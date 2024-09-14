@@ -442,6 +442,15 @@ export default class Record {
         this._lastStep.arg = id;
         return this.doFetch('DELETE');
     }
+    async patch(id = null) {
+        this.swapGreedy();
+        if (!this._forceBody)
+            this._body = null;
+        this.pathParam('id', id);
+        this._lastStep.method = 'patch';
+        this._lastStep.arg = id;
+        return this.doFetch('PATCH');
+    }
     borrowingFromAnother(descriptor, query) {
         if (!this._enabledBorrow)
             return null;
