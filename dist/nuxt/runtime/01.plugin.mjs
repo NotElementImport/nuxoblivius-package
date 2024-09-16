@@ -13,6 +13,7 @@ const getUID = () => {
         result += hashTable[~~(Math.random() * (hashTable.length - 1))];
     return result;
 };
+const isClient = typeof document !== "undefined";
 export default defineNuxtPlugin({
     setup: (_nuxtApp) => {
         const isUseLogs = useAppConfig().nuxoblivius.logs;
@@ -30,7 +31,6 @@ export default defineNuxtPlugin({
                 console.log(' ');
                 console.log(` ⚡  Awake [caller: ${uid}] `);
             }
-            const isClient = typeof document !== "undefined";
             settings.httpClient(async (url, options, isBlob) => {
                 const startStamp = performance.now();
                 const rules = useAppConfig().nuxoblivius.rules;

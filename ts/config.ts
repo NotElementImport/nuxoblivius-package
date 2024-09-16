@@ -122,17 +122,9 @@ export async function storeFetch(url: string, requestInit: any, isblob: boolean,
     if(isValidPattern(pattern)) {
         const result = callPattern(pattern, response.body) || {}
 
-        if(result.data) {
-            data = result.data
-        }
-
-        if(result.countPages) {
-            pageCount = result.countPages
-        }
-
-        if(result.protocol) {
-            protocol = result.protocol
-        }
+        data      = result.data      ?? data
+        pageCount = result.pageCount ?? pageCount
+        protocol  = result.protocol  ?? protocol
     }
 
     return {
