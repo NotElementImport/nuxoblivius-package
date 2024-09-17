@@ -96,40 +96,20 @@ export function urlPathParams(url: string, params: Record<string, any>) {
 }
 
 export function queryToUrl(query: Record<string, any>) {
-    let _result = ''
+    let flatObject = {} as Record<string, any>;
+    const flat = (objectToFlat: object, prefix: string = '', suffix: string = ''): object => 
+        Object.fromEntries(
+            Object.entries(objectToFlat)
+                .map(([ name, value ]) =>
+                    typeof value === 'object'
+                        ? flatObject = { ...flatObject, ...flat(value, `${name}[`, ']') }
+                        :  flatObject[`${prefix}${name}${suffix}`] = refOrVar(value)
+                )
+        )
     
-    if(Object.keys(query).length > 0) {
-        const nameTact = (name: string, add: string) => {
-            if(name.length > 0) {
-                return `${name}[${add}]`
-            }
-            return add
-        }
+    const url = new URLSearchParams(Object.entries(flat(query)))
 
-        const result: Record<string, any> = {}
-
-        const recursiveRead = (layer:Record<string, any>, layerName: string) => {
-            for (const [name, value] of Object.entries(layer)) {
-                const nameOfCurrentLayer = nameTact(layerName, name)
-                const unpacked = refOrVar(value) ?? ''
-
-                if(typeof unpacked == 'object') {
-                    result[nameOfCurrentLayer] = recursiveRead(unpacked, nameOfCurrentLayer)
-                }
-                else {
-                    if(typeof unpacked != 'number' && !unpacked)
-                        continue
-
-                    result[nameOfCurrentLayer] = unpacked
-                }
-            }
-        }
-
-        recursiveRead(query, '')
-
-        _result = '?' + Object.entries(result).map((value) => `${value[0]}=${value[1]}`).join('&')
-    }
-    return _result
+    return `?${url.toString()}`
 }
 
 export function appendMerge(...objects: object[]) {

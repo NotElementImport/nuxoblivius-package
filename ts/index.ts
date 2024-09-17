@@ -284,12 +284,6 @@ export function subStore<T>(object: any): T {
     return raise(object) as T
 }
 
-export function defineForm<T>(store: any): T {
-    const instance = raise(store)
-    
-    return instance as T
-}
-
 export function afterConfig(callback: Function) {
     configAwaiter.push(callback)
 }

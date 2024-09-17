@@ -18,6 +18,10 @@ interface IRule {
 const isClient = typeof document !== 'undefined'
 
 export default class Record {
+    /**
+    *  
+    * Приватные свойства для ра
+    */
     private _url: string = ''
     private _queryStore: object = null
     private _query: {[key: string]: any} = {}
@@ -257,6 +261,10 @@ export default class Record {
         return `Basic ${ btoa(login+":"+password) }`
     }
 
+    /**
+    *  
+    * 
+    */
     public keepBy(field: string, method: 'simple'|'full' = 'simple') {
         method =  method == 'simple' ? 0 : 1 as any
         if(field.startsWith('query:')) {
@@ -618,6 +626,8 @@ export default class Record {
         return this.doFetch('PATCH')
     }
 
+    // Inner Methods :
+    
     private borrowingFromAnother(descriptor: {[key: string]: any}, query: any): any {
         if(!this._enabledBorrow)
             return null
@@ -724,9 +734,9 @@ export default class Record {
         const descriptor = {} as any
 
         const getFrom = (where: string, key: string) =>
-            where == 'query' 
-                ? (query[key] || null) 
-                : (this._pathParams[key] || null)
+            where == 'query'
+                ? (query[key] || null)  // Query
+                : (this._pathParams[key] || null) // Path
 
         for (const [key, value] of Object.entries(this._keepBy)) {
             descriptor[key] = getFrom(value as string, key) != null 
