@@ -1,6 +1,6 @@
 import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery, urlPathParams } from "./Utils.js";
 import { defaultHeaders, storeFetch } from "./config.js";
-import { reactive, watch } from "vue";
+import { isReactive, reactive, watch } from "vue";
 const isClient = typeof document !== 'undefined';
 export default class Record {
     _url = '';
@@ -40,6 +40,8 @@ export default class Record {
     _variables = reactive({
         currentPage: 1,
         maxPages: 1,
+        autoReloadPagination: false,
+        expandResponse: false,
         isLastPage: false,
         response: null,
         headers: {},
@@ -57,6 +59,9 @@ export default class Record {
     }
     get response() {
         return this._variables.response;
+    }
+    set response(value) {
+        this._variables.response = value;
     }
     get headers() {
         return this._variables.headers;
@@ -82,13 +87,36 @@ export default class Record {
                 }
                 return pThis;
             },
+            autoReload() {
+                pThis._variables.autoReloadPagination = true;
+                return pThis;
+            },
             set enabled(v) {
                 pThis._paginationEnabled = v;
+            },
+            toFirst() {
+                pThis._variables.currentPage = 1;
+                pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage;
+                if (pThis._variables.autoReloadPagination && pThis._lastStep.method) {
+                    pThis[pThis._lastStep.method](pThis._lastStep.arg);
+                }
+                return pThis;
+            },
+            toLast() {
+                pThis._variables.currentPage = pThis._variables.maxPages;
+                pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage;
+                if (pThis._variables.autoReloadPagination && pThis._lastStep.method) {
+                    pThis[pThis._lastStep.method](pThis._lastStep.arg);
+                }
+                return pThis;
             },
             next() {
                 if (pThis._variables.maxPages > pThis._variables.currentPage) {
                     pThis._variables.currentPage += 1;
                     pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage;
+                    if (pThis._variables.autoReloadPagination && pThis._lastStep.method) {
+                        pThis[pThis._lastStep.method](pThis._lastStep.arg);
+                    }
                 }
                 return pThis;
             },
@@ -97,6 +125,9 @@ export default class Record {
                     pThis._variables.currentPage -= 1;
                     pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage;
                 }
+                if (pThis._variables.autoReloadPagination && pThis._lastStep.method) {
+                    pThis[pThis._lastStep.method](pThis._lastStep.arg);
+                }
                 return pThis;
             },
             get isLastPage() {
@@ -104,6 +135,9 @@ export default class Record {
             },
             set current(v) {
                 pThis._variables.currentPage = v;
+                if (pThis._variables.autoReloadPagination && pThis._lastStep.method) {
+                    pThis[pThis._lastStep.method](pThis._lastStep.arg);
+                }
             },
             get current() {
                 return pThis._variables.currentPage;
@@ -136,9 +170,10 @@ export default class Record {
     get errorText() {
         return this._variables.error;
     }
-    static new(url) {
+    static new(url, defaultValue) {
         const instance = new Record();
         instance._url = url;
+        instance._variables.response = defaultValue ?? null;
         instance._proxies.query = new Proxy({}, {
             get(t, p, r) {
                 if (p in instance._staticQuery)
@@ -178,6 +213,10 @@ export default class Record {
             this._keepBy[name] = 'path';
             this._keepByMethod[name] = method;
         }
+        return this;
+    }
+    expandResponse(value = true) {
+        this._variables.expandResponse = value;
         return this;
     }
     onlyOnEmpty(enabled = true) {
@@ -236,11 +275,7 @@ export default class Record {
         return defaultIsnt;
     }
     deleteCached(rule) {
-        for (const [descriptor, value] of this._keepingContainer.entries()) {
-            if (Record.ruleAndDescriptorEqual(rule, descriptor)) {
-                this._keepingContainer.delete(descriptor);
-            }
-        }
+        this._keepingContainer.clear();
     }
     url(path) {
         this._url = path;
@@ -357,17 +392,16 @@ export default class Record {
             return this;
         const pThis = this;
         resolveOrLater(object, (result) => {
-            if (typeof result != 'object')
-                throw `reloadBy: only ref support`;
-            const objectClassName = Object.getPrototypeOf(result).constructor.name || 'none';
-            if (objectClassName == 'RefImpl') {
+            if (isReactive(result) || isRef(result) || result?.__v_isRef) {
                 watch(result, () => {
                     pThis.clearResponse();
                     pThis.frozenTick();
                     pThis.deleteCached(pThis.proccesDescriptor(this.compileQuery()));
-                    pThis[pThis._lastStep.method](pThis._lastStep.arg)
-                        .then((_) => pThis.frozenTick());
+                    if (pThis._lastStep.method)
+                        pThis[pThis._lastStep.method](pThis._lastStep.arg)
+                            .then((_) => pThis.frozenTick());
                 });
+                return;
             }
             else {
                 if (!('_module_' in result))
@@ -441,6 +475,15 @@ export default class Record {
         this._lastStep.method = 'delete';
         this._lastStep.arg = id;
         return this.doFetch('DELETE');
+    }
+    async patch(id = null) {
+        this.swapGreedy();
+        if (!this._forceBody)
+            this._body = null;
+        this.pathParam('id', id);
+        this._lastStep.method = 'patch';
+        this._lastStep.arg = id;
+        return this.doFetch('PATCH');
     }
     borrowingFromAnother(descriptor, query) {
         if (!this._enabledBorrow)
@@ -592,22 +635,29 @@ export default class Record {
         return fetchResult.data;
     }
     swapGreedy() {
-        if (this._swapMethod == 1) {
+        if (this._swapMethod == 1 && !this._variables.expandResponse) {
             this.clearResponse();
         }
     }
     swapLazy() {
-        if (this._swapMethod == 2) {
+        if (this._swapMethod == 2 && !this._variables.expandResponse) {
             this.clearResponse();
         }
     }
     setResponse(v) {
-        this._variables.response = v;
-        if (Array.isArray(v)) {
-            this._frozenResponse = [...v];
+        if (this._variables.expandResponse) {
+            if (!this._variables.response)
+                this._variables.response = [];
+            this._variables.response.push(...v);
         }
         else {
-            this._frozenResponse = { ...v };
+            this._variables.response = v;
+            if (Array.isArray(v)) {
+                this._frozenResponse = [...v];
+            }
+            else {
+                this._frozenResponse = { ...v };
+            }
         }
         return this._variables.response;
     }

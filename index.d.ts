@@ -46,7 +46,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#define See more about Defintion in docs}
      * @param url Path to api
      */
-    public static new<T>(url: string): Record<T, 'id', {}, {'id': 'path'}, {}, ''>
+    public static new<T>(url: string, defaultValue?: T): Record<T, 'id', {}, {'id': 'path'}, {}, ''>
 
     public static Bearer<T extends PropertyKey>(token: T): `Bearer ${T}`
     public static Basic(login: string, password: string): string
@@ -334,6 +334,10 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      */
     public onFinish(method: (result: T) => void): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
+    /**
+     * Expand response, a.k.a sum new data to alredy data
+     */
+    public expandResponse(value?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * Fetching data, with method GET.
@@ -364,6 +368,13 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     public async delete(id?: number): Promise<ReturnType>
 
     /**
+     * Fetching data, with method PATCH.
+     * 
+     * @param id analog .pathParam('id', some_value)
+     */
+    public async patch(id?: number): Promise<ReturnType>
+
+    /**
      * All setting params earlier `pathParam`, `query`
      */
     public get params(): {
@@ -390,6 +401,21 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
         setup(how: `path:`|`query:`, enabledByDefault?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
         set enabled(v: boolean): void
         get isLastPage(): boolean
+
+        /**
+         * Reload after move pagination
+         */
+        autoReload(): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+
+        /**
+         * Move pagintaion to start
+         */
+        toFirst(): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+
+        /**
+         * Move pagintaion to start
+         */
+        toLast(): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
         /**
          * Move pagintaion next
@@ -426,7 +452,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     /**
      * Reactive response object
      */
-    public get response(): ReturnType
+    public response: ReturnType
 
     /**
      * Headers of response
@@ -479,3 +505,4 @@ export declare function RegisterTemplate<T, E>(name: string, template: (raw: T) 
 export declare function CallPattern<I, E>(name: string, data: IReturnTemplate<T>): IReturnTemplate<E>
 export declare function ExtendsPattern<I, E>(parent: IReturnTemplate<I>, child: IReturnTemplate<E>): IReturnTemplate<I & E>
 export declare function SetDefaultHeader(name: string, value: (() => any)|string|Ref<any>): void
+export declare function toRefRaw<T>(object: Ref<T>): T

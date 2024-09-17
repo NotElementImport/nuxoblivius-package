@@ -10,3 +10,4 @@ export const Record = Record1
 export const Storage = Storage1
 export * from './dist/ts/index.js'
 export class IStore {}
+export { toRefRaw } from './dist/ts/Utils.js'

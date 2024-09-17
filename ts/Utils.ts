@@ -1,3 +1,14 @@
+import { Ref } from "vue"
+
+export function toRefRaw(object: Ref<any>) {
+    const raw = object.value ?? undefined;
+    if(typeof raw === 'undefined')
+        throw new Error('raw is empty');
+    const proto = Object.getPrototypeOf(raw);
+    proto.raw = () => object;
+    return raw;
+}
+
 export async function resolveOrLater(data: Promise<any>|any, callback: Function) {
     if(data instanceof Promise) {
         data.then((value) => {
@@ -11,7 +22,7 @@ export async function resolveOrLater(data: Promise<any>|any, callback: Function)
 }
 
 export function refOrVar(value: any) {
-    if(value == null) return value
+    if(!value) return value
 
     if(typeof value == 'function') {
         value = value()
@@ -24,7 +35,7 @@ export function refOrVar(value: any) {
     if(typeof value == 'object' && '_module_' in value) {
         return value.value
     }
-    else if(typeof value == 'object' && isRef(value)) {
+    else if(typeof value == 'object' && (isRef(value) || value?.__v_isRef)) {
         return value.value
     }
 
@@ -74,7 +85,7 @@ export function urlPathParams(url: string, params: Record<string, any>) {
     for (const [name, value] of Object.entries(params)) {
         const unpacked = refOrVar(value)
 
-        if(typeof unpacked == 'undefined' || unpacked == null) {
+        if(typeof unpacked == 'undefined' || (typeof unpacked == 'object' && unpacked == null)) {
             url = url.replaceAll(`{${name}}`, "")
         }
         else {
@@ -100,14 +111,14 @@ export function queryToUrl(query: Record<string, any>) {
         const recursiveRead = (layer:Record<string, any>, layerName: string) => {
             for (const [name, value] of Object.entries(layer)) {
                 const nameOfCurrentLayer = nameTact(layerName, name)
-                const unpacked = refOrVar(value)
+                const unpacked = refOrVar(value) ?? ''
 
                 if(typeof unpacked == 'object') {
                     result[nameOfCurrentLayer] = recursiveRead(unpacked, nameOfCurrentLayer)
                 }
                 else {
-                    if(typeof unpacked == 'undefined' || unpacked == null)
-                        continue;
+                    if(typeof unpacked != 'number' && !unpacked)
+                        continue
 
                     result[nameOfCurrentLayer] = unpacked
                 }
