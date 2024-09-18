@@ -5,8 +5,16 @@ import { isReactive, reactive, watch } from "vue"
 type DynamicResponse = {[key: string]: any}
 type FunctionParseData = (value: DynamicResponse) => null|DynamicResponse
 
+type DefinitionTags = {[key: string]: ETagPlace }
 type ParamsTags = {[key: string]: string|number|null|'*' }
 type ParamsTagsType = {[key: string]: EParamsTagsType }
+
+type Dict<T extends keyof any, K> = { [P in T]: K }
+
+enum ETagPlace {
+    PATH  = 0,
+    QUERY = 1
+}
 
 enum EParamsTagsType {
     SIMPLE = 0,
@@ -56,8 +64,8 @@ export default class Record {
 
     // Cachin / Tags
 
-    private _tags: ParamsTags         = {'id': 'path'}
-    private _tagsType: ParamsTagsType = {'id': EParamsTagsType.SIMPLE }
+    private _tags: DefinitionTags     = { 'id': ETagPlace.PATH }
+    private _tagsType: ParamsTagsType = { 'id': EParamsTagsType.SIMPLE }
 
     // Pre Fetch config
 
@@ -89,10 +97,10 @@ export default class Record {
 
     private _proxies: any = {}
 
-    private _borrow: Map<Description, [Description, (response: any) => any]> = new Map()
-    private _borrowAnother: Map<Description, (response: any) => any> = new Map()
+    private _borrow: Map<ParamsTags, [ParamsTags, (response: any) => any]> = new Map()
+    private _borrowAnother: Map<ParamsTags, (response: any) => any> = new Map()
     
-    private _keepingContainer: Map<Description, any> = new Map()
+    private _keepingContainer: Map<ParamsTags, any> = new Map()
     private _enabledBorrow = true
 
     private _paginationEnabled: boolean = false
@@ -116,37 +124,49 @@ export default class Record {
         isError: false,
         isLoading: false
     })
+
+    /** @deprecated [Nerd] Frozen Response for manual trigger WatchEffect */
     private _frozenResponse: any = null;
 
+    // Property 
+
+    /** @deprecated useless */
     public get frozenResponse() {
         return this._frozenResponse;
     }
 
+    /** @deprecated useless */
     public get frozenKey() {
         return this._variables.frozenKey;
     }
 
+    /**
+     * Get response
+     */
     public get response() {
         return this._variables.response
     }
 
+    /**
+     * Set response
+     */
     public set response(value: any) {
         this._variables.response = value
     }
 
+    /**
+     * Get response Headers
+     */
     public get headers() {
         return this._variables.headers
     }
 
-    public get one() {
-        return this._variables.response
-    }
-
-    public get many() {
-        return this._variables.response
-    }
-
+    /**
+     * [Module] Pagination
+     * 
+     */
     public get pagination() {
+        // Extract context
         const pThis = this
         return {
             setup(how: string, enabledByDefault = true) {
@@ -223,11 +243,14 @@ export default class Record {
         }
     }
     
+    /**
+     * Get Path Param and Query, values
+     */
     public get params() {
         const pthis = this
         return {
             get path() {
-                return pthis._proxies.path
+                return pthis._pathParams
             },
             get query() {
                 return pthis._proxies.query
@@ -235,21 +258,35 @@ export default class Record {
         }
     }
 
+    /**
+     * other data from `pattern response reader`, define with `defineProtocol`
+     */
     public get protocol() {
         return this._protocol
     }
 
+    /**
+     * Is fetching data
+     */
     public get loading() {
         return this._variables.isLoading
     }
 
+    /**
+     * If catch error
+     */
     public get error() {
         return this._variables.isError
     }
 
+    /**
+     * If catch error set errorText
+     */
     public get errorText() {
         return this._variables.error
     }
+
+    // Creating
 
     public static new(url: string, defaultValue?: any) {
         const instance = new Record();
@@ -266,19 +303,23 @@ export default class Record {
             }
         })
 
-        instance._proxies.path = new Proxy({}, {
-            get(t, p, r) {
-                return instance._pathParams[p as any] 
-            }
-        })
-
-        instance._proxies.protocol = new Proxy({}, {
-            get(t, p, r) {
-                return instance._protocol[p as any] 
-            }
-        })
-
         return instance
+    }
+
+    // Sugar
+
+    /**
+     * [Sugar] Change d.ts type from array to item
+     */
+    public get one() {
+        return this._variables.response
+    }
+
+    /**
+     * [Sugar] Change d.ts type from item to array
+     */
+    public get many() {
+        return this._variables.response
     }
 
     /**
@@ -295,8 +336,11 @@ export default class Record {
         return `Basic ${ btoa(login+":"+password) }`
     }
 
+    // Configuration
+
     /**
-    * [Nerds] Creating Tag for processing: `borrow`, `caching`, `rules`  
+    * [Configuration]
+    * [Nerds] Creating Tag for processing: `borrow`, `caching`, `rules`
     * 
     * simple - check has value or not
     * full   - can access to value
@@ -308,18 +352,19 @@ export default class Record {
 
         if(field.startsWith('query:')) { // Query Tag
             const name = field.slice(6) // remove 'query:'
-            this._tags[name] = 'query'
+            this._tags[name] = ETagPlace.QUERY
             this._tagsType[name] = acecssValue
         }
         else if(field.startsWith("path:")) { // Path Param Tag
             const name = field.slice(5) // remove 'path:'
-            this._tags[name] = 'path'
+            this._tags[name] = ETagPlace.PATH
             this._tagsType[name] = acecssValue
         }
         return this
     }
 
     /**
+     * [Configuration]
      * Appends new response to current response like\
      * `response.push(...new_response)`
      * 
@@ -331,6 +376,7 @@ export default class Record {
     }
 
     /**
+     * [Configuration]
      * Only do Fetch if response == null
      */
     public onlyOnEmpty(enabled = true) {
@@ -339,40 +385,7 @@ export default class Record {
     }
 
     /**
-     * Clearing Response
-     */
-    public clearResponse() {
-        this._variables.response = null
-        this._frozenResponse = null
-        return this
-    }
-
-    /**
-     * Compare tags see `createTag`
-     */
-    private static compareTags(tags: ParamsTags, other: ParamsTags) {
-        for (const [name, value] of Object.entries(tags)) {
-            if(!(name in other)) 
-                return false // Not includes in other. Not valid
-
-            const otherValue = other[name] ?? null
-
-            if(value == otherValue) // If equal each others
-                continue
-
-            // If one use `any` and other not use `null`
-            // Like: { tag: '*' } + { tag: null } = false
-            // Like: { tag: '*' } + { tag: 1 }    = true
-            if((value == '*' && otherValue != null) || (otherValue == '*' && value != null))
-                continue
-
-            // Else not valid
-            return false
-        }
-        return true
-    }
-
-    /**
+     * [Configuration]
      * Create rule on specific behaviour
      * 
      * Example:\
@@ -413,6 +426,7 @@ export default class Record {
     }
 
     /**
+     * [Configuration]
      * Deafult rule if other rules not valid
      * 
      * Check `rule` method for example
@@ -421,35 +435,9 @@ export default class Record {
         this._defaultRule = () => behaviour(this)
         return this
     }
-
-    /**
-     * Get old response by tag
-     * 
-     * Example
-     * ```ts
-     * .createTag('path:id', 'full')
-     * .cached({ 'id': 2 }) // Getting response where path param id is 2
-     * ```
-     */
-    public cached(rule: ParamsTags, defaultIsnt: any = null) {
-        for(const [descriptor, value] of this._keepingContainer.entries()) {
-            if(Record.compareTags(rule, descriptor)) {
-                return value
-            }
-        }
-        return defaultIsnt;
-    }
-
-    /**
-     * Delete cache by tag 
-     * 
-     * @deprecated not needed, while
-     */
-    private deleteCached(rule: ParamsTags) {
-        this._keepingContainer.clear()
-    }
     
     /**
+     * [Configuration]
      * Rewrite url, using in `rule` and `defaultRule` section 
      */
     private url(path: string) {
@@ -458,6 +446,7 @@ export default class Record {
     }
 
     /**
+     * [Configuration]
      * Enable / Disable logic for `borrowAtAnother` and `borrowAtSelf` 
      */
     public enableBorrow(value: boolean) {
@@ -466,6 +455,7 @@ export default class Record {
     }
 
     /**
+     * [Configuration]
      * Rollback to cached data, using in `rule` and `defaultRule` section 
      */
     private prepare(rule: ParamsTags, behaviour: () => boolean = () => true) {
@@ -484,15 +474,6 @@ export default class Record {
         }
 
         return this
-    }
-
-    /**
-     * Not using
-     * @deprecated
-     */
-    public frozenTick() {
-        this._variables.frozenKey += 1;
-        return this;
     }
 
     /**
@@ -522,11 +503,11 @@ export default class Record {
      * @param as        Logic for finding what you need in an object
      */
     public borrowFrom(condition: ParamsTags | Function, another: object|Function, as: (value: DynamicResponse) => DynamicResponse) {
-        this._borrowAnother.set(condition, (_: any) => {
+        this._borrowAnother.set(condition as ParamsTags, (_: any) => {
             const object = refOrVar(another) // Get raw data
 
             if(!Array.isArray(object)) { // If not array skip
-                console.warn('{value} is not array')
+                console.warn('borrow, from value is not array')
                 return null;
             }
 
@@ -552,7 +533,7 @@ export default class Record {
      * @param as        Logic for finding what you need in an object
      */
     public borrowAtSelf(where: ParamsTags | Function, from: ParamsTags, as: (value: DynamicResponse) => DynamicResponse) {
-        this._borrow.set(where, [from, (response: any) => {
+        this._borrow.set(where as ParamsTags, [from, (response: any) => {
             if(!Array.isArray(response)) { // If not array skip
                 console.warn('{value} is not array')
                 return null;
@@ -742,6 +723,55 @@ export default class Record {
         return this
     }
 
+    // Utils
+    
+    /**
+     * Clearing Response
+     */
+    public clearResponse() {
+        this._variables.response = null
+        this._frozenResponse = null
+        return this
+    }
+
+    /**
+     * Get old response by tag
+     * 
+     * Example
+     * ```ts
+     * .createTag('path:id', 'full')
+     * .cached({ 'id': 2 }) // Getting response where path param id is 2
+     * ```
+     */
+    public cached(rule: ParamsTags, defaultIsnt: any = null) {
+        for(const [descriptor, value] of this._keepingContainer.entries()) {
+            if(Record.compareTags(rule, descriptor)) {
+                return value
+            }
+        }
+        return defaultIsnt;
+    }
+
+    /**
+     * Delete cache by tag 
+     * 
+     * @deprecated not needed, while
+     */
+    private deleteCached(rule: ParamsTags) {
+        this._keepingContainer.clear()
+    }
+    
+    /**
+     * Not using
+     * @deprecated
+     */
+    public frozenTick() {
+        this._variables.frozenKey += 1;
+        return this;
+    }
+
+    // Request
+
     /**
      * Start request with GET method
      * @param id setting path-param id
@@ -827,146 +857,174 @@ export default class Record {
         return this.doFetch('PATCH')
     }
 
-    // Inner Methods :
+    // Private Methods :
     
-    private borrowingFromAnother(descriptor: {[key: string]: any}, query: any): any {
+    /**
+     * Getting from other object_data if suitable
+     */
+    private borrowingFromAnother(condition: ParamsTags): any {
         if(!this._enabledBorrow)
             return null
 
-        const resolveRule = (rule, descriptor) => {
-            if(typeof rule == 'function') {
-                return rule(this.params)
-            }
-            return Record.compareTags(rule, descriptor)
+        /**
+         * Checking condition, checking can be as Compare Tags or Function with boolean return 
+        */
+        const checkCondition = (condition: ParamsTags, other: Function|ParamsTags) => {
+            return typeof other === 'function'
+                ? other(this.params) 
+                : Record.compareTags(other, condition)
         }
 
+        /**
+         * Borrow From (From other object) 
+        */
         if(this._borrowAnother.size > 0) {
-            for(const [rule, checking] of this._borrowAnother.entries()) {
-                if(!resolveRule(rule, descriptor)) {
+            for(const [rule, searching] of this._borrowAnother.entries()) {
+                if(!checkCondition(condition, rule))
                     continue
-                }
-            
-                const result = checking(null)
-    
-                if(result != null) {
+
+                const result = searching(null) // Try find suitable object
+                if(result)
                     return result
-                }
             }
         }
 
+        /**
+         * Borrow At Self (From cache)
+        */
         if(this._borrow.size > 0) {
-            for(const [rule, checking] of this._borrow.entries()) {
-                if(!resolveRule(rule, descriptor)) {
+            for(const [rule, options] of this._borrow.entries()) {
+                if(!checkCondition(condition, rule))
                     continue
-                }
 
-                let cached = this.cached(checking[0])
+                const [ cacheCondition, searching ] = options
 
-                if(cached != null) {
-                    const result = checking[1](cached)
+                let cached = this.cached(cacheCondition) // Getting cached by condition
+
+                if(!cached)
+                    break; // Not found cache
+
+                const result = searching(cached) // Try find suitable object from cache
         
-                    if(result != null) {
-                        return result
-                    }
-                }
-                else {
-                    break
-                }
+                if(result)
+                    return result
             }
         }
 
         return null
     }
 
+    /**
+     * Collect all queries into one
+     */
     private compileQuery() {
         const queryObject = 
-        this._queryStore != null 
-                ? storeToQuery(this._queryStore)
-                : {}
-
-        const pagination = this.compilePagination()
+            this._queryStore != null 
+                    ? storeToQuery(this._queryStore)
+                    : {}
 
         return appendMerge(
             queryObject, 
             this._staticQuery, 
             this._query,
-            pagination
+            this.compilePagination()
         )
     }
 
+    /**
+     * Creating pagination, or setup path-param
+     */
     private compilePagination() {
-        if(this._paginationEnabled) {
-            if(this._pagination.where == 'path') {
-                this.pathParam(
-                    this._pagination.param, 
-                    this._variables.currentPage
-                )
-            }
-            else if(this._pagination.where == "query") {
-                const query = {} as any
-                query[this._pagination.param] = this._variables.currentPage
-                return query
+        if(!this._paginationEnabled)
+            return {}
+
+        // Pagination in Path Param
+        if(this._pagination.where == 'path') {
+            this.pathParam(
+                this._pagination.param,
+                this._variables.currentPage
+            )
+            return {}
+        }
+        // Pagination in Query
+        else if(this._pagination.where == "query") {
+            return {
+                [this._pagination.param]: this._variables.currentPage
             }
         }
-
-        return {}
     }
 
+    /**
+     * Try resolve condition to custom setup or use default setup
+     */
     private proccesRules(descriptor: {[key: string]: any}) {
-        if(this._recordRuleBehaviour.length == 0) {
+        if(this._recordRuleBehaviour.length == 0)
             return
-        }
 
-        let proccesed = false
         for (const rule of this._recordRuleBehaviour) {
-            let result = rule(descriptor)
-
-            if(result) {
-                proccesed = true
-                break
-            }
+            if(rule(descriptor)) // If rule loaded
+                return // End method
         }
 
-        if(!proccesed)
-            this._defaultRule()
+        this._defaultRule()
     }
 
-    private proccesDescriptor(query: {[key: string]: any}) {
-        const descriptor = {} as any
+    /**
+     * Generate tag object from Path param, and Queries
+     * 
+     * Look `createTag()` for understand code
+     */
+    private recordDataTag(compiledQuery: Dict<string, unknown>) {
+        const tag = {} as ParamsTags;
 
-        const getFrom = (where: string, key: string) =>
-            where == 'query'
-                ? (query[key] || null)  // Query
-                : (this._pathParams[key] || null) // Path
+        for(const [paramName, type] of Object.entries(this._tags)) {
+            const access = this._tagsType[paramName] // Access of Tag
+            const value  = 
+                type == ETagPlace.PATH
+                    ? this._pathParams[paramName] // Getting value from Path param
+                    : compiledQuery[paramName]    // Getting value from Query
 
-        for (const [key, value] of Object.entries(this._tags)) {
-            descriptor[key] = getFrom(value as string, key) != null 
-                ? `*`
-                : null
+            if(access == EParamsTagsType.FULL)
+                tag[paramName] = value ?? null
+            else
+                tag[paramName] = value ? '*' : null
         }
 
-        return descriptor
+        return tag
     }
 
-    private async doFetch(method: string = 'GET') {
+    /**
+     * Call request
+     */
+    private async doFetch(method: string = 'get') {
         this._variables.isLoading = true
 
-        method = method.toLocaleLowerCase()
+        // Generate Record Tag for condition
+        const recordTag = this.recordDataTag(this.compileQuery())
 
-        const descriptor = this.proccesDescriptor(this.compileQuery())
+        // Setup request
+        this.proccesRules(recordTag)
 
-        this.proccesRules(descriptor)
-
+        // Refersh query after Setup
         let queries = this.compileQuery()
 
+        /**
+         * Check behaviour `.onlyOnEmpty()` if enable 
+         * If is enable to continue, Response must be empty
+         * Else return old response
+        */
         if(this._onNullCheck && this._variables.response != null) {
             this._variables.isLoading = false
             return this._variables.response
         }
 
+        /**
+         * If enable borrow data:
+         * Borrow data from another object whenever possible
+         */
         if(method == 'get' || method == "post") {
-            const result = this.borrowingFromAnother(descriptor, queries)
-            if(result != null) {
+            const result = this.borrowingFromAnother(recordTag)
+            if(result != null) { // If found return this data
                 this.setResponse(result);
                 this._variables.error = ''
                 this._variables.maxPages = 1
@@ -976,33 +1034,42 @@ export default class Record {
             }
         }
 
+        /**
+         * [Nerd] Erase data if necessary
+         */
         this.swapLazy()
 
+        // Compile final URL
         const url = 
-            urlPathParams(this._url, this._pathParams)
-            + queryToUrl(queries)
+            urlPathParams(this._url, this._pathParams) // Base path + path params
+            + queryToUrl(queries) // Search param
 
-        const rebuildHeader = {} as any;
-        for (const [key, value] of Object.entries(defaultHeaders)) {
-            rebuildHeader[key] = refOrVar(value);
-        } 
-        for (const [key, value] of Object.entries(this._headers)) {
-            rebuildHeader[key] = refOrVar(value);
-        } 
+        // Add Default Headers and Record Headers
+        const headers = {} as Dict<string, string>;
+        for (const [key, value] of Object.entries(defaultHeaders)) // Default Headers
+            headers[key] = refOrVar(value);
+        for (const [key, value] of Object.entries(this._headers)) // Record Headers
+            headers[key] = refOrVar(value);
 
+        // Generate Options for `fetch()`
         const options:RequestInit = {
-            headers: appendMerge(rebuildHeader, {'Authorization': refOrVar(this._auth)}),
+            // Append headers + auth
+            headers: appendMerge(headers, {'Authorization': refOrVar(this._auth)}),
             method,
         }
 
+        // If use body connect to options
         if(this._body != null) {
+            // Getting body
             options['body'] = refOrVar(this._body) as any
 
+            // Convert object to string
             if(!(options['body'] instanceof FormData) && typeof options['body'] == 'object') {
                 options['body'] = JSON.stringify(this._body)
             }
         }
 
+        // Request data from http > config
         let fetchResult = await storeFetch(
                 url, 
                 options,
@@ -1010,17 +1077,23 @@ export default class Record {
                 this._template as any
             )
 
+        /**
+         * If request had error, call onError handler
+        */
         if(fetchResult.error && this._onError != null) {
             const answer = await this._onError({text: fetchResult.errorText, code: fetchResult.code}, () => this.doFetch(method));
 
+            // If answer had object data replace
             if(typeof answer == 'object') {
                 fetchResult.data = answer
                 fetchResult.error = false
             }
         }
 
+        // Write response to Record Object
         this.setResponse(fetchResult.data);
 
+        // Set Meta
         this._variables.error = fetchResult.errorText
         this._variables.maxPages = fetchResult.pageCount
         this._variables.isError = fetchResult.error
@@ -1031,62 +1104,80 @@ export default class Record {
             this._protocol = fetchResult.protocol
         }
 
+        // Cache data
         this.keep(fetchResult.data as any, queries)
 
+        // Call finsih handler
         if(this._onEnd)
             this._onEnd(fetchResult.data)
 
         return fetchResult.data
     }
 
+    /** Erase response after call doFetch */
     private swapGreedy() {
+        // Disable on appendResponse
         if(this._swapMethod == 1 && !this._variables.expandResponse) {
             this.clearResponse()
         }
     }
 
+    /** Erase response after borrow function */
     private swapLazy() {
+        // Disable on appendResponse
         if(this._swapMethod == 2 && !this._variables.expandResponse) {
             this.clearResponse()
         }
     }
 
+    
+    /**
+     * Compare tags see `createTag`
+     */
+    private static compareTags(tags: ParamsTags, other: ParamsTags) {
+        for (const [name, value] of Object.entries(tags)) {
+            if(!(name in other)) 
+                return false // Not includes in other. Not valid
+
+            const otherValue = other[name] ?? null
+
+            if(value == otherValue) // If equal each others
+                continue
+
+            // If one use `any` and other not use `null`
+            // Like: { tag: '*' } + { tag: null } = false
+            // Like: { tag: '*' } + { tag: 1 }    = true
+            if((value == '*' && otherValue != null) || (otherValue == '*' && value != null))
+                continue
+
+            // Else not valid
+            return false
+        }
+        return true
+    }
+
+    // Write response to Record
     private setResponse(v: any) {
+        // Appends Mode
         if(this._variables.expandResponse) {
-            if(!this._variables.response)
+            if(!this._variables.response) // Not Exist create
                 this._variables.response = [];
 
             this._variables.response.push(...v);
         }
+        // Rewrite Mode
         else {
             this._variables.response = v;
-            if(Array.isArray(v)) {
-                this._frozenResponse = [...v];
-            }
-            else {
-                this._frozenResponse = {...v};
-            }
         }
+
         return this._variables.response;
     }
 
+    // Cache response by Tags
     private keep(response: DynamicResponse, query: any) {
-        const dataDescription = {} as any
-
-        const getFrom = (where: string, key: string) =>
-            where == 'query' 
-                ? (query[key] || null) 
-                : (this._pathParams[key] || null)
-
-        for (const [key, value] of Object.entries(this._tags)) {
-            const mode = this._tagsType[key]
-            const data = getFrom(value as string, key)
-
-            dataDescription[key] = data != null 
-                ? (mode == 0 ? `*` : data)
-                : null
-        }
-
-        this._keepingContainer.set(dataDescription, response)
+        this._keepingContainer.set(
+            this.recordDataTag(query), // Generate tag
+            response
+        )
     }
 }
