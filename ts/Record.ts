@@ -998,6 +998,7 @@ export default class Record {
     private recordDataTag(compiledQuery: Dict<string, unknown>) {
         const tag = {} as ParamsTags;
 
+        // Get all registered Tags
         for(const [paramName, type] of Object.entries(this._tags)) {
             const access = this._tagsType[paramName] // Access of Tag
             const value  = 
@@ -1005,6 +1006,7 @@ export default class Record {
                     ? this._pathParams[paramName] // Getting value from Path param
                     : compiledQuery[paramName]    // Getting value from Query
 
+            // Write data like { "param": null } or { "param": 1 }
             if(access == EParamsTagsType.FULL)
                 tag[paramName] = value ?? null
             else
