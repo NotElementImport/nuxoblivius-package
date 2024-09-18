@@ -85,10 +85,7 @@ export default class Record {
     // Links
 
     /** For re-launching fetch */
-    private _lastStep = {
-        method: '',
-        arg: null as any
-    }
+    private _lastStep: Function = () => {}
 
     private _proxies: any = {}
 
@@ -175,19 +172,15 @@ export default class Record {
             toFirst() {
                 pThis._variables.currentPage = 1
                 pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage
-                if(pThis._variables.autoReloadPagination && pThis._lastStep.method) {
-                    (pThis as any)[pThis._lastStep.method](pThis._lastStep.arg)
-                }
-
+                if(pThis._variables.autoReloadPagination)
+                    pThis._lastStep()
                 return pThis
             },
             toLast() {
                 pThis._variables.currentPage = pThis._variables.maxPages;
                 pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage
-                if(pThis._variables.autoReloadPagination && pThis._lastStep.method) {
-                    (pThis as any)[pThis._lastStep.method](pThis._lastStep.arg)
-                }
-                
+                if(pThis._variables.autoReloadPagination)
+                    pThis._lastStep()
                 return pThis
             },
             next() {
@@ -195,9 +188,8 @@ export default class Record {
                     pThis._variables.currentPage += 1
                     pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage
 
-                    if(pThis._variables.autoReloadPagination && pThis._lastStep.method) {
-                        (pThis as any)[pThis._lastStep.method](pThis._lastStep.arg)
-                    }
+                    if(pThis._variables.autoReloadPagination)
+                        pThis._lastStep()
                 }
 
                 return pThis
@@ -208,9 +200,8 @@ export default class Record {
                     pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage
                 }
 
-                if(pThis._variables.autoReloadPagination && pThis._lastStep.method) {
-                    (pThis as any)[pThis._lastStep.method](pThis._lastStep.arg)
-                }
+                if(pThis._variables.autoReloadPagination)
+                    pThis._lastStep()
 
                 return pThis
             },
@@ -220,9 +211,8 @@ export default class Record {
             set current(v: number) {
                 pThis._variables.currentPage = v
 
-                if(pThis._variables.autoReloadPagination && pThis._lastStep.method) {
-                    (pThis as any)[pThis._lastStep.method](pThis._lastStep.arg)
-                }
+                if(pThis._variables.autoReloadPagination)
+                    pThis._lastStep()
             },
             get current() {
                 return pThis._variables.currentPage
@@ -357,23 +347,29 @@ export default class Record {
         return this
     }
 
-    private static ruleAndDescriptorEqual(rule: ParamsTags, descriptor: ParamsTags) {
-        let isEqual = true;
-        for (const [name, value] of Object.entries(rule)) {
-            if(!(name in descriptor)) {
-                isEqual = false;
-                break
-            }
-            else if(value != descriptor[name] && value != '*') {
-                isEqual = false
-                break
-            }
-            else if(value == '*' && descriptor[name] == null) {
-                isEqual = false
-                break
-            }
+    /**
+     * Compare tags see `createTag`
+     */
+    private static compareTags(tags: ParamsTags, other: ParamsTags) {
+        for (const [name, value] of Object.entries(tags)) {
+            if(!(name in other)) 
+                return false // Not includes in other. Not valid
+
+            const otherValue = other[name] ?? null
+
+            if(value == otherValue) // If equal each others
+                continue
+
+            // If one use `any` and other not use `null`
+            // Like: { tag: '*' } + { tag: null } = false
+            // Like: { tag: '*' } + { tag: 1 }    = true
+            if((value == '*' && otherValue != null) || (otherValue == '*' && value != null))
+                continue
+
+            // Else not valid
+            return false
         }
-        return isEqual
+        return true
     }
 
     /**
@@ -402,7 +398,7 @@ export default class Record {
             if(typeof rule == 'function') {
                 return rule(this.params)
             }
-            return Record.ruleAndDescriptorEqual(rule, descriptor)
+            return Record.compareTags(rule, descriptor)
         }
         
         this._recordRuleBehaviour.push((descriptor: ParamsTags) => {
@@ -437,7 +433,7 @@ export default class Record {
      */
     public cached(rule: ParamsTags, defaultIsnt: any = null) {
         for(const [descriptor, value] of this._keepingContainer.entries()) {
-            if(Record.ruleAndDescriptorEqual(rule, descriptor)) {
+            if(Record.compareTags(rule, descriptor)) {
                 return value
             }
         }
@@ -470,7 +466,7 @@ export default class Record {
     }
 
     /**
-     * Rollback to cached data
+     * Rollback to cached data, using in `rule` and `defaultRule` section 
      */
     private prepare(rule: ParamsTags, behaviour: () => boolean = () => true) {
         let data = this.cached(rule)
@@ -576,12 +572,27 @@ export default class Record {
         return this
     }
 
+    /**
+     * [Configuration]
+     * `pattern response reader` using for customize raw response
+     * Like:
+     * { "items": [ ...someStuff ] }
+     * we taking "items" from response, and final result fetch is
+     * [ ...someStuff ]
+     * 
+     * More in: https://notelementimport.github.io/nuxoblivius-docs/release/template.html
+     */
     public template(template: string|Function) {
         this._template = template
         return this
     }
 
+    /**
+     * [Configuration]
+     * Set path-param value in Pathname `this._url` 
+     */
     public pathParam(name: string, value: any) {
+        // If we put promise object
         resolveOrLater(value, (result: any) => {
             this._pathParams[name] = result
         })
@@ -589,13 +600,18 @@ export default class Record {
         return this
     }
 
-    public query(query: object, locked = false) {
+    /**
+     * [Configuration]
+     * Set query, for request
+     * Has baked mode, a.k.a by default, this values cannot be delete by `clearDynamicQuery()`
+     */
+    public query(query: object, baked = false) {
         if(isRef(query)) {
             this._queryStore = query
             return this
         }
 
-        if(locked) {
+        if(baked) {
             this._staticQuery = query
         }
         else {
@@ -607,12 +623,22 @@ export default class Record {
         return this
     }
 
+    /**
+     * [Configuration]
+     * `pattern response reader` protocol - other data from raw response
+     * Craete default value if not setting
+    */
     public defineProtocol(key: string, defaultValue: any = null) {
         this._protocol[key] = defaultValue;
         return this
     }
 
+    /**
+     * [Configuration]
+     * Header of request
+    */
     public header(name: string, value: any) {
+        // If we put promise object
         resolveOrLater(value, (result: any) => {
             this._headers[name] = result
         })
@@ -620,7 +646,13 @@ export default class Record {
         return this
     }
 
+    /**
+     * [Configuration]
+     * Body of request
+     * And enabling force mode for body
+    */
     public body(body: FormData|{[key: string]: any}|null) {
+        // If we put promise object
         resolveOrLater(body as any, (result: any) => {
             this._body = result
             this._forceBody = result != null
@@ -629,62 +661,91 @@ export default class Record {
         return this
     }
 
+    /**
+     * [Configuration]
+     * Watch Refs and call reload data after changing Refs
+     */
     public reloadBy(object: any) {
+        // Disable feature in Server (leak fix)
         if(!isClient)
             return this
 
+        // Extract context
         const pThis = this
+        // If we put promise object
         resolveOrLater(object, (result: any) => {
+            // Vue Ref
             if(isReactive(result) || isRef(result) || result?.__v_isRef) {
                 watch(result, () => {
-                    pThis.frozenTick()
-                    if(pThis._lastStep.method)
-                        (pThis as any)[pThis._lastStep.method](pThis._lastStep.arg)
-                            .then((_: any) => pThis.frozenTick())
+                    pThis._lastStep()
                 })
                 return
             }
             else {
+                // State Manager Ref
                 if(!('_module_' in result))
                     throw `reloadBy: only ref support`
 
                 result.watch(() => {
-                    pThis.frozenTick()
-                    (pThis as any)[pThis._lastStep.method](pThis._lastStep.arg)
-                        .then((_: any) => pThis.frozenTick())
+                    pThis._lastStep()
                 })
             }
         })
         return this
     }
 
+    /**
+     * [Configuration]
+     * Authorization for request
+     */
     public auth(data: any) {
+        // If we put promise object
         resolveOrLater(data, (result: any) => {
             this._auth = result
         })
         return this
     }
 
+    /**
+     * [Configuration]
+     * Change Response type to Blob
+     */
     public isBlob(value = true) {
         this._isBlob = value
         return this
     }
 
+    /**
+     * [Configuration]
+     * Clearing queries, baked not touched
+     */
     public clearDynamicQuery() {
         this._query = {}
         return this
     }
 
+    /**
+     * [Configuration]
+     * On failure handle, can restart fetch
+     */
     public onFailure(method: Function) {
         this._onError = method
         return this
     }
 
+    /**
+     * [Configuration]
+     * Simple handle tracking of end fetch new data
+     */
     public onFinish(method: Function) {
         this._onEnd = method
         return this
     }
 
+    /**
+     * Start request with GET method
+     * @param id setting path-param id
+     */
     public async get(id: number = null) {
         this.swapGreedy()
 
@@ -693,12 +754,15 @@ export default class Record {
 
         this.pathParam('id', id)
 
-        this._lastStep.method = 'get'
-        this._lastStep.arg = id
+        this._lastStep = () => this.get(id)
 
         return this.doFetch('GET')
     }
 
+    /**
+     * Start request with POST method
+     * @param body setting body (can be ignored)
+     */
     public async post(body: any = null) {
         if(this._onNullCheck && this._variables.response != null) {
             return this._variables.response
@@ -709,24 +773,30 @@ export default class Record {
         if(!this._forceBody)
             this._body = body
 
-        this._lastStep.method = 'post'
-        this._lastStep.arg = body
+        this._lastStep = () => this.post(body)
 
         return this.doFetch('POST')
     }
 
+    /**
+     * Start request with PUT method
+     * @param body setting body (can be ignored)
+     */
     public async put(body: any = null) {
         this.swapGreedy()
 
         if(!this._forceBody)
             this._body = body
 
-        this._lastStep.method = 'put'
-        this._lastStep.arg = body
+        this._lastStep = () => this.put(body)
 
         return this.doFetch('PUT')
     }
 
+    /**
+     * Start request with DELETE method
+     * @param id setting path-param id
+     */
     public async delete(id: number = null) {
         this.swapGreedy()
 
@@ -735,12 +805,15 @@ export default class Record {
 
         this.pathParam('id', id)
         
-        this._lastStep.method = 'delete'
-        this._lastStep.arg = id
+        this._lastStep = () => this.delete(id)
 
         return this.doFetch('DELETE')
     }
 
+    /**
+     * Start request with PATCH method
+     * @param id setting path-param id
+     */
     public async patch(id: number = null) {
         this.swapGreedy()
 
@@ -749,8 +822,7 @@ export default class Record {
 
         this.pathParam('id', id)
         
-        this._lastStep.method = 'patch'
-        this._lastStep.arg = id
+        this._lastStep = () => this.patch(id)
 
         return this.doFetch('PATCH')
     }
@@ -765,7 +837,7 @@ export default class Record {
             if(typeof rule == 'function') {
                 return rule(this.params)
             }
-            return Record.ruleAndDescriptorEqual(rule, descriptor)
+            return Record.compareTags(rule, descriptor)
         }
 
         if(this._borrowAnother.size > 0) {

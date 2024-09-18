@@ -56,10 +56,7 @@ export default class Record {
     _onEnd = null;
     // Links
     /** For re-launching fetch */
-    _lastStep = {
-        method: '',
-        arg: null
-    };
+    _lastStep = () => { };
     _proxies = {};
     _borrow = new Map();
     _borrowAnother = new Map();
@@ -130,26 +127,23 @@ export default class Record {
             toFirst() {
                 pThis._variables.currentPage = 1;
                 pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage;
-                if (pThis._variables.autoReloadPagination && pThis._lastStep.method) {
-                    pThis[pThis._lastStep.method](pThis._lastStep.arg);
-                }
+                if (pThis._variables.autoReloadPagination)
+                    pThis._lastStep();
                 return pThis;
             },
             toLast() {
                 pThis._variables.currentPage = pThis._variables.maxPages;
                 pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage;
-                if (pThis._variables.autoReloadPagination && pThis._lastStep.method) {
-                    pThis[pThis._lastStep.method](pThis._lastStep.arg);
-                }
+                if (pThis._variables.autoReloadPagination)
+                    pThis._lastStep();
                 return pThis;
             },
             next() {
                 if (pThis._variables.maxPages > pThis._variables.currentPage) {
                     pThis._variables.currentPage += 1;
                     pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage;
-                    if (pThis._variables.autoReloadPagination && pThis._lastStep.method) {
-                        pThis[pThis._lastStep.method](pThis._lastStep.arg);
-                    }
+                    if (pThis._variables.autoReloadPagination)
+                        pThis._lastStep();
                 }
                 return pThis;
             },
@@ -158,9 +152,8 @@ export default class Record {
                     pThis._variables.currentPage -= 1;
                     pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage;
                 }
-                if (pThis._variables.autoReloadPagination && pThis._lastStep.method) {
-                    pThis[pThis._lastStep.method](pThis._lastStep.arg);
-                }
+                if (pThis._variables.autoReloadPagination)
+                    pThis._lastStep();
                 return pThis;
             },
             get isLastPage() {
@@ -168,9 +161,8 @@ export default class Record {
             },
             set current(v) {
                 pThis._variables.currentPage = v;
-                if (pThis._variables.autoReloadPagination && pThis._lastStep.method) {
-                    pThis[pThis._lastStep.method](pThis._lastStep.arg);
-                }
+                if (pThis._variables.autoReloadPagination)
+                    pThis._lastStep();
             },
             get current() {
                 return pThis._variables.currentPage;
@@ -287,23 +279,21 @@ export default class Record {
         this._frozenResponse = null;
         return this;
     }
-    static ruleAndDescriptorEqual(rule, descriptor) {
-        let isEqual = true;
-        for (const [name, value] of Object.entries(rule)) {
-            if (!(name in descriptor)) {
-                isEqual = false;
-                break;
-            }
-            else if (value != descriptor[name] && value != '*') {
-                isEqual = false;
-                break;
-            }
-            else if (value == '*' && descriptor[name] == null) {
-                isEqual = false;
-                break;
-            }
+    /**
+     * Compare tags see `createTag`
+     */
+    static compareTags(tags, other) {
+        for (const [name, value] of Object.entries(tags)) {
+            if (!(name in other))
+                return false; // Not includes in other. Not valid
+            const otherValue = other[name] ?? null;
+            if (value == otherValue)
+                continue;
+            if ((value == '*' && otherValue != null) || (otherValue == '*' && value != null))
+                continue;
+            return false;
         }
-        return isEqual;
+        return true;
     }
     /**
      * Create rule on specific behaviour
@@ -531,10 +521,7 @@ export default class Record {
         resolveOrLater(object, (result) => {
             if (isReactive(result) || isRef(result) || result?.__v_isRef) {
                 watch(result, () => {
-                    pThis.frozenTick();
-                    if (pThis._lastStep.method)
-                        pThis[pThis._lastStep.method](pThis._lastStep.arg)
-                            .then((_) => pThis.frozenTick());
+                    pThis._lastStep();
                 });
                 return;
             }
@@ -542,8 +529,7 @@ export default class Record {
                 if (!('_module_' in result))
                     throw `reloadBy: only ref support`;
                 result.watch(() => {
-                    pThis.frozenTick()(pThis)[pThis._lastStep.method](pThis._lastStep.arg)
-                        .then((_) => pThis.frozenTick());
+                    pThis._lastStep();
                 });
             }
         });
@@ -576,8 +562,7 @@ export default class Record {
         if (!this._forceBody)
             this._body = null;
         this.pathParam('id', id);
-        this._lastStep.method = 'get';
-        this._lastStep.arg = id;
+        this._lastStep = () => this.get(id);
         return this.doFetch('GET');
     }
     async post(body = null) {
@@ -587,16 +572,14 @@ export default class Record {
         this.swapGreedy();
         if (!this._forceBody)
             this._body = body;
-        this._lastStep.method = 'post';
-        this._lastStep.arg = body;
+        this._lastStep = () => this.post(body);
         return this.doFetch('POST');
     }
     async put(body = null) {
         this.swapGreedy();
         if (!this._forceBody)
             this._body = body;
-        this._lastStep.method = 'put';
-        this._lastStep.arg = body;
+        this._lastStep = () => this.put(body);
         return this.doFetch('PUT');
     }
     async delete(id = null) {
@@ -604,8 +587,7 @@ export default class Record {
         if (!this._forceBody)
             this._body = null;
         this.pathParam('id', id);
-        this._lastStep.method = 'delete';
-        this._lastStep.arg = id;
+        this._lastStep = () => this.delete(id);
         return this.doFetch('DELETE');
     }
     async patch(id = null) {
@@ -613,8 +595,7 @@ export default class Record {
         if (!this._forceBody)
             this._body = null;
         this.pathParam('id', id);
-        this._lastStep.method = 'patch';
-        this._lastStep.arg = id;
+        this._lastStep = () => this.patch(id);
         return this.doFetch('PATCH');
     }
     // Inner Methods :

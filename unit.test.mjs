@@ -1,4 +1,5 @@
 import { queryToUrl } from './dist/ts/Utils.js'
+import { Record } from './index.js'
 
 // Test: queryToUrl
 
@@ -8,3 +9,9 @@ const testObject = {
 }
 
 console.log(`queryToUrl: ${queryToUrl(testObject)}`)
+
+// Test: compareTags
+
+console.log(
+    Record.compareTags({ test: null }, { test: null })
+)
