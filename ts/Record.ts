@@ -604,9 +604,10 @@ export default class Record {
     /**
      * [Configuration]
      * Set query, for request
-     * Has baked mode, a.k.a by default, this values cannot be delete by `clearDynamicQuery()`
+     * Has baked mode, a.k.a by default. This values cannot be delete by `clearDynamicQuery()`
      */
     public query(query: object, baked = false) {
+        // Store as Query, not to use
         if(isRef(query)) {
             this._queryStore = query
             return this
@@ -616,7 +617,7 @@ export default class Record {
             this._staticQuery = query
         }
         else {
-            if(isReactive(query))
+            if(isReactive(query)) // Reactive rewrite old (not baked) query
                 this._query = query
             else
                 this._query = appendMerge(this._query, query)
