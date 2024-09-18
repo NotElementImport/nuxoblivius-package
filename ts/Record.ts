@@ -1059,7 +1059,6 @@ export default class Record {
             if(result != null) { // If found return this data
                 this.setResponse(result);
                 this._variables.error = ''
-                this._variables.maxPages = 1
                 this._variables.isError = false
                 this._variables.isLoading = false
                 return result
