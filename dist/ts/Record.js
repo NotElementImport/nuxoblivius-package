@@ -1,37 +1,70 @@
 import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery, urlPathParams } from "./Utils.js";
 import { defaultHeaders, storeFetch } from "./config.js";
 import { isReactive, reactive, watch } from "vue";
+var EParamsTagsType;
+(function (EParamsTagsType) {
+    EParamsTagsType[EParamsTagsType["SIMPLE"] = 0] = "SIMPLE";
+    EParamsTagsType[EParamsTagsType["FULL"] = 1] = "FULL";
+})(EParamsTagsType || (EParamsTagsType = {}));
+/**
+ * Checking for disabling some stuff on server
+ */
 const isClient = typeof document !== 'undefined';
 export default class Record {
+    // Fetch settings
+    /** Pathname for fetching  */
     _url = '';
+    /** @deprecated Other Stores as Query object */
     _queryStore = null;
+    /** Query for fetching */
     _query = {};
+    /** Baked Query for fetching [cannot be removed] */
     _staticQuery = {};
+    /** Path params for query */
     _pathParams = {};
+    /** Headers for query */
     _headers = {};
+    /** Body request for query */
     _body = null;
+    /** Authorization for query */
     _auth = null;
-    _swapMethod = 0;
-    _onNullCheck = false;
-    _rules = [];
-    _defaultRule = () => null;
+    /** Always use body */
     _forceBody = false;
-    _awaitBlob = false;
+    /** Response type is blob */
+    _isBlob = false;
+    /** Current `pattern response reader` */
     _template = '';
+    // Cachin / Tags
+    _tags = { 'id': 'path' };
+    _tagsType = { 'id': EParamsTagsType.SIMPLE };
+    // Pre Fetch config
+    /** Receive data only when the response is empty */
+    _onNullCheck = false;
+    /** [For nerds] When to delete data in response  */
+    _swapMethod = 0;
+    // Post Fetch config
+    /** Data from `pattern response reader` */
+    _protocol = {};
+    /** Rebuild the object at the specified rule */
+    _recordRuleBehaviour = [];
+    /** Default settings if no rule is suitable  */
+    _defaultRule = () => null;
+    // Event Handlers:
+    /** Error Handler */
+    _onError = null;
+    /** Finish Response Handler */
+    _onEnd = null;
+    // Links
+    /** For re-launching fetch */
     _lastStep = {
         method: '',
         arg: null
     };
-    _protocol = {};
     _proxies = {};
-    _keepBy = { 'id': 'path' };
-    _keepByMethod = { 'id': 0 };
     _borrow = new Map();
     _borrowAnother = new Map();
     _keepingContainer = new Map();
     _enabledBorrow = true;
-    _onError = null;
-    _onEnd = null;
     _paginationEnabled = false;
     _pagination = {
         where: 'path',
@@ -159,7 +192,7 @@ export default class Record {
         };
     }
     get protocol() {
-        return this._proxies.protocol;
+        return this._protocol;
     }
     get loading() {
         return this._variables.isLoading;
@@ -195,34 +228,60 @@ export default class Record {
         });
         return instance;
     }
+    /**
+    * [Sugar] Creating Bearer auth string
+    */
     static Bearer(token) {
         return `Bearer ${token}`;
     }
+    /**
+    * [Sugar] Creating Basic auth string
+    */
     static Basic(login, password) {
         return `Basic ${btoa(login + ":" + password)}`;
     }
-    keepBy(field, method = 'simple') {
-        method = method == 'simple' ? 0 : 1;
-        if (field.startsWith('query:')) {
-            const name = field.slice(6);
-            this._keepBy[name] = 'query';
-            this._keepByMethod[name] = method;
+    /**
+    * [Nerds] Creating Tag for processing: `borrow`, `caching`, `rules`
+    *
+    * simple - check has value or not
+    * full   - can access to value
+    */
+    createTag(field, access = 'simple') {
+        const acecssValue = access == 'simple'
+            ? EParamsTagsType.SIMPLE
+            : EParamsTagsType.FULL;
+        if (field.startsWith('query:')) { // Query Tag
+            const name = field.slice(6); // remove 'query:'
+            this._tags[name] = 'query';
+            this._tagsType[name] = acecssValue;
         }
-        else if (field.startsWith("path:")) {
-            const name = field.slice(5);
-            this._keepBy[name] = 'path';
-            this._keepByMethod[name] = method;
+        else if (field.startsWith("path:")) { // Path Param Tag
+            const name = field.slice(5); // remove 'path:'
+            this._tags[name] = 'path';
+            this._tagsType[name] = acecssValue;
         }
         return this;
     }
-    expandResponse(value = true) {
+    /**
+     * Appends new response to current response like\
+     * `response.push(...new_response)`
+     *
+     * ! If enable disabled swapMethod [Nerd thing]
+     */
+    appendsResponse(value = true) {
         this._variables.expandResponse = value;
         return this;
     }
+    /**
+     * Only do Fetch if response == null
+     */
     onlyOnEmpty(enabled = true) {
         this._onNullCheck = enabled;
         return this;
     }
+    /**
+     * Clearing Response
+     */
     clearResponse() {
         this._variables.response = null;
         this._frozenResponse = null;
@@ -246,6 +305,27 @@ export default class Record {
         }
         return isEqual;
     }
+    /**
+     * Create rule on specific behaviour
+     *
+     * Example:\
+     * `Our url: /api/my-stuff?page=1`
+     *
+     * Create rule for `page` has some value
+     *
+     * ```ts
+     * .createTag('query:page', 'simple') // Creating tag to checking behaviour, and get simple access
+     * .rule(
+     *    { 'page': '*' }, // Search by tag: Query param `page` has any value
+     *    record => record
+     *      .template('my-template-pagination') // We use template for Pagination type response
+     * )
+     * .defaultRule(
+     *    record => record
+     *      .template('') // Else disable template
+     * )
+     * ```
+     */
     rule(rule, behaviour) {
         const check = (descriptor) => {
             if (typeof rule == 'function') {
@@ -253,7 +333,7 @@ export default class Record {
             }
             return Record.ruleAndDescriptorEqual(rule, descriptor);
         };
-        this._rules.push((descriptor) => {
+        this._recordRuleBehaviour.push((descriptor) => {
             if (!check(descriptor)) {
                 return false;
             }
@@ -262,10 +342,24 @@ export default class Record {
         });
         return this;
     }
+    /**
+     * Deafult rule if other rules not valid
+     *
+     * Check `rule` method for example
+     */
     defaultRule(behaviour) {
         this._defaultRule = () => behaviour(this);
         return this;
     }
+    /**
+     * Get old response by tag
+     *
+     * Example
+     * ```ts
+     * .createTag('path:id', 'full')
+     * .cached({ 'id': 2 }) // Getting response where path param id is 2
+     * ```
+     */
     cached(rule, defaultIsnt = null) {
         for (const [descriptor, value] of this._keepingContainer.entries()) {
             if (Record.ruleAndDescriptorEqual(rule, descriptor)) {
@@ -274,17 +368,31 @@ export default class Record {
         }
         return defaultIsnt;
     }
+    /**
+     * Delete cache by tag
+     *
+     * @deprecated not needed, while
+     */
     deleteCached(rule) {
         this._keepingContainer.clear();
     }
+    /**
+     * Rewrite url, using in `rule` and `defaultRule` section
+     */
     url(path) {
         this._url = path;
         return this;
     }
+    /**
+     * Enable / Disable logic for `borrowAtAnother` and `borrowAtSelf`
+     */
     enableBorrow(value) {
         this._enabledBorrow = value;
         return this;
     }
+    /**
+     * Rollback to cached data
+     */
     prepare(rule, behaviour = () => true) {
         let data = this.cached(rule);
         if (!behaviour())
@@ -292,36 +400,54 @@ export default class Record {
         if (data != null) {
             this.setResponse(data);
             this._variables.currentPage = 1;
+            this._variables.isLastPage = this._variables.currentPage == this._variables.maxPages;
         }
         else {
             console.warn('prepare is empty');
         }
         return this;
     }
+    /**
+     * Not using
+     * @deprecated
+     */
     frozenTick() {
         this._variables.frozenKey += 1;
         return this;
     }
+    /**
+     * [Configuration]
+     * [Nerds] When to delete data in response
+     *
+     * `hot`    - Seamless loading
+     * `lazy`   - After checking borrow algorithm, delete current data
+     * `greedy` - Immediately delete current data from start fetching
+     */
     swapMethod(method) {
-        if (method == 'hot') {
+        if (method == 'hot')
             this._swapMethod = 0;
-        }
-        else if (method == 'greedy') {
+        else if (method == 'greedy')
             this._swapMethod = 1;
-        }
-        else if (method == 'lazy') {
+        else if (method == 'lazy')
             this._swapMethod = 2;
-        }
         return this;
     }
-    borrowAtAnother(logic, another, as) {
-        this._borrowAnother.set(logic, (response) => {
-            const object = refOrVar(another);
-            if (!Array.isArray(object)) {
+    /**
+     * [Configuration]
+     * [Nerds] Get data from another object, instead of fetching. Otherwise do fetching
+     *
+     * @param condition Check whether the conditions are suitable for the execution of the "borrow". (By tags or Functioin)
+     * @param another   The object we're going to take from
+     * @param as        Logic for finding what you need in an object
+     */
+    borrowFrom(condition, another, as) {
+        this._borrowAnother.set(condition, (_) => {
+            const object = refOrVar(another); // Get raw data
+            if (!Array.isArray(object)) { // If not array skip
                 console.warn('{value} is not array');
                 return null;
             }
-            for (const part of object) {
+            for (const part of object) { // Search, what you need
                 const result = as(part);
                 if (typeof result != 'undefined' && result != null) {
                     return result;
@@ -331,9 +457,17 @@ export default class Record {
         });
         return this;
     }
+    /**
+     * [Configuration]
+     * [Nerds] Get data from self, by caching value, instead of fetching. Otherwise do fetching
+     *
+     * @param condition Check whether the conditions are suitable for the execution of the "borrow". (By tags or Functioin)
+     * @param from      Get caching data by tags. Otherwise skip "borrow"
+     * @param as        Logic for finding what you need in an object
+     */
     borrowAtSelf(where, from, as) {
         this._borrow.set(where, [from, (response) => {
-                if (!Array.isArray(response)) {
+                if (!Array.isArray(response)) { // If not array skip
                     console.warn('{value} is not array');
                     return null;
                 }
@@ -363,10 +497,13 @@ export default class Record {
             return this;
         }
         if (locked) {
-            this._staticQuery = appendMerge(this._staticQuery, query);
+            this._staticQuery = query;
         }
         else {
-            this._query = appendMerge(this._query, query);
+            if (isReactive(query))
+                this._query = query;
+            else
+                this._query = appendMerge(this._query, query);
         }
         return this;
     }
@@ -394,9 +531,7 @@ export default class Record {
         resolveOrLater(object, (result) => {
             if (isReactive(result) || isRef(result) || result?.__v_isRef) {
                 watch(result, () => {
-                    pThis.clearResponse();
                     pThis.frozenTick();
-                    pThis.deleteCached(pThis.proccesDescriptor(this.compileQuery()));
                     if (pThis._lastStep.method)
                         pThis[pThis._lastStep.method](pThis._lastStep.arg)
                             .then((_) => pThis.frozenTick());
@@ -407,10 +542,7 @@ export default class Record {
                 if (!('_module_' in result))
                     throw `reloadBy: only ref support`;
                 result.watch(() => {
-                    pThis.clearResponse();
-                    pThis.frozenTick();
-                    pThis.deleteCached(pThis.proccesDescriptor(this.compileQuery()));
-                    pThis[pThis._lastStep.method](pThis._lastStep.arg)
+                    pThis.frozenTick()(pThis)[pThis._lastStep.method](pThis._lastStep.arg)
                         .then((_) => pThis.frozenTick());
                 });
             }
@@ -424,7 +556,7 @@ export default class Record {
         return this;
     }
     isBlob(value = true) {
-        this._awaitBlob = value;
+        this._isBlob = value;
         return this;
     }
     clearDynamicQuery() {
@@ -485,6 +617,7 @@ export default class Record {
         this._lastStep.arg = id;
         return this.doFetch('PATCH');
     }
+    // Inner Methods :
     borrowingFromAnother(descriptor, query) {
         if (!this._enabledBorrow)
             return null;
@@ -545,11 +678,11 @@ export default class Record {
         return {};
     }
     proccesRules(descriptor) {
-        if (this._rules.length == 0) {
+        if (this._recordRuleBehaviour.length == 0) {
             return;
         }
         let proccesed = false;
-        for (const rule of this._rules) {
+        for (const rule of this._recordRuleBehaviour) {
             let result = rule(descriptor);
             if (result) {
                 proccesed = true;
@@ -562,9 +695,9 @@ export default class Record {
     proccesDescriptor(query) {
         const descriptor = {};
         const getFrom = (where, key) => where == 'query'
-            ? (query[key] || null)
-            : (this._pathParams[key] || null);
-        for (const [key, value] of Object.entries(this._keepBy)) {
+            ? (query[key] || null) // Query
+            : (this._pathParams[key] || null); // Path
+        for (const [key, value] of Object.entries(this._tags)) {
             descriptor[key] = getFrom(value, key) != null
                 ? `*`
                 : null;
@@ -612,7 +745,7 @@ export default class Record {
                 options['body'] = JSON.stringify(this._body);
             }
         }
-        let fetchResult = await storeFetch(url, options, this._awaitBlob, this._template);
+        let fetchResult = await storeFetch(url, options, this._isBlob, this._template);
         if (fetchResult.error && this._onError != null) {
             const answer = await this._onError({ text: fetchResult.errorText, code: fetchResult.code }, () => this.doFetch(method));
             if (typeof answer == 'object') {
@@ -666,8 +799,8 @@ export default class Record {
         const getFrom = (where, key) => where == 'query'
             ? (query[key] || null)
             : (this._pathParams[key] || null);
-        for (const [key, value] of Object.entries(this._keepBy)) {
-            const mode = this._keepByMethod[key];
+        for (const [key, value] of Object.entries(this._tags)) {
+            const mode = this._tagsType[key];
             const data = getFrom(value, key);
             dataDescription[key] = data != null
                 ? (mode == 0 ? `*` : data)

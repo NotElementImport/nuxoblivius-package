@@ -152,9 +152,9 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * .keepBy('query:complete', 'simply') // simply - keeping only if sets '*' or empty `null`
      * ```
      */
-    public keepBy<K extends PropertyKey, Q extends 'path'>(field: `${Q}:${PathParams|K}`, method?: 'simply'|'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
-    public keepBy<K extends PropertyKey, Q extends 'query'>(field: `${Q}:${keyof QueryParams|K}`, method?: 'simply'|'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
-    public keepBy(field: `path:`|`query:`, method?: 'simply'|'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
+    public createTag<K extends PropertyKey, Q extends 'path'>(field: `${Q}:${PathParams|K}`, method?: 'simply'|'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
+    public createTag<K extends PropertyKey, Q extends 'query'>(field: `${Q}:${keyof QueryParams|K}`, method?: 'simply'|'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
+    public createTag(field: `path:`|`query:`, method?: 'simply'|'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
 
     /**
      * Is blob return type or not
@@ -193,7 +193,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * )
      * ```
      */
-    public borrowAtAnother<T extends Dict<string, any>>(
+    public borrowFrom<T extends Dict<string, any>>(
             logic: Dict<keyof KeepByInfo, PipelineValues>|RuleCallback<PathParam, QueryParam>, 
             another: (() => T),
             as: (value: T[number]) => ReturnType
@@ -337,7 +337,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     /**
      * Expand response, a.k.a sum new data to alredy data
      */
-    public expandResponse(value?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public appendsResponse(value?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * Fetching data, with method GET.
@@ -505,4 +505,5 @@ export declare function RegisterTemplate<T, E>(name: string, template: (raw: T) 
 export declare function CallPattern<I, E>(name: string, data: IReturnTemplate<T>): IReturnTemplate<E>
 export declare function ExtendsPattern<I, E>(parent: IReturnTemplate<I>, child: IReturnTemplate<E>): IReturnTemplate<I & E>
 export declare function SetDefaultHeader(name: string, value: (() => any)|string|Ref<any>): void
+export declare function OnRecordFetchFailed(handle: (code: number, retry: () => Promise<any>) => Promise<any>|undefined): void
 export declare function toRefRaw<T>(object: Ref<T>): T

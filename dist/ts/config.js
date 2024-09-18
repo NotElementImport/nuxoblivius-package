@@ -1,22 +1,35 @@
 import { onConfigured } from "./index.js";
 export const defaultHeaders = {};
+let onFetchFail = () => undefined;
 export const options = {
     http: async (url, options, isblob) => {
-        const response = await fetch(url, options);
-        const _meta = {
+        let response = await fetch(url, options);
+        let _meta = {
+            ok: response.ok,
             code: response.status,
             text: response.statusText,
         };
         if (!response.ok) {
-            return {
-                _meta,
-                header: response.headers,
-                body: {
-                    _errorCode: response.status,
-                    _errorText: response.statusText,
-                    _errorBody: await response.text()
-                }
-            };
+            const handleResponse = await onFetchFail(response.status, () => options.http(url, options, isblob));
+            if (typeof handleResponse === 'undefined' && !handleResponse?._meta?.ok) {
+                return {
+                    _meta,
+                    header: response.headers,
+                    body: {
+                        _errorCode: response.status,
+                        _errorText: response.statusText,
+                        _errorBody: await response.text()
+                    }
+                };
+            }
+            else {
+                response = handleResponse;
+                _meta = {
+                    ok: response.ok,
+                    code: response.status,
+                    text: response.statusText,
+                };
+            }
         }
         if (isblob)
             return { header: response.headers, body: response.blob(), _meta };
@@ -35,6 +48,9 @@ export const options = {
     _apiRoot: '',
     get apiRoot() { return this._apiRoot; }
 };
+export function onRecordFetchFailed(handle) {
+    onFetchFail = handle;
+}
 export function setDefaultHeader(name, value) {
     defaultHeaders[name] = value;
 }

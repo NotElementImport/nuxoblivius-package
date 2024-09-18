@@ -240,10 +240,6 @@ export function defineStore(store) {
 export function subStore(object) {
     return raise(object);
 }
-export function defineForm(store) {
-    const instance = raise(store);
-    return instance;
-}
 export function afterConfig(callback) {
     configAwaiter.push(callback);
 }

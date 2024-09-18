@@ -4,7 +4,14 @@ import { isReactive, reactive, watch } from "vue"
 
 type DynamicResponse = {[key: string]: any}
 type FunctionParseData = (value: DynamicResponse) => null|DynamicResponse
-type Description = {[name: string]: any}
+
+type ParamsTags = {[key: string]: string|number|null|'*' }
+type ParamsTagsType = {[key: string]: EParamsTagsType }
+
+enum EParamsTagsType {
+    SIMPLE = 0,
+    FULL   = 1
+}
 
 interface IRuleMethod {
     as: FunctionParseData
@@ -15,50 +22,81 @@ interface IRule {
     [key: string]: IRuleMethod
 }
 
+/**
+ * Checking for disabling some stuff on server
+ */
 const isClient = typeof document !== 'undefined'
 
 export default class Record {
-    /**
-    *  
-    * Приватные свойства для ра
-    */
+
+    // Fetch settings
+
+    /** Pathname for fetching  */
     private _url: string = ''
+    /** @deprecated Other Stores as Query object */
     private _queryStore: object = null
+    /** Query for fetching */
     private _query: {[key: string]: any} = {}
+    /** Baked Query for fetching [cannot be removed] */
     private _staticQuery: {[key: string]: any} = {}
+    /** Path params for query */
     private _pathParams: {[key: string]: any} = {}
+    /** Headers for query */
     private _headers: {[key: string]: any} = {}
+    /** Body request for query */
     private _body: {[key: string]: any}|FormData = null
+    /** Authorization for query */
     private _auth: string|null = null
-    private _swapMethod: number = 0
-    private _onNullCheck: boolean = false
-
-    private _rules: Function[] = []
-    private _defaultRule: Function = () => null as any
-
+    /** Always use body */
     private _forceBody: boolean = false
-    private _awaitBlob: boolean = false
-
+    /** Response type is blob */
+    private _isBlob: boolean = false
+    /** Current `pattern response reader` */
     private _template: string|Function = ''
 
+    // Cachin / Tags
+
+    private _tags: ParamsTags         = {'id': 'path'}
+    private _tagsType: ParamsTagsType = {'id': EParamsTagsType.SIMPLE }
+
+    // Pre Fetch config
+
+    /** Receive data only when the response is empty */
+    private _onNullCheck: boolean = false
+    /** [For nerds] When to delete data in response  */
+    private _swapMethod: number = 0
+
+    // Post Fetch config
+    
+    /** Data from `pattern response reader` */
+    private _protocol: any = {}
+    /** Rebuild the object at the specified rule */
+    private _recordRuleBehaviour: Function[] = []
+    /** Default settings if no rule is suitable  */
+    private _defaultRule: Function = () => null as any
+
+    // Event Handlers:
+
+    /** Error Handler */
+    private _onError:   Function|null = null;
+    /** Finish Response Handler */
+    private _onEnd:     Function|null = null;
+
+    // Links
+
+    /** For re-launching fetch */
     private _lastStep = {
         method: '',
         arg: null as any
     }
 
-    private _protocol: any = {}
-
     private _proxies: any = {}
 
-    private _keepBy: any = {'id': 'path'}
-    private _keepByMethod: any = {'id': 0}
     private _borrow: Map<Description, [Description, (response: any) => any]> = new Map()
     private _borrowAnother: Map<Description, (response: any) => any> = new Map()
+    
     private _keepingContainer: Map<Description, any> = new Map()
     private _enabledBorrow = true
-
-    private _onError:   Function|null = null;
-    private _onEnd:     Function|null = null;
 
     private _paginationEnabled: boolean = false
     private _pagination = {
@@ -208,7 +246,7 @@ export default class Record {
     }
 
     public get protocol() {
-        return this._proxies.protocol
+        return this._protocol
     }
 
     public get loading() {
@@ -253,50 +291,73 @@ export default class Record {
         return instance
     }
 
+    /**
+    * [Sugar] Creating Bearer auth string  
+    */
     public static Bearer(token: string) {
         return `Bearer ${token}`
     }
 
+    /**
+    * [Sugar] Creating Basic auth string  
+    */
     public static Basic(login: string, password: string) {
         return `Basic ${ btoa(login+":"+password) }`
     }
 
     /**
-    *  
+    * [Nerds] Creating Tag for processing: `borrow`, `caching`, `rules`  
     * 
+    * simple - check has value or not
+    * full   - can access to value
     */
-    public keepBy(field: string, method: 'simple'|'full' = 'simple') {
-        method =  method == 'simple' ? 0 : 1 as any
-        if(field.startsWith('query:')) {
-            const name = field.slice(6)
-            this._keepBy[name] = 'query'
-            this._keepByMethod[name] = method
+    public createTag(field: string, access: 'simple'|'full' = 'simple') {
+        const acecssValue = access == 'simple' 
+            ? EParamsTagsType.SIMPLE 
+            : EParamsTagsType.FULL
+
+        if(field.startsWith('query:')) { // Query Tag
+            const name = field.slice(6) // remove 'query:'
+            this._tags[name] = 'query'
+            this._tagsType[name] = acecssValue
         }
-        else if(field.startsWith("path:")) {
-            const name = field.slice(5)
-            this._keepBy[name] = 'path'
-            this._keepByMethod[name] = method
+        else if(field.startsWith("path:")) { // Path Param Tag
+            const name = field.slice(5) // remove 'path:'
+            this._tags[name] = 'path'
+            this._tagsType[name] = acecssValue
         }
         return this
     }
 
-    public expandResponse(value: boolean = true) {
+    /**
+     * Appends new response to current response like\
+     * `response.push(...new_response)`
+     * 
+     * ! If enable disabled swapMethod [Nerd thing]
+     */
+    public appendsResponse(value: boolean = true) {
         this._variables.expandResponse = value
         return this
     }
 
+    /**
+     * Only do Fetch if response == null
+     */
     public onlyOnEmpty(enabled = true) {
         this._onNullCheck = enabled
         return this
     }
 
+    /**
+     * Clearing Response
+     */
     public clearResponse() {
         this._variables.response = null
         this._frozenResponse = null
         return this
     }
 
-    private static ruleAndDescriptorEqual(rule: Description, descriptor: Description) {
+    private static ruleAndDescriptorEqual(rule: ParamsTags, descriptor: ParamsTags) {
         let isEqual = true;
         for (const [name, value] of Object.entries(rule)) {
             if(!(name in descriptor)) {
@@ -315,7 +376,28 @@ export default class Record {
         return isEqual
     }
 
-    public rule(rule: Description|Function, behaviour: (setup: any) => void) {
+    /**
+     * Create rule on specific behaviour
+     * 
+     * Example:\
+     * `Our url: /api/my-stuff?page=1`
+     * 
+     * Create rule for `page` has some value
+     * 
+     * ```ts
+     * .createTag('query:page', 'simple') // Creating tag to checking behaviour, and get simple access
+     * .rule(
+     *    { 'page': '*' }, // Search by tag: Query param `page` has any value
+     *    record => record 
+     *      .template('my-template-pagination') // We use template for Pagination type response
+     * )
+     * .defaultRule(
+     *    record => record 
+     *      .template('') // Else disable template
+     * )
+     * ```
+     */
+    public rule(rule: ParamsTags|Function, behaviour: (setup: any) => void) {
         const check = (descriptor: any) => {
             if(typeof rule == 'function') {
                 return rule(this.params)
@@ -323,22 +405,37 @@ export default class Record {
             return Record.ruleAndDescriptorEqual(rule, descriptor)
         }
         
-        this._rules.push((descriptor: Description) => {
+        this._recordRuleBehaviour.push((descriptor: ParamsTags) => {
             if(!check(descriptor)) {
                 return false
             }
             behaviour(this)
             return true
         })
+
         return this
     }
 
+    /**
+     * Deafult rule if other rules not valid
+     * 
+     * Check `rule` method for example
+     */
     public defaultRule(behaviour: (setup: any) => void) {
         this._defaultRule = () => behaviour(this)
         return this
     }
 
-    public cached(rule: Description, defaultIsnt: any = null) {
+    /**
+     * Get old response by tag
+     * 
+     * Example
+     * ```ts
+     * .createTag('path:id', 'full')
+     * .cached({ 'id': 2 }) // Getting response where path param id is 2
+     * ```
+     */
+    public cached(rule: ParamsTags, defaultIsnt: any = null) {
         for(const [descriptor, value] of this._keepingContainer.entries()) {
             if(Record.ruleAndDescriptorEqual(rule, descriptor)) {
                 return value
@@ -347,21 +444,35 @@ export default class Record {
         return defaultIsnt;
     }
 
-    private deleteCached(rule: Description) {
+    /**
+     * Delete cache by tag 
+     * 
+     * @deprecated not needed, while
+     */
+    private deleteCached(rule: ParamsTags) {
         this._keepingContainer.clear()
     }
     
+    /**
+     * Rewrite url, using in `rule` and `defaultRule` section 
+     */
     private url(path: string) {
         this._url = path
         return this
     }
 
-    private enableBorrow(value: boolean) {
+    /**
+     * Enable / Disable logic for `borrowAtAnother` and `borrowAtSelf` 
+     */
+    public enableBorrow(value: boolean) {
         this._enabledBorrow = value
         return this
     }
 
-    private prepare(rule: Description, behaviour: () => boolean = () => true) {
+    /**
+     * Rollback to cached data
+     */
+    private prepare(rule: ParamsTags, behaviour: () => boolean = () => true) {
         let data = this.cached(rule)
 
         if(!behaviour())
@@ -370,41 +481,60 @@ export default class Record {
         if(data != null) {
             this.setResponse(data);
             this._variables.currentPage = 1
+            this._variables.isLastPage = this._variables.currentPage == this._variables.maxPages
         }
         else {
             console.warn('prepare is empty')
         }
+
         return this
     }
 
+    /**
+     * Not using
+     * @deprecated
+     */
     public frozenTick() {
         this._variables.frozenKey += 1;
         return this;
     }
 
+    /**
+     * [Configuration]
+     * [Nerds] When to delete data in response
+     * 
+     * `hot`    - Seamless loading
+     * `lazy`   - After checking borrow algorithm, delete current data
+     * `greedy` - Immediately delete current data from start fetching
+     */
     public swapMethod(method: string) {
-        if(method == 'hot') {
+        if(method == 'hot')
             this._swapMethod = 0
-        }
-        else if(method == 'greedy') {
+        else if(method == 'greedy')
             this._swapMethod = 1
-        }
-        else if(method == 'lazy') {
+        else if(method == 'lazy')
             this._swapMethod = 2
-        }
         return this
     }
 
-    public borrowAtAnother(logic: Description | Function, another: object|Function, as: (value: DynamicResponse) => DynamicResponse) {
-        this._borrowAnother.set(logic, (response: any) => {
-            const object = refOrVar(another)
+    /**
+     * [Configuration]
+     * [Nerds] Get data from another object, instead of fetching. Otherwise do fetching
+     * 
+     * @param condition Check whether the conditions are suitable for the execution of the "borrow". (By tags or Functioin)
+     * @param another   The object we're going to take from
+     * @param as        Logic for finding what you need in an object
+     */
+    public borrowFrom(condition: ParamsTags | Function, another: object|Function, as: (value: DynamicResponse) => DynamicResponse) {
+        this._borrowAnother.set(condition, (_: any) => {
+            const object = refOrVar(another) // Get raw data
 
-            if(!Array.isArray(object)) {
+            if(!Array.isArray(object)) { // If not array skip
                 console.warn('{value} is not array')
                 return null;
             }
 
-            for (const part of object) {
+            for (const part of object) { // Search, what you need
                 const result = as(part)
 
                 if(typeof result != 'undefined' && result != null) {
@@ -417,9 +547,17 @@ export default class Record {
         return this
     }
 
-    public borrowAtSelf(where: Description | Function, from: Description, as: (value: DynamicResponse) => DynamicResponse) {
+    /**
+     * [Configuration]
+     * [Nerds] Get data from self, by caching value, instead of fetching. Otherwise do fetching
+     * 
+     * @param condition Check whether the conditions are suitable for the execution of the "borrow". (By tags or Functioin)
+     * @param from      Get caching data by tags. Otherwise skip "borrow"
+     * @param as        Logic for finding what you need in an object
+     */
+    public borrowAtSelf(where: ParamsTags | Function, from: ParamsTags, as: (value: DynamicResponse) => DynamicResponse) {
         this._borrow.set(where, [from, (response: any) => {
-            if(!Array.isArray(response)) {
+            if(!Array.isArray(response)) { // If not array skip
                 console.warn('{value} is not array')
                 return null;
             }
@@ -458,10 +596,13 @@ export default class Record {
         }
 
         if(locked) {
-            this._staticQuery = appendMerge(this._staticQuery, query)
+            this._staticQuery = query
         }
         else {
-            this._query = appendMerge(this._query, query)
+            if(isReactive(query))
+                this._query = query
+            else
+                this._query = appendMerge(this._query, query)
         }
         return this
     }
@@ -496,13 +637,7 @@ export default class Record {
         resolveOrLater(object, (result: any) => {
             if(isReactive(result) || isRef(result) || result?.__v_isRef) {
                 watch(result, () => {
-                    pThis.clearResponse();
                     pThis.frozenTick()
-                    pThis.deleteCached(
-                        pThis.proccesDescriptor(
-                            this.compileQuery()
-                        )
-                    );
                     if(pThis._lastStep.method)
                         (pThis as any)[pThis._lastStep.method](pThis._lastStep.arg)
                             .then((_: any) => pThis.frozenTick())
@@ -514,13 +649,7 @@ export default class Record {
                     throw `reloadBy: only ref support`
 
                 result.watch(() => {
-                    pThis.clearResponse();
                     pThis.frozenTick()
-                    pThis.deleteCached(
-                        pThis.proccesDescriptor(
-                            this.compileQuery()
-                        )
-                    );
                     (pThis as any)[pThis._lastStep.method](pThis._lastStep.arg)
                         .then((_: any) => pThis.frozenTick())
                 })
@@ -537,7 +666,7 @@ export default class Record {
     }
 
     public isBlob(value = true) {
-        this._awaitBlob = value
+        this._isBlob = value
         return this
     }
 
@@ -712,12 +841,12 @@ export default class Record {
     }
 
     private proccesRules(descriptor: {[key: string]: any}) {
-        if(this._rules.length == 0) {
+        if(this._recordRuleBehaviour.length == 0) {
             return
         }
 
         let proccesed = false
-        for (const rule of this._rules) {
+        for (const rule of this._recordRuleBehaviour) {
             let result = rule(descriptor)
 
             if(result) {
@@ -738,7 +867,7 @@ export default class Record {
                 ? (query[key] || null)  // Query
                 : (this._pathParams[key] || null) // Path
 
-        for (const [key, value] of Object.entries(this._keepBy)) {
+        for (const [key, value] of Object.entries(this._tags)) {
             descriptor[key] = getFrom(value as string, key) != null 
                 ? `*`
                 : null
@@ -805,7 +934,7 @@ export default class Record {
         let fetchResult = await storeFetch(
                 url, 
                 options,
-                this._awaitBlob,
+                this._isBlob,
                 this._template as any
             )
 
@@ -877,8 +1006,8 @@ export default class Record {
                 ? (query[key] || null) 
                 : (this._pathParams[key] || null)
 
-        for (const [key, value] of Object.entries(this._keepBy)) {
-            const mode = this._keepByMethod[key]
+        for (const [key, value] of Object.entries(this._tags)) {
+            const mode = this._tagsType[key]
             const data = getFrom(value as string, key)
 
             dataDescription[key] = data != null 

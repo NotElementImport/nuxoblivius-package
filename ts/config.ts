@@ -5,24 +5,41 @@ type TemplateLogic = {[key: string]: TemplateFunction}
 type FetchResult = {data: object|Blob|null, error: boolean, errorText: string, code: number, pageCount: number, protocol?: object, header: object}
 
 export const defaultHeaders = {} as any
+let onFetchFail: Function = () => undefined as object
 
 export const options = {
     http: async (url: string, options: any, isblob: boolean) => {
-        const response = await fetch(url, options)
+        let response = await fetch(url, options)
         
-        const _meta = {
+        let _meta = {
+            ok: response.ok,
             code: response.status,
             text: response.statusText,
         }
 
         if(!response.ok) {
-            return {
-                _meta,
-                header: response.headers,
-                body: {
-                    _errorCode: response.status,
-                    _errorText: response.statusText,
-                    _errorBody: await response.text()
+            const handleResponse = await onFetchFail(
+                response.status,
+                () => options.http(url, options, isblob)
+            )
+
+            if(typeof handleResponse === 'undefined' && !handleResponse?._meta?.ok) {
+                return {
+                    _meta,
+                    header: response.headers,
+                    body: {
+                        _errorCode: response.status,
+                        _errorText: response.statusText,
+                        _errorBody: await response.text()
+                    }
+                }
+            }
+            else {
+                response = handleResponse
+                _meta = {
+                    ok: response.ok,
+                    code: response.status,
+                    text: response.statusText,
                 }
             }
         }
@@ -44,6 +61,10 @@ export const options = {
     get isServer() { return this._isServer },
     _apiRoot: '',
     get apiRoot() { return this._apiRoot }
+}
+
+export function onRecordFetchFailed(handle: Function) {
+    onFetchFail = handle as any
 }
 
 export function setDefaultHeader(name: string, value: any) {

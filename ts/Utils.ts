@@ -1,4 +1,4 @@
-import { Ref } from "vue"
+import { Ref, isRef as isVueRef, isReactive } from "vue"
 
 export function toRefRaw(object: Ref<any>) {
     const raw = object.value ?? undefined;
@@ -10,13 +10,10 @@ export function toRefRaw(object: Ref<any>) {
 }
 
 export async function resolveOrLater(data: Promise<any>|any, callback: Function) {
-    if(data instanceof Promise) {
-        data.then((value) => {
+    if(data instanceof Promise)
+        return data.then((value) => {
             callback(value)
         })
-
-        return
-    }
 
     callback(data)
 }
@@ -32,10 +29,7 @@ export function refOrVar(value: any) {
         return null
     }
 
-    if(typeof value == 'object' && '_module_' in value) {
-        return value.value
-    }
-    else if(typeof value == 'object' && (isRef(value) || value?.__v_isRef)) {
+    if(typeof value == 'object' && (isRef(value) || isVueRef(value) || value?.__v_isRef)) {
         return value.value
     }
 
@@ -55,7 +49,7 @@ export function storeToQuery(object: any) {
 
     const result: {[key: string]: any} = {}
 
-    for(const [name, value] of Object.entries(unpacked)) {
+    for(const [name] of Object.entries(unpacked)) {
         if(name.length == 0) continue;
 
         if(name[0] != '_') {
@@ -82,34 +76,33 @@ export function storeToQuery(object: any) {
 }
 
 export function urlPathParams(url: string, params: Record<string, any>) {
-    for (const [name, value] of Object.entries(params)) {
-        const unpacked = refOrVar(value)
+    Object.entries(params)
+        .map(([param, value ]) => {
+            value = value ?? ''
+            url.replaceAll(
+                `{${param}}`, 
+                typeof value !== "number"
+                    ? (value ? value : "")
+                    : value
+            )
+        })
 
-        if(typeof unpacked == 'undefined' || (typeof unpacked == 'object' && unpacked == null)) {
-            url = url.replaceAll(`{${name}}`, "")
-        }
-        else {
-            url = url.replaceAll(`{${name}}`, unpacked)
-        }
-    }
     return url
 }
 
 export function queryToUrl(query: Record<string, any>) {
     let flatObject = {} as Record<string, any>;
     const flat = (objectToFlat: object, prefix: string = '', suffix: string = ''): object => 
-        Object.fromEntries(
-            Object.entries(objectToFlat)
-                .map(([ name, value ]) =>
-                    typeof value === 'object'
-                        ? flatObject = { ...flatObject, ...flat(value, `${name}[`, ']') }
-                        :  flatObject[`${prefix}${name}${suffix}`] = refOrVar(value)
-                )
-        )
-    
-    const url = new URLSearchParams(Object.entries(flat(query)))
-
-    return `?${url.toString()}`
+        Object.entries(objectToFlat)
+            .map(([ name, value ]) =>
+                typeof value == 'object'
+                    ? flat(value, `${prefix+name+suffix}[`, ']')
+                    :  flatObject[`${prefix}${name}${suffix}`] = refOrVar(value)
+            )
+    flat(query)
+    if(Object.keys(flatObject).length == 0)
+        return ``
+    return `?${(new URLSearchParams(flatObject)).toString()}`
 }
 
 export function appendMerge(...objects: object[]) {
@@ -118,17 +111,16 @@ export function appendMerge(...objects: object[]) {
     const recursive = (value: object, to: object) => {
         for (const [nameRec, valueRec] of Object.entries(value)) {
             if(valueRec == null) continue
-            if(typeof valueRec == 'object' && !('_module_' in valueRec)) {
-                if(!(nameRec in to)) {
+            if(typeof valueRec == 'object' && !isRef(value) && !isVueRef(value) && !isReactive(value)) {
+                if(!(nameRec in to))
                     (to as any)[nameRec] = {}
-                }
                 recursive((to as any)[nameRec], valueRec)
             }
             else {
                 (to as any)[nameRec] = valueRec
             }
         }
-    } 
+    }
 
     for (const local of objects) {
         recursive(local, result)
