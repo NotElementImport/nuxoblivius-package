@@ -309,9 +309,9 @@ export default class Record {
         instance._proxies.query = new Proxy({}, {
             get(t, p, r) {
                 if(p in instance._staticQuery)
-                    return instance._staticQuery[p as any]
+                    return refOrVar(instance._staticQuery[p as any])
                 else if(p in instance._query)
-                    return instance._query[p as any]
+                    return refOrVar(instance._query[p as any])
                 return undefined
             }
         })
@@ -1003,8 +1003,8 @@ export default class Record {
             const access = this._tagsType[paramName] // Access of Tag
             const value  = 
                 type == ETagPlace.PATH
-                    ? this._pathParams[paramName] // Getting value from Path param
-                    : compiledQuery[paramName]    // Getting value from Query
+                    ? refOrVar(this._pathParams[paramName]) // Getting value from Path param
+                    : refOrVar(compiledQuery[paramName])    // Getting value from Query
 
             // Write data like { "param": null } or { "param": 1 }
             if(access == EParamsTagsType.FULL)
