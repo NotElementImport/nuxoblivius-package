@@ -422,18 +422,17 @@ export default class Record {
      * ```
      */
     public rule(rule: ParamsTags|Function, behaviour: (setup: any) => void) {
-        const check = (descriptor: any) => {
-            if(typeof rule == 'function') {
-                return rule(this.params)
-            }
-            return Record.compareTags(rule, descriptor)
+        const check = (recordTag: any) => { // Checking condition a rule valid to record tag
+            return typeof rule == 'function'
+                ? rule(this.params)
+                : Record.compareTags(rule, recordTag)
         }
         
-        this._recordRuleBehaviour.push((descriptor: ParamsTags) => {
-            if(!check(descriptor)) {
-                return false
-            }
-            behaviour(this)
+        // Adding rule to checking stack
+        this._recordRuleBehaviour.push((recordTag: ParamsTags) => {
+            if(!check(recordTag))
+                return false // Not valid skip
+            behaviour(this) // Valid process
             return true
         })
 
@@ -471,11 +470,15 @@ export default class Record {
 
     /**
      * [Configuration]
-     * Rollback to cached data, using in `rule` and `defaultRule` section 
+     * Rollback to cached data, using in `rule` and `defaultRule` section
+     * Condition example:
+     *  { id: '*' } // get old response data where: id sets
+     *  { id: null } // get old response data where: id not sets 
      */
-    private prepare(rule: ParamsTags, behaviour: () => boolean = () => true) {
-        let data = this.cached(rule)
+    private prepare(condition: ParamsTags, behaviour: () => boolean = () => true) {
+        let data = this.cached(condition)
 
+        // Custom checking on valid process
         if(!behaviour())
             return this
 
