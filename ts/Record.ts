@@ -751,7 +751,6 @@ export default class Record {
      */
     public clearResponse() {
         this._variables.response = null
-        this._frozenResponse = null
         return this
     }
 
@@ -779,7 +778,8 @@ export default class Record {
      * @deprecated not needed, while
      */
     private deleteCached(rule: ParamsTags) {
-        this._allCachedResponse.clear()
+        // Not working while
+        // this._allCachedResponse.clear()
     }
     
     /**
