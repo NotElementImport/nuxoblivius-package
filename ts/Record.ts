@@ -478,7 +478,7 @@ export default class Record {
     private prepare(condition: ParamsTags, behaviour: () => boolean = () => true) {
         let data = this.cached(condition)
 
-        // Custom checking on valid process
+        // Custom checking to valid, isnt -> break logic
         if(!behaviour())
             return this
 
