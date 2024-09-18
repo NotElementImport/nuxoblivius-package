@@ -75,15 +75,11 @@ export function storeToQuery(object: any) {
     return result
 }
 
-const test = (data: Record)
-
-Record<>
-
 export function urlPathParams(url: string, params: Record<string, any>) {
     Object.entries(params)
         .map(([param, value ]) => {
             value = value ?? ''
-            url.replaceAll(
+            url = url.replaceAll(
                 `{${param}}`, 
                 typeof value !== "number"
                     ? (value ? value : "")

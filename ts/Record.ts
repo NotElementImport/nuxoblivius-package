@@ -1,9 +1,8 @@
 import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery, urlPathParams } from "./Utils.js"
-import { options as ConfigOptions, defaultHeaders, storeFetch } from "./config.js"
+import { defaultHeaders, storeFetch } from "./config.js"
 import { isReactive, reactive, watch } from "vue"
 
 type DynamicResponse = {[key: string]: any}
-type FunctionParseData = (value: DynamicResponse) => null|DynamicResponse
 
 type DefinitionTags = {[key: string]: ETagPlace }
 type ParamsTags = {[key: string]: string|number|null|'*' }
@@ -21,15 +20,12 @@ enum EParamsTagsType {
     FULL   = 1
 }
 
-interface IRuleMethod {
-    as: FunctionParseData
-    where: 'before'|'after'
+enum ESwapMethod {
+    HOT        = 0,
+    LAZY       = 1,
+    GREEDY     = 2,
+    PAGINATION = 3
 }
-
-interface IRule {
-    [key: string]: IRuleMethod
-}
-
 /**
  * Checking for disabling some stuff on server
  */
@@ -72,7 +68,7 @@ export default class Record {
     /** Receive data only when the response is empty */
     private _onNullCheck: boolean = false
     /** [For nerds] When to delete data in response  */
-    private _swapMethod: number = 0
+    private _swapMethod: ESwapMethod = ESwapMethod.HOT
 
     // Post Fetch config
     
@@ -95,33 +91,40 @@ export default class Record {
     /** For re-launching fetch */
     private _lastStep: Function = () => {}
 
+    /** Proxi object for getting multiple data, uses in param.query */
     private _proxies: any = {}
 
+    /** Registered borrows logic */
     private _borrow: Map<ParamsTags, [ParamsTags, (response: any) => any]> = new Map()
     private _borrowAnother: Map<ParamsTags, (response: any) => any> = new Map()
-    
-    private _keepingContainer: Map<ParamsTags, any> = new Map()
     private _enabledBorrow = true
+    
+    /** Old Response / Cached Data */
+    private _allCachedResponse: Map<ParamsTags, any> = new Map()
+
 
     private _paginationEnabled: boolean = false
     private _pagination = {
+        change: false,
         where: 'path',
         param: 'page'
     }
+    
+    /** Vue Reactive Variables */
     private _variables = reactive({
-        currentPage: 1,
-        maxPages: 1,
-        autoReloadPagination: false,
-        expandResponse: false,
-        isLastPage: false,
-        
-        response: null,
-        headers: {},
-        error: '',
+        currentPage: 1,              // Pagination.current
+        maxPages: 1,                 // Pagination.lastPage
+        autoReloadPagination: false, // Reload data after change page
+        expandResponse: false,       // Appends response to end
+        isLastPage: false,           // Is last page
 
-        frozenKey: 0,
+        response: null,              // Reactive Response Object
+        headers: {},                 // Response headers
+        error: '',                   // status text
 
-        isError: false,
+        frozenKey: 0,                /** @deprecated [Nerd] :key variable, for manual watch effect */
+
+        isError: false,             
         isLoading: false
     })
 
@@ -180,57 +183,67 @@ export default class Record {
                     pThis._pagination.where = 'path'
                     pThis._pagination.param = how.slice(5)
                 }
+
+                pThis._swapMethod = ESwapMethod.PAGINATION
+
                 return pThis
             },
-            autoReload() {
+            autoReload() { // Enable auto reload on current page
                 pThis._variables.autoReloadPagination = true
                 return pThis
             },
-            set enabled(v: boolean) {
+            set enabled(v: boolean) { // Enable pagination
                 pThis._paginationEnabled = v
             },
-            toFirst() {
+            toFirst() { // Go to first page, if on isnt
+                if(pThis._variables.currentPage == 1)
+                    return pThis
+
                 pThis._variables.currentPage = 1
                 pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage
                 if(pThis._variables.autoReloadPagination)
                     pThis._lastStep()
                 return pThis
             },
-            toLast() {
+            toLast() { // Go to last page, if on isnt
+                if(pThis._variables.currentPage == pThis._variables.maxPages)
+                    return pThis
+
                 pThis._variables.currentPage = pThis._variables.maxPages;
                 pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage
+                pThis._pagination.change = true
                 if(pThis._variables.autoReloadPagination)
                     pThis._lastStep()
                 return pThis
             },
-            next() {
+            next() { // Move to next page, while is not last page
                 if(pThis._variables.maxPages > pThis._variables.currentPage) {
                     pThis._variables.currentPage += 1
                     pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage
-
+                    pThis._pagination.change = true
                     if(pThis._variables.autoReloadPagination)
                         pThis._lastStep()
                 }
 
                 return pThis
             },
-            prev() {
+            prev() { // Move to prev page, while is not first page
                 if(pThis._variables.currentPage > 0) {
                     pThis._variables.currentPage -= 1
                     pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage
+                    pThis._pagination.change = true
+                    if(pThis._variables.autoReloadPagination)
+                        pThis._lastStep()
                 }
-
-                if(pThis._variables.autoReloadPagination)
-                    pThis._lastStep()
 
                 return pThis
             },
             get isLastPage() {
                 return pThis._variables.isLastPage
             },
-            set current(v: number) {
+            set current(v: number) { // Set current page
                 pThis._variables.currentPage = v
-
+                pThis._pagination.change = true
                 if(pThis._variables.autoReloadPagination)
                     pThis._lastStep()
             },
@@ -371,7 +384,8 @@ export default class Record {
      * ! If enable disabled swapMethod [Nerd thing]
      */
     public appendsResponse(value: boolean = true) {
-        this._variables.expandResponse = value
+        if(isClient)
+            this._variables.expandResponse = value
         return this
     }
 
@@ -380,7 +394,8 @@ export default class Record {
      * Only do Fetch if response == null
      */
     public onlyOnEmpty(enabled = true) {
-        this._onNullCheck = enabled
+        if(isClient)
+            this._onNullCheck = enabled
         return this
     }
 
@@ -486,11 +501,13 @@ export default class Record {
      */
     public swapMethod(method: string) {
         if(method == 'hot')
-            this._swapMethod = 0
+            this._swapMethod = ESwapMethod.HOT
         else if(method == 'greedy')
-            this._swapMethod = 1
+            this._swapMethod = ESwapMethod.GREEDY
         else if(method == 'lazy')
-            this._swapMethod = 2
+            this._swapMethod = ESwapMethod.LAZY
+        else if(method == 'pagination')
+            this._swapMethod = ESwapMethod.PAGINATION
         return this
     }
 
@@ -744,7 +761,7 @@ export default class Record {
      * ```
      */
     public cached(rule: ParamsTags, defaultIsnt: any = null) {
-        for(const [descriptor, value] of this._keepingContainer.entries()) {
+        for(const [descriptor, value] of this._allCachedResponse.entries()) {
             if(Record.compareTags(rule, descriptor)) {
                 return value
             }
@@ -758,7 +775,7 @@ export default class Record {
      * @deprecated not needed, while
      */
     private deleteCached(rule: ParamsTags) {
-        this._keepingContainer.clear()
+        this._allCachedResponse.clear()
     }
     
     /**
@@ -786,7 +803,7 @@ export default class Record {
 
         this._lastStep = () => this.get(id)
 
-        return this.doFetch('GET')
+        return this.doFetch('get')
     }
 
     /**
@@ -805,7 +822,7 @@ export default class Record {
 
         this._lastStep = () => this.post(body)
 
-        return this.doFetch('POST')
+        return this.doFetch('post')
     }
 
     /**
@@ -820,7 +837,7 @@ export default class Record {
 
         this._lastStep = () => this.put(body)
 
-        return this.doFetch('PUT')
+        return this.doFetch('put')
     }
 
     /**
@@ -837,7 +854,7 @@ export default class Record {
         
         this._lastStep = () => this.delete(id)
 
-        return this.doFetch('DELETE')
+        return this.doFetch('delete')
     }
 
     /**
@@ -854,7 +871,7 @@ export default class Record {
         
         this._lastStep = () => this.patch(id)
 
-        return this.doFetch('PATCH')
+        return this.doFetch('patch')
     }
 
     // Private Methods :
@@ -999,6 +1016,9 @@ export default class Record {
     private async doFetch(method: string = 'get') {
         this._variables.isLoading = true
 
+        const pageChange = this._pagination.change
+        this._pagination.change = false
+
         // Generate Record Tag for condition
         const recordTag = this.recordDataTag(this.compileQuery())
 
@@ -1013,9 +1033,17 @@ export default class Record {
          * If is enable to continue, Response must be empty
          * Else return old response
         */
-        if(this._onNullCheck && this._variables.response != null) {
-            this._variables.isLoading = false
-            return this._variables.response
+        if(this._onNullCheck) {
+            const response = this._variables.response;
+            const isEmpty  = 
+                (typeof response == 'object' && Object.keys(response).length == 0)
+                || (response == null)
+                || (this._swapMethod == ESwapMethod.PAGINATION && pageChange)
+
+            if(!isEmpty) {
+                this._variables.isLoading = false
+                return response
+            }
         }
 
         /**
@@ -1117,7 +1145,7 @@ export default class Record {
     /** Erase response after call doFetch */
     private swapGreedy() {
         // Disable on appendResponse
-        if(this._swapMethod == 1 && !this._variables.expandResponse) {
+        if(this._swapMethod == ESwapMethod.GREEDY && !this._variables.expandResponse) {
             this.clearResponse()
         }
     }
@@ -1125,11 +1153,10 @@ export default class Record {
     /** Erase response after borrow function */
     private swapLazy() {
         // Disable on appendResponse
-        if(this._swapMethod == 2 && !this._variables.expandResponse) {
+        if(this._swapMethod == ESwapMethod.LAZY && !this._variables.expandResponse) {
             this.clearResponse()
         }
     }
-
     
     /**
      * Compare tags see `createTag`
@@ -1175,7 +1202,7 @@ export default class Record {
 
     // Cache response by Tags
     private keep(response: DynamicResponse, query: any) {
-        this._keepingContainer.set(
+        this._allCachedResponse.set(
             this.recordDataTag(query), // Generate tag
             response
         )
