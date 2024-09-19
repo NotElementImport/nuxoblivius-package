@@ -747,6 +747,14 @@ export default class Record {
     // Utils
     
     /**
+     * Extends link of Method
+     */
+    public then(handle: Function) {
+        handle()
+        return this;
+    }
+
+    /**
      * Clearing Response
      */
     public clearResponse() {

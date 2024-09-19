@@ -42,16 +42,33 @@ type ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
 
 export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends extends object, Protocol> {
     /**
-     * Creating new Record\
+     * `⚙️ Creating new Record object`
+     * 
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#define See more about Defintion in docs}
      * @param url Path to api
+     * @param defaultValue Init response value
      */
     public static new<T>(url: string, defaultValue?: T): Record<T, 'id', {}, {'id': 'path'}, {}, ''>
 
+    /**
+     * `🧰 Utils`\
+     * `🧩 Sugar`
+     * 
+     * Create string for Bearer Authorization
+     */
     public static Bearer<T extends PropertyKey>(token: T): `Bearer ${T}`
+
+    /**
+     * `🧰 Utils`\
+     * `🧩 Sugar`
+     * 
+     * Create string for Bearer Authorization
+     */
     public static Basic(login: string, password: string): string
 
     /**
+     * `⚙️ Configuration`
+     * 
      * Path Param is meta param, of query.\
      * Also can using in `URL` like:
      * ```
@@ -62,18 +79,53 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     public pathParam<E extends PropertyKey>(name: E|PathParams, value: string|number|boolean|FakeReactiveFunc): Record<ReturnType, PathParams | E, QueryParams, KeepByInfo, Extends, Protocol>
     
     /**
-     * Query is params of fetching like
+     * `⚙️ Configuration`
+     * 
+     * ### Search params of Request
+     * 
+     * Simple:
+     * ```ts
+     * query({ 'my-param': 'test' }) 
+     * // /link?my-param=test
      * ```
-     * `/api/my-path?page=1` // After `?` is Query params
+     * 
+     * With dynamic params:
+     * ```ts
+     * query({ 'dynamic': () => 'Im could be dynamic' }) 
+     * // /link?dynamic=Im%20could%20be%20dynamic
      * ```
-     * Queries set as object and can be like group
+     * 
+     * Default values:
+     * ```ts
+     * query({ 'page': 1 }, true) // Baked
+     * 
+     * query({ 'page': 2 }) // /link?page=2
+     * clearDynamicQuery()  // /link?page=1
      * ```
-     * {
-     *    test: 'my-value' // ?test=my-value
-     *    group: {
-     *        item: 'test' // ?group[item]=test
-     *    }
+     * 
+     * Groups:
+     * ```ts
+     * enum ESortDirection {
+     *  ASC=0,
+     *  DESC=1
      * }
+     * 
+     * let sortDirection = ESortDirection.DESC
+     * query({
+     *    filter: {
+     *       createdAt: '2020-01-01',
+     *       title: 'test'
+     *    },
+     *    sort: () => `${ sortDirection == ESortDirection.ASC ? '' : '-' }id`
+     * })
+     * // /link?filter[createdAt]=2020-01-01&filter[title]=test&sort=-id
+     * ```
+     * Check values:
+     * ```
+     * query({ 'my-param': 'test', dynamic: () => 'my value' })
+     * 
+     * console.log(request.params.query['my-param']) // 'test'
+     * console.log(request.params.query.dynamic) // 'my value'
      * ```
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#query See more about Query in docs}
      */
@@ -81,117 +133,171 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     public query<E extends Dict<PropertyKey, any>|QueryParams>(query: E, locked?:boolean): Record<ReturnType, PathParams, QueryParams & E, KeepByInfo, Extends, Protocol>
     
     /**
-     * Setting headers of Fetch
-     * ```
-     * // Example
+     * `⚙️ Configuration`
+     * 
+     * Header of Request
+     * 
+     * Example:
+     * ```ts
      * header('Content-Type', 'application/json')
+     * // or
+     * header('Content-Type', () => myValue)
+     * ```
+     * 
+     * Also can globaly
+     * ```ts
+     * SetDefaultHeader('Content-Type', 'application/json')
+     * // or
+     * SetDefaultHeader('Content-Type', () => myValue)
      * ```
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#headers See more about Headers in docs}
      */
     public header(name: string, value: string|FakeReactiveFunc): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
+     * `⚙️ Configuration`
+     * 
      * Body of Request
-     * ```
-     * // Example
-     * body(new FormData())
+     * 
+     * Example:
+     * ```ts
+     * body({ 'my': 'content' }).header('Content-Type', 'application/json')
      * // or
-     * body({ 'test': 'value' })
+     * body(new FormData())
      * ```
+     * 
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#body See more about Body in docs}
      */
     public body(body: FormData|{[key: string]: any}|FakeReactiveFunc|null): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
-     * Authorization Request
+     * `⚙️ Configuration`
+     * 
+     * Add individual authorization to request
+     * 
+     * To use globaly
+     * ```ts
+     * SetDefaultHeader('Authorization', () => YourValue )
      * ```
-     * // Example
-     * auth(Record.Bearer('test-token'))
-     * // or
-     * body(AnotherStore.ref.token)
-     * ```
+     * 
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#authorization See more about Authorization in docs}
      */
     public auth(data: string|FakeReactiveFunc): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
+     * `⚙️ Configuration`\
+     * `⚠️ Work only in Client`
+     * 
      * Reloading query if object change
-     * ```
-     * //if using ssr
-     * reloadBy(later(() => this.ref.myVariable))
-     * //without
-     * reloadBy(() => this.ref.myVariable)
-     * // Or basic reactive Vue Value
-     * const reactiveValue = ref('val')
-     * reloadBy(reactiveValue)
-     * ```
      */
     public reloadBy(object: FakeReactiveFunc|object): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
-    // public isBlob(value: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends>
+    /**
+     * `⚙️ Configuration`
+     * 
+     * Change response type to `Blob`
+     */
+    public isBlob(value: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends>
 
     /**
-     * Clearing none `locked` queries
+     * `🧰 Utils`
+     * 
+     * Clearing none `baked` queries
      */
     public clearDynamicQuery(): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
-     * Add value to Pipeline
+     * `⚙️ Configuration`\
+     * `🪛 For fine-tuning`
      * 
-     * Where Pipelines using
-     * * How cache `response` of Requests
-     * * Getting cached `response`
-     * * Checking rules
+     * ### Create tag to Request
      * 
+     * Using in caching Response\
+     * And fast tag condition in `borrowFrom`, `borrowAtSelf`, `rule`, `cached`, `prepare`
+     * 
+     * #### Example for `cached`:
+     * ```ts
+     * // Save Response by Path-Param id
+     * .createTag('path:id', 'full')
+     * ...
+     * // Gets Response where Path-Param id equals 1, if empty: null
+     * .cached({ id: 1 })
      * ```
-     * // Example
-     * .query({
-     *     complete: false
+     * #### Example for `rule`:
+     * ```ts
+     * // Saved all Response where has page in search param, with value
+     * .createTag('query:page', 'full')
+     * // If request.search param not null
+     * .rule({ page: '*' }, request => {
+     *     // Disable Fetch if cached result not empty
+     *     request.onlyOnEmpty() 
+     *     // Get early Response if exist
+     *     request.response = request.cached({ page: request.param.query.page })
      * })
-     * .keepBy('query:complete', 'full') // full - keeping param value 
-     * .keepBy('query:complete', 'simply') // simply - keeping only if sets '*' or empty `null`
      * ```
      */
     public createTag<K extends PropertyKey, Q extends 'path'>(field: `${Q}:${PathParams|K}`, method?: 'simply'|'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
     public createTag<K extends PropertyKey, Q extends 'query'>(field: `${Q}:${keyof QueryParams|K}`, method?: 'simply'|'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
     public createTag(field: `path:`|`query:`, method?: 'simply'|'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
+    
+    /**
+     * `🧰 Utils`
+     * 
+     * Get saved Response by Tag. See `createTag()`
+     * 
+     * Example:
+     * ```ts
+     * createTag('query:page', 'full') // Creating tag for Saving Response by search param: page, with value
+     * ...
+     * // Get Saved Response by search param tag: page
+     * cached({ page: 1 }) // where page equals 1
+     * cached({ page: '*' }) // where page equals any value
+     * cached({ page: null }) // where page is not sets
+     * ```
+     * Also it could be more difficult:
+     * ```ts
+     * createTag('query:page', 'full') // Creating tag for Saving Response by search param: page, with value
+     * createTag('query:perpage', 'simple') // Creating tag for Saving Response by search param: page, without value
+     * ...
+     * // Get Saved Response by search param tag: page, perpage
+     * cached({ page: 1, perpage: null }) // where page equals 1, and perpage not sets
+     * cached({ page: 1, perpage: '*' }) // where page equals 1, and perpage is sets
+     * ```
+     */
+    public cached<T extends ReturnType>(conditionTags: Dict<keyof KeepByInfo, PipelineValues>, byDefault?: T): T
 
     /**
-     * Is blob return type or not
+     * `🧰 Utils`
+     * 
+     * Launch custom logic. Uses for extend methods link
+     * 
+     * Example:
+     * ```ts
+     * const commitPage = () => ...
+     * 
+     * request
+     *    .pagination
+     *    .next()
+     *    .then(commitPage)
+     * ```
+     * Or
+     * ```ts
+     * const beforeStartRequest = () => ...
+     * const afterStartRequest = () => ...
+     * 
+     * request
+     *    .then(beforeStartRequest)
+     *    .get()
+     *    .then(afterStartRequest)
+     * ```
      */
-    public isBlob(value: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public then(handle: () => void): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
     
     /**
-     * Get cached `response`, by Pipeline, required setting `keepBy` to working
-     */
-    public cached<T extends ReturnType>(rule: Dict<keyof KeepByInfo, PipelineValues>, defaultIsnt?: any): T
-    
-    /**
-     * Borrow is logic for: Borrowing data from response.
+     * `⚙️ Configuration`\
+     * `⚡ SPA frendly`\
+     * `🪛 For fine-tuning`
      * 
-     * Example: In Request getAll we had already loaded data for local usage (as by One)\
-     * then if we want without fetching get data, we using borrow, we can data from another object\
-     * or later responses using Pipelines.\
-     * Example
-     * ```
-     * // Getting all
-     * const all = Record.new('/api/item/all')
-     * // Getting by one
-     * const one = Record.new('/api/item/{id}')
-     *      .pathParam('id', null) 
-     *      .keepBy('path:id') // add value to Pipeline
-     * 
-     * // If we early loading data by `all` we can borrow from another
-     * one.borrowAtAnother(
-     *  {id: '*'}, // if we set pathParam id any value
-     *  () => all.response,
-     *  (other) => {
-     *     // Other, auto mapping array objects by one
-     *     if(other.id == one.params.path.id) // if this data exist in borrow object, getting
-     *         return other
-     *  }
-     * )
-     * ```
      */
     public borrowFrom<T extends Dict<string, any>>(
             logic: Dict<keyof KeepByInfo, PipelineValues>|RuleCallback<PathParam, QueryParam>, 
@@ -200,40 +306,10 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
         ): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
-     * Borrow is logic for: Borrowing data from response.
+     * `⚙️ Configuration`\
+     * `⚡ SPA frendly`\
+     * `🪛 For fine-tuning`
      * 
-     * Example: In Request getAll we had already loaded data for local usage (as by One)\
-     * then if we want without fetching get data, we using borrow, we can data from another object\
-     * or later responses using Pipelines.\
-     * Example
-     * ```
-     * // Example from at self
-     * const all = Record.new('/api/item')
-     *      .pathParam('id', null) 
-     *      .keepBy('path:id') // add value to Pipeline
-     *      .rule( // Getting by one
-     *          {id: '*'}, // if we set path param `id` any value, using this rule
-     *          (setup) => 
-     *              setup
-     *                  .url('/api/item/{id}')
-     *      )
-     *      // If the other rules don't fit
-     *      .defaultRule( // Getting all
-     *          (setup) => 
-     *              setup
-     *                  .url('/api/item/all')
-     *      )
-     *      // if we set path param `id` any value (getting by `one`), and gets `all` early, we can borrow data from `all`
-     *      .borrowAtSelf(
-     *          {id: '*'}, // if we set path param `id` any value, using this rule,
-     *          {id: null}, // Getting cached data with this Pipeline (path param `id` not sets)
-     *          (other) => {
-     *              // Other, auto mapping array objects by one
-     *              if(other.id == one.params.path.id) // if this data exist in borrow object, getting
-     *                  return other
-     *          }
-     *      )
-     * ```
      */
     public borrowAtSelf(
             logic: Dict<keyof KeepByInfo, PipelineValues>|RuleCallback<PathParam, QueryParam>,
@@ -242,6 +318,9 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
         ): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
+     * `⚙️ Configuration`\
+     * `🪛 For fine-tuning`
+     * 
      * Rules required to separate requests by settings
      * 
      * For example, if url differents for loading by one and all we can change url in runtime
@@ -267,6 +346,9 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     ): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
+     * `⚙️ Configuration`\
+     * `🪛 For fine-tuning`
+     * 
      * Rules required to separate requests by settings
      * 
      * For example, if url differents for loading by one and all we can change url in runtime
@@ -291,62 +373,125 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     ): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
+     * `⚙️ Configuration`\
+     * `⚡ SPA frendly`\
+     * `⚠️ Work only in Client`
+     * 
      * Prevent Request if `response` not empty
+     * 
+     * ### Prevent when:
+     * * Result is not null
+     * * Result is not empty object, checking by `Object.keys(response).length !== 0`
+     * 
+     * ### Which will disable this feature 
+     * * Swap method `greedy`, cause `greedy` erase data on Request calls
+     * * Pagination, correctly on change page, any changes pages, get access to reload Request. Also can prevent by `swapMethod('hot')`
+     * 
+     * @param enabled `default: true` — Enable checking, or disable
      */
     public onlyOnEmpty(enabled?:boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
-     * Swap Method, cleaning Response for changing to actual Response.\
-     * `greedy` - Clear permanently, at start of Fetch\
-     * `lazy` - Clear after Borrow\
-     * `hot` - Hot swaping response, means after getting actual Response
+     * `⚙️ Configuration`\
+     * `🪛 For fine-tuning`
+     * 
+     * Swap Method controls when Actual Response, must be erase
+     * 
+     * ### Options
+     * * `greedy` - Clear at call Request
+     * * `lazy`     - Clear if borrow not Return data
+     * * `hot`       - Swap only at end
      */
-    public swapMethod(method: "lazy"|"greedy"|"hot"): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public swapMethod(options: "lazy"|"greedy"|"hot"): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
-     * Template is Pre proccesing data from Server, using for creating Template `RegisterTemplate()` from `import { RegisterTemplate } from 'nuxoblivius'`
+     * `⚙️ Configuration`\
+     * `🪛 For fine-tuning`
+     * 
+     * `pattern response reader` - Process raw data from Response
+     * 
+     * Can using libary:
+     * ```ts
+     * RegisterTemplate('my-lib', raw => {
+     *    if(!raw.data && !raw.items)
+     *       return
+     *    return { data: raw.data ?? raw.items } // return content into data or items
+     * })
+     * 
+     * request.template('my-lib')
+     * ```
+     * Or inline version:
+     * ```ts
+     * request.template(raw => {
+     *    if(!raw.data && !raw.items)
+     *       return
+     *    return { data: raw.data ?? raw.items }
+     * })
+     * ```
+     * {@link https://notelementimport.github.io/nuxoblivius-docs/release/template.html See more about Record Template in docs}
      */
     public template(template: string|TemplateFunction): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
-     * Update all frozen Stuff (none reactive).
-     * Also update value `frozenKey`
+     * `🧰 Utils`
+     * @deprecated 
      */
     public frozenTick(): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
+     * `⚙️ Configuration`\
+     * `🪛 For fine-tuning`\
+     * `Part of` : `template`
+     * 
      * Define Protocol, data from template
      */
     public defineProtocol<T extends PropertyKey>(key: T, defaultValue?: any): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol | T>
 
     /**
-     * Cleaning Response
+     * `🧰 Utils`
+     * 
+     * Sets response as `null`
      */
     public clearResponse(): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
+     * `⚙️ Configuration`
+     * 
      * Hook on fail
      */
     public onFailure(method: (reason: {text: string, code: number}, retry: () => Promise<any>) => any): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
+     * `⚙️ Configuration`
+     * 
      * Hook on Finish
      */
     public onFinish(method: (result: T) => void): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
-     * Expand response, a.k.a sum new data to alredy data
+     * `⚙️ Configuration`\
+     * `🪛 For fine-tuning`
+     * 
+     * Summed new Response to Actual Response like: `currentResponse.push(...newResponse)`
      */
     public appendsResponse(value?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
+     * `📤 Call Request`\
+     * `⬆️ Method: GET`
+     * 
      * Fetching data, with method GET.
+     * 
+     * `⚠️ Request body can throw error`
      * 
      * @param id analog .pathParam('id', some_value)
      */
     public async get(id?: number): Promise<ReturnType>
 
     /**
+     * `📤 Call Request`\
+     * `⬆️ Method: POST`
+     * 
      * Fetching data, with method POST.
      * 
      * @param body analog .body(some_value)
@@ -354,6 +499,9 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     public async post(body?: FormData|{[key: string]: any}|FakeReactiveFunc|null): Promise<ReturnType>
 
     /**
+     * `📤 Call Request`\
+     * `⬆️ Method: PUT`
+     * 
      * Fetching data, with method PUT.
      * 
      * @param body analog .body(some_value)
@@ -361,6 +509,9 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     public async put(body?: FormData|{[key: string]: any}|FakeReactiveFunc|null): Promise<ReturnType>
 
     /**
+     * `📤 Call Request`\
+     * `⬆️ Method: DELETE`
+     * 
      * Fetching data, with method DELETE.
      * 
      * @param id analog .pathParam('id', some_value)
@@ -368,6 +519,9 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     public async delete(id?: number): Promise<ReturnType>
 
     /**
+     * `📤 Call Request`\
+     * `⬆️ Method: PATCH`
+     * 
      * Fetching data, with method PATCH.
      * 
      * @param id analog .pathParam('id', some_value)
@@ -375,7 +529,9 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     public async patch(id?: number): Promise<ReturnType>
 
     /**
-     * All setting params earlier `pathParam`, `query`
+     * `🧰 Utils`
+     * 
+     * All value params
      */
     public get params(): {
         /**
@@ -389,6 +545,8 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     }
 
     /**
+     * `⚙️ Configuration`
+     * 
      * Auto pagination
      */
     public get pagination(): {
@@ -438,53 +596,75 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
         lastPage: number
     }
 
-
     /**
+     * @deprecated
      * Key for update none reactive values using in components `:key`
      */
     public get frozenKey(): number
 
     /**
+     * @deprecated
      * Static (none reactive) response object [for optimization in heavy cases]
      */
     public get frozenResponse(): ReturnType
 
     /**
+     * `⚡ Reactive`
+     * 
      * Reactive response object
      */
     public response: ReturnType
 
     /**
+     * `🔧 Property`
+     * 
      * Headers of response
      */
     public get headers(): Headers
 
     /**
-     * Reactive response object (unpacked from array)
+     * `⚡ Reactive`\
+     * `🧩 TS Sugar`
+     * 
+     * Reactive response object "one" for Typescript Types
      */
     public get one(): ReturnType[number]
 
     /**
-     * Reactive response object (as array)
+     * `⚡ Reactive`\
+     * `🧩 TS Sugar`
+     * 
+     * Reactive response object "array" for Typescript Types
      */
-    public get many(): ReturnType
+    public get many(): ReturnType[]
 
     /**
-     * Error while Fetching
+     * `⚡ Reactive`\
+     * `🔧 Property`
+     * 
+     * Status Error Text 
      */
     public get errorText(): string
 
     /**
-     * Had errros
+     * `⚡ Reactive`\
+     * `🔧 Property`
+     * 
+     * Response is with Error
      */
     public get error(): boolean
 
     /**
+     * `⚡ Reactive`\
+     * `🔧 Property`
+     * 
      * Is Fetching
      */
     public get loading(): boolean
 
     /**
+     * `🔧 Property`
+     * 
      * Values from template
      */
     public get protocol(): Dict<Protocol, any>
