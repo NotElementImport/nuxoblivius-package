@@ -62,7 +62,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * `🧰 Utils`\
      * `🧩 Sugar`
      * 
-     * Create string for Bearer Authorization
+     * Create string for Basic Authorization
      */
     public static Basic(login: string, password: string): string
 
