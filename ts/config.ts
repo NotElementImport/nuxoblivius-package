@@ -1,5 +1,3 @@
-import { onConfigured } from "./index.js"
-
 type TemplateFunction = (raw: any) => {data?: any, countPages?: number}
 type TemplateLogic = {[key: string]: TemplateFunction}
 type FetchResult = {data: object|Blob|null, error: boolean, errorText: string, code: number, pageCount: number, protocol?: object, header: object}
@@ -59,11 +57,7 @@ export const options = {
     cookie: { get: (name: string) => '', set: (name: string, value: any) => null as any} as any as { get(name: string): any, set(name: string, value: any): void },
     router: {} as any as { currentRoute: '', params: {}, query: {} },
     _templates: {} as TemplateLogic, // incapsulated templates
-    get templates() { return this._templates },
-    _isServer: false, // default - client
-    get isServer() { return this._isServer },
-    _apiRoot: '',
-    get apiRoot() { return this._apiRoot }
+    get templates() { return this._templates }
 }
 
 export function onRecordFetchFailed(handle: Function) {
@@ -197,16 +191,5 @@ export const settings = {
     router(logic: any) {
         options.router = logic
         return this
-    },
-    isServer(value = false) {
-        options._isServer = value
-        return this
-    },
-    apiRoot(root: string) {
-        options._apiRoot = root
-        return this
-    },
-    feedbackCallbacks() {
-        onConfigured()
     }
 }

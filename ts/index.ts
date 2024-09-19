@@ -1,24 +1,12 @@
-import { reactive, onMounted, onUnmounted, watch } from "vue"
+import { reactive } from "vue"
 import Storage from "./Storage.js"
-import StoreRecord from "./Record.js"
 
 const isClient = typeof document !== 'undefined'
 
 const storageOfStores = new Map<object, any>()
 
 const laterAwaiter: Function[] = []
-const configAwaiter: Function[] = []
 
-export const onMountedApp = () => {
-    for (const func of laterAwaiter) {
-        func() // call functions from "later" array after vue mounting
-    }
-}
-export const onConfigured = () => {
-    for (const func of configAwaiter) {
-        func()
-    }
-}
 export function deleteDump() {
     const recursiveDeleteDump = (_value: any) => {
         if(_value._variables) {
@@ -46,6 +34,9 @@ export function deleteDump() {
     }
 }
 
+/**
+ * Creating Proxy-object (for reactivity)
+ */
 function create_proxy(target: object, get: Function, has: Function = (t: any, p: any) => true) {
     return new Proxy({}, {
         get(target, p, receiver) {
@@ -56,6 +47,9 @@ function create_proxy(target: object, get: Function, has: Function = (t: any, p:
         },})
 }
 
+/**
+ * Defining all properties and functions for store object
+ */
 function raise(store: any) {
     store.prototype.ref = create_proxy({}, 
         (t: any, p: any,) => create_proxy({} , 
@@ -69,25 +63,26 @@ function raise(store: any) {
 
     const variables = reactive({})
 
-    Object.defineProperty(instance, '_defaults', {
+    // collect all properties for Store object (instance)
+    Object.defineProperty(instance, '_defaults', { // '_defaults' property
         value: {},
         configurable: false
     })
-    Object.defineProperty(instance, '_variables', {
+    Object.defineProperty(instance, '_variables', { // '_variables' property
         get() {return variables},
         configurable: false
     })
-    Object.defineProperty(instance, '_stores', {
+    Object.defineProperty(instance, '_stores', { // '_stores' property
         value: {},
         configurable: false
     })
-    Object.defineProperty(instance, '_watcher', {
+    Object.defineProperty(instance, '_stores', { // '_stores' property
         value: {},
         configurable: false
     })
-    Object.defineProperty(instance, 'ref', {
-        get() {
-            const proxy = create_proxy(store, 
+    Object.defineProperty(instance, 'ref', { // 'ref' property
+        get() { // with getter
+            const proxy = create_proxy(store, // where we create proxy-object for store
                 (target: any, p: any, receiver: any) => {
                     if(p in instance) {
                         if(instance._variables[p] instanceof Storage) {
@@ -100,11 +95,11 @@ function raise(store: any) {
                                 return instance[p]
                             },
                             name: p,
-                            get isEmpty() {
+                            get isEmpty() { // isEmpty property
                                 const value = instance[p];
                                 return typeof value == 'undefined' || value == null
                             },
-                            get isImportant() {
+                            get isImportant() { // isImportant property
                                 return (p as string)[0] == '$'
                             },
                             watch(func: Function) {
@@ -123,14 +118,14 @@ function raise(store: any) {
                     
                     throw `Object ${p as string} not founed`
                 })
-            return proxy
+            return proxy // its returning value - proxy-object
         }
     })
 
     const triggerToChanges = (nameObject: string) => {
-        if(instance._watcher[nameObject]) {
+        if(instance._watcher[nameObject]) { // get functions that should be called after watcher triggering
             for (const func of instance._watcher[nameObject]) {
-                func()
+                func() // call them
             }
         }
     }
@@ -157,15 +152,16 @@ function raise(store: any) {
         instance._watcher[name] = []
     }
 
+    // checking if property name is not default (private)
     const isDefaultVar = (name: any) =>
         name == 'ref' || name == '_defaults' || name == '_stores' || name == '_variables' || name == '_watcher'
 
     // Define property to reactive
     for (const propertyName of Object.getOwnPropertyNames(instance)) {
-        if(isDefaultVar(propertyName))
+        if(isDefaultVar(propertyName)) // if it has default name
             continue;
 
-        const valueOfProperty = instance[propertyName]
+        const valueOfProperty = instance[propertyName] // value for property at this moment
         
         const isNotClassObject = (v: any = valueOfProperty) =>
             (typeof v != 'undefined' && v != null)
@@ -293,7 +289,6 @@ export function subStore<T>(object: any): T {
 
 /**
  * Add function to laterAwaiter array (for a later call)
- * @returns 
  */
 export function later(callback: () => any) {
     if(typeof localStorage == 'undefined') { // isServer
