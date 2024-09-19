@@ -1049,9 +1049,8 @@ export default class Record {
         */
         if(this._onNullCheck) {
             const response = this._variables.response;
-            const isEmpty  = 
-                (typeof response == 'object' && Object.keys(response).length == 0)
-                || (response == null)
+            const isEmpty  = (response == null)
+                || (typeof response == 'object' && Object.keys(response ?? []).length == 0)
                 || (this._swapMethod == ESwapMethod.PAGINATION && pageChange)
 
             if(!isEmpty) {
