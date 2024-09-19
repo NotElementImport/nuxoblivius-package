@@ -1,28 +1,59 @@
-import { Ref } from 'vue'
-import {IHeaderAttribute} from './headers.js'
+import { ref, Ref } from 'vue'
+import { IHeaderAttribute } from './headers.js'
 
-interface IStoreRef<K> {
-    name: string,
-    value: K,
-    isEmpty: boolean,
-    isImportant: boolean
-    watch(callback: Function): void
+// Basics Interfaces:
+interface StoreRef<T> {
+    name: string
+    value: T
+    isEmpty: boolean
+    watch(handle: Function): void
 }
 
-type StoreMeta<T> = T & { ref: Dict<keyof T, IStoreRef<T[keyof T]>> }
-type FormMeta<T> = T & StoreMeta<T> & {}
-type TemplateFunction = (raw: any) => {data?: any, countPages?: number}
+type ExtractFrom<T, K extends PropertyKey> = T[K] 
 
+type Parametr<T extends any> = (() => T) | T
+type BodyParametr<T extends any> = Parametr<T> & FormData
+
+type UnpackParametr<T extends any> = T extends Ref<any> ? T['value'] : (T extends StoreRef<T> ? T['value'] : T)
+
+// Store Interfaces:
+type CompiledStoreRefs<T extends any> = { ref: { [P in keyof T]: StoreRef<T[P]> } }
+type CompiledStore<T> = T & CompiledStoreRefs<T>
+
+// Template Interfaces:
+interface TemplateStruct<T> {
+    data?: T
+    pageCount?: number
+    protocol?: Dict<string, any>
+}
+
+type TemplateHandler<T extends any, R extends any> = (raw: T) => TemplateStruct<R>
+
+// Tags Interfaces:
 type RuleCallback<P, Q> = (method: { path: Dict<P, any>, query: Q }) => boolean
 
-export declare function defineStore<T>(store: typeof T): T & StoreMeta<T>
-export declare function subStore<T>(store: typeof T): T & StoreMeta<T>
-export declare function defineForm<T>(store: typeof T): T & FormMeta<T>
+/** JS Class Definition Store */
+export declare function defineStore<T>(store: { new(): T }): CompiledStore<T>
+/** 
+ * JS Object 
+ * @deprecated 
+*/
+export declare function defineStore<T>(store: () => T): CompiledStore<T>
+
+/** JS Class Definition Store */
+export declare function subStore<T>(store: { new(): T }): CompiledStore<T>
+/** 
+ * JS Object 
+ * @deprecated 
+*/
+export declare function subStore<T>(store: () => T): CompiledStore<T>
+
 export declare abstract class IStore<T> { 
     public get ref(): StoreMeta<T> 
     protected onMounted(): void 
     protected onUnmounted(): void 
 }
+
 export declare function later(callback: () => any): Promise<any>
 
 type PathParam<PParams> = `path:${PParams}`
@@ -40,6 +71,11 @@ type ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
             prepare(rule: Dict<keyof KeepByInfo, '*'|null>, behaviour?: () => boolean): ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
         }
 
+/**
+ * `⚡ Fetch Client`
+ * 
+ * Nuxoblivius Fetch Client
+ */
 export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends extends object, Protocol> {
     /**
      * `⚙️ Creating new Record object`
@@ -76,7 +112,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * ```
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#path-params See more about Path Params in docs}
      */
-    public pathParam<E extends PropertyKey>(name: E|PathParams, value: string|number|boolean|FakeReactiveFunc): Record<ReturnType, PathParams | E, QueryParams, KeepByInfo, Extends, Protocol>
+    public pathParam<E extends PropertyKey>(name: E|PathParams, value: Parametr<any>): Record<ReturnType, PathParams | E, QueryParams, KeepByInfo, Extends, Protocol>
     
     /**
      * `⚙️ Configuration`
@@ -129,8 +165,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * ```
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#query See more about Query in docs}
      */
-    public query<E extends Dict<PropertyKey, any>|QueryParams>(query: () => E, locked?:boolean): Record<ReturnType, PathParams, QueryParams & E, KeepByInfo, Extends, Protocol>
-    public query<E extends Dict<PropertyKey, any>|QueryParams>(query: E, locked?:boolean): Record<ReturnType, PathParams, QueryParams & E, KeepByInfo, Extends, Protocol>
+    public query<E extends Dict<PropertyKey, any>|QueryParams>(query: Parametr<E>, baked?:boolean): Record<ReturnType, PathParams, QueryParams & UnpackParametr<E>, KeepByInfo, Extends, Protocol>
     
     /**
      * `⚙️ Configuration`
@@ -152,7 +187,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * ```
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#headers See more about Headers in docs}
      */
-    public header(name: string, value: string|FakeReactiveFunc): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public header<K extends PropertyKey>(name: keyof IHeaderAttribute|K, value: Parametr<any>): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`
@@ -168,7 +203,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * 
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#body See more about Body in docs}
      */
-    public body(body: FormData|{[key: string]: any}|FakeReactiveFunc|null): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public body(body: BodyParametr<any>): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`
@@ -298,6 +333,26 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * `⚡ SPA frendly`\
      * `🪛 For fine-tuning`
      * 
+     * Optimization Of Site Speed
+     * 
+     * Principle if there is loaded data, why make an unnecessary query?
+     * 
+     * We can just get data from other object.
+     * 
+     * Example:
+     * ```ts
+     * const allItems = [...];
+     * 
+     * const request = Record.new('/get/one/item/{id}')
+     *    .borrowFrom(
+     *        { 'id': '*' }, // Operating condition: If path param id is sets
+     *        () => allItems, // Where do we get it from
+     *        (item) => { Looking for the right element
+     *            if(item.id == request.params.path.id) // If suitable
+     *                return item // Taking and disabling the request
+     *        }
+     *    ) 
+     * ```
      */
     public borrowFrom<T extends Dict<string, any>>(
             logic: Dict<keyof KeepByInfo, PipelineValues>|RuleCallback<PathParam, QueryParam>, 
@@ -305,17 +360,21 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
             as: (value: T[number]) => ReturnType
         ): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
-    /**
-     * `⚙️ Configuration`\
-     * `⚡ SPA frendly`\
-     * `🪛 For fine-tuning`
-     * 
-     */
-    public borrowAtSelf(
-            logic: Dict<keyof KeepByInfo, PipelineValues>|RuleCallback<PathParam, QueryParam>,
-            from: Dict<keyof KeepByInfo, PipelineValues>, 
-            as: (value: ReturnType[number]) => ReturnType[number]
-        ): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    // /**
+    //  * `⚙️ Configuration`\
+    //  * `⚡ SPA frendly`\
+    //  * `🪛 For fine-tuning`\
+    //  * `Working but better use rule + cached`
+    //  * 
+    //  * W.I.P - Need to rework
+    //  * 
+    //  * @deprecated
+    //  */
+    // public borrowAtSelf(
+    //         logic: Dict<keyof KeepByInfo, PipelineValues>|RuleCallback<PathParam, QueryParam>,
+    //         from: Dict<keyof KeepByInfo, PipelineValues>, 
+    //         as: (value: ReturnType[number]) => ReturnType[number]
+    //     ): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`\
@@ -551,46 +610,75 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      */
     public get pagination(): {
         /**
+         * `⚙️ Configuration`
+         * 
          * Init pagination in query
          * @param how setting in query or in path. Example path: 'path:id', and paste in pathParam `id` paginate value
          */
         setup<P extends PropertyKey, Q extends 'path'>(how: `${Q}:${PathParams|P}`, enabledByDefault?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
         setup<P extends PropertyKey, Q extends 'query'>(how: `${Q}:${keyof QueryParams|P}`, enabledByDefault?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
         setup(how: `path:`|`query:`, enabledByDefault?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+        
+        /**
+         * `🔧 Property`
+         * 
+         * Enable/Disable pagination
+         */
         set enabled(v: boolean): void
+
+        /**
+         * `⚡ Reactive`\
+         * `🔧 Property`
+         * 
+         * Is current page, reach last page
+         */
         get isLastPage(): boolean
 
         /**
+         * `⚙️ Configuration`
+         * 
          * Reload after move pagination
          */
         autoReload(): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
         /**
+         * `↩️ Move to first page`
+         * 
          * Move pagintaion to start
          */
         toFirst(): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
         /**
-         * Move pagintaion to start
+         * `↪️ Move to last page`
+         * 
+         * Move pagintaion to end
          */
         toLast(): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
         /**
+         * `➡️ Move to next page`
+         * 
          * Move pagintaion next
          */
         next(): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
         
         /**
+         * `⬅️ Move to prev page`
+         * 
          * Move pagintaion prev
          */
         prev(): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
         
         /**
-         * Pagination value
+         * `⚡ Reactive`
+         * 
+         * Current page
          */
         current: number
 
         /**
+         * `⚡ Reactive`
+         * 
          * Last page
          */
         lastPage: number
@@ -675,16 +763,25 @@ export declare class Storage {
     public static server<T>(name: string, value: T): T
 }
 
-interface IReturnTemplate<T> {
-    data: T
-    pageCount?: number
-    protocol?: Dict<string, any>
-}
+export declare function RegisterTemplate<T, E>(name: string, template: TemplateHandler<T, E>)
+export declare function CallPattern<I, E>(name: string, data: I): TemplateStruct<E>
+export declare function ExtendsPattern<I, E>(parent: TemplateStruct<I>, child: TemplateStruct<E>): TemplateStruct<I & E>
 
-export declare function RegisterTemplate<T, E>(name: string, template: (raw: T) => IReturnTemplate<E>)
-export declare function CallPattern<I, E>(name: string, data: IReturnTemplate<T>): IReturnTemplate<E>
-export declare function ExtendsPattern<I, E>(parent: IReturnTemplate<I>, child: IReturnTemplate<E>): IReturnTemplate<I & E>
 export declare function SetDefaultHeader(name: string, value: (() => any)|string|Ref<any>): void
 export declare function SetDefaultAuth(string: (() => any)|string|Ref<any>): void
 export declare function OnRecordFetchFailed(handle: (code: number, retry: () => Promise<any>) => Promise<any>|undefined): void
-export declare function toRefRaw<T>(object: Ref<T>): T
+
+/** 
+ * `Vue Helper`\
+ * Get Raw value and create link to `ref()` object
+*/
+export declare function toRefRaw<T>(object: Ref<T>): T & { raw(): Ref<T> }
+
+type TestOf<T> = T extends Ref ? T['value'] : T
+
+declare function extractor<T>(val: Parametr<T>): UnpackParametr<T>
+
+extractor(() => ref('test'))
+
+const test = Record.new()
+    .header('Accept-Language', () => 'test')
