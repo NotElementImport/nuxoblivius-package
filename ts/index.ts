@@ -66,7 +66,6 @@ function raise(store: any) {
         () => true)
     
     const instance = new store()
-    storageOfStores.set(store, instance)
 
     const variables = reactive({})
 
