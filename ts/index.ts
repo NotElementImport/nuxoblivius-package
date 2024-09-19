@@ -168,7 +168,8 @@ function raise(store: any) {
         const valueOfProperty = instance[propertyName]
         
         const isNotClassObject = (v: any = valueOfProperty) =>
-            typeof v != 'undefined' && v != null && typeof v == 'object' && Object.getPrototypeOf(v).__proto__ == null || Array.isArray(v)
+            (typeof v != 'undefined' && v != null)
+            && (typeof v != 'object' || (typeof v == 'object' && Object.getPrototypeOf(v).__proto__ == null || Array.isArray(v)))
 
         // If Undefined
         if(typeof valueOfProperty == 'undefined') {
