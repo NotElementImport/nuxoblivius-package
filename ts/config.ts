@@ -71,6 +71,10 @@ export function setDefaultHeader(name: string, value: any) {
     defaultHeaders[name] = value
 }
 
+export function setDefaultAuth(string: any) {
+    defaultHeaders.Authorization = string
+}
+
 export function callPattern(name: string|Function, data: object) {
     if(typeof name == 'string' && name in options.templates) {
         return options.templates[name](data)

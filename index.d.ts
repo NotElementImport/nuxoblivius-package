@@ -98,7 +98,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * `🧰 Utils`\
      * `🧩 Sugar`
      * 
-     * Create string for Bearer Authorization
+     * Create string for Basic Authorization
      */
     public static Basic(login: string, password: string): string
 
@@ -210,9 +210,9 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * 
      * Add individual authorization to request
      * 
-     * To use globaly
+     * To use globaly:
      * ```ts
-     * SetDefaultHeader('Authorization', () => YourValue )
+     * SetDefaultAuth(() => YourValue )
      * ```
      * 
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#authorization See more about Authorization in docs}
@@ -768,6 +768,7 @@ export declare function CallPattern<I, E>(name: string, data: I): TemplateStruct
 export declare function ExtendsPattern<I, E>(parent: TemplateStruct<I>, child: TemplateStruct<E>): TemplateStruct<I & E>
 
 export declare function SetDefaultHeader(name: string, value: (() => any)|string|Ref<any>): void
+export declare function SetDefaultAuth(string: (() => any)|string|Ref<any>): void
 export declare function OnRecordFetchFailed(handle: (code: number, retry: () => Promise<any>) => Promise<any>|undefined): void
 
 /** 

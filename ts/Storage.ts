@@ -1,7 +1,7 @@
 // import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery, urlPathParams } from "./Utils.js"
 import { options as ConfigOptions } from "./config.js"
 import { reactive } from "vue"
-import { afterConfig, later } from "./index.js"
+import { later } from "./index.js"
 
 export default class Storage {
     static COOKIE = 2 as const
