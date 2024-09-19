@@ -25,4 +25,5 @@ export interface IHeaderAttribute {
     'Accept': IContentType
     'Accept-Encoding': '*'|'gzip'|'compress'|'deflate'|'br'|'zstd'|'identity'
     'Accept-Language': string
+    'Content-Type': string
 }
