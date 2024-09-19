@@ -11,7 +11,7 @@ const configAwaiter: Function[] = []
 
 export const onMountedApp = () => {
     for (const func of laterAwaiter) {
-        func()
+        func() // call functions from "later" array after vue mounting
     }
 }
 export const onConfigured = () => {
@@ -45,6 +45,7 @@ export function deleteDump() {
         recursiveDeleteDump(value);
     }
 }
+
 function create_proxy(target: object, get: Function, has: Function = (t: any, p: any) => true) {
     return new Proxy({}, {
         get(target, p, receiver) {
@@ -265,33 +266,39 @@ function raise(store: any) {
     }
 
     return instance
-} 
-
-export function defineStore<T>(store: any): T {
-    const objectStore = storageOfStores.get(store)
-
-    if(typeof objectStore == 'undefined') {
-        let object = raise(store)
-
-        storageOfStores.set(store, object as any)
-        return object as T
-    }
-
-    return objectStore
 }
 
+/**
+ * Store defining
+ */
+export function defineStore<T>(store: any): T {
+    const objectStore = storageOfStores.get(store) // store may already exist
+
+    if(typeof objectStore == 'undefined') {
+        let object = raise(store) // if it isn't exists --> raise
+
+        storageOfStores.set(store, object as any) // and save to storageOfStores array
+        return object as T // return raised object with T type (from generic)
+    }
+
+    return objectStore // if it had been already exist
+}
+
+/**
+ * subStore creating
+ */
 export function subStore<T>(object: any): T {
     return raise(object) as T
 }
 
-export function afterConfig(callback: Function) {
-    configAwaiter.push(callback)
-}
-
+/**
+ * Add function to laterAwaiter array (for a later call)
+ * @returns 
+ */
 export function later(callback: () => any) {
-    if(typeof localStorage == 'undefined') {
+    if(typeof localStorage == 'undefined') { // isServer
         return new Promise((resolve, reject) => {
-            laterAwaiter.push(() => {
+            laterAwaiter.push(() => { // array consists of Promises
                 resolve(callback())
             })
         })
