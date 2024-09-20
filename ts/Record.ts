@@ -91,7 +91,7 @@ export default class Record {
     /** For re-launching fetch */
     private _lastStep: Function = () => {}
 
-    /** Proxi object for getting multiple data, uses in param.query */
+    /** Proxy object for getting multiple data, uses in param.query */
     private _proxies: any = {}
 
     /** Registered borrows logic */

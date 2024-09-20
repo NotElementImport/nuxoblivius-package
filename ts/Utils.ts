@@ -40,14 +40,17 @@ export function isRef(value: any) {
     return typeof value == 'object' && '_module_' in value
 }
 
+/**
+ * Correct converting object to query-params Object
+ */
 export function storeToQuery(object: any) {
     const unpacked = object.value
 
-    if(typeof unpacked != "object") {
-        return {}
+    if(typeof unpacked != "object") { // object SHOULD BE object
+        return {} // return empty object
     }
 
-    const result: {[key: string]: any} = {}
+    const result: {[key: string]: any} = {} // init object
 
     for(const [name] of Object.entries(unpacked)) {
         if(name.length == 0) continue;
