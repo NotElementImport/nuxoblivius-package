@@ -100,7 +100,7 @@ export default class Record {
     // Links
 
     /** For re-launching fetch */
-    private _lastStep: Function = () => {}
+    private _lastStep: Function = () => (new Promise((resolve) => resolve(null)))
 
     /** Proxy object for getting multiple data, uses in param.query */
     private _proxies: any = {}
@@ -699,7 +699,10 @@ export default class Record {
             // Vue Ref
             if(isReactive(result) || isRef(result) || result?.__v_isRef) {
                 watch(result, () => {
+                    const oldValueOnNullCheck = pThis._onNullCheck
+                    pThis._onNullCheck = false
                     pThis._lastStep()
+                        .then(_ => {pThis._onNullCheck = oldValueOnNullCheck})
                 })
                 return
             }
@@ -709,7 +712,10 @@ export default class Record {
                     throw `reloadBy: only ref support`
 
                 result.watch(() => {
+                    const oldValueOnNullCheck = pThis._onNullCheck
+                    pThis._onNullCheck = false
                     pThis._lastStep()
+                        .then(_ => {pThis._onNullCheck = oldValueOnNullCheck})
                 })
             }
         })
