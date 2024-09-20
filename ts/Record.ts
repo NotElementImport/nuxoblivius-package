@@ -10,6 +10,8 @@ type ParamsTagsType = {[key: string]: EParamsTagsType }
 
 type Dict<T extends keyof any, K> = { [P in T]: K }
 
+type RequestObject<T> = Promise<T>
+
 enum ETagPlace {
     PATH  = 0,
     QUERY = 1
@@ -31,9 +33,18 @@ enum ESwapMethod {
  */
 const isClient = typeof document !== 'undefined'
 
+const createRequest = () => {
+    let   [ resolve, reject ] = [ (data: any) => {}, () => {} ]
+    const request: RequestObject<any> = new Promise((res, rej) => { resolve = res as any; reject = rej as any; } )
+    return { request, resolve, reject }    
+};
+
 export default class Record {
 
     // Fetch settings
+
+    private _oneRequestAtTime: boolean = false
+    private _currentRequest: RequestObject<any>|null = null
 
     /** Pathname for fetching  */
     private _url: string = ''
@@ -373,6 +384,15 @@ export default class Record {
             this._tags[name] = ETagPlace.PATH
             this._tagsType[name] = acecssValue
         }
+        return this
+    }
+
+    /**
+     * [Configuration]
+     * Redirect request to current Request if launched
+     */
+    public oneRequestAtTime(value: boolean = true) {
+        this._oneRequestAtTime = value
         return this
     }
 
@@ -1028,6 +1048,12 @@ export default class Record {
      * Call request
      */
     private async doFetch(method: string = 'get') {
+        if(this._oneRequestAtTime && this._currentRequest != null) {
+            return this._currentRequest
+        }
+        const { request, resolve: endRequest } = createRequest()
+        this._currentRequest = request
+
         this._variables.isLoading = true
 
         const pageChange = this._pagination.change
@@ -1055,6 +1081,7 @@ export default class Record {
 
             if(!isEmpty) {
                 this._variables.isLoading = false
+                endRequest(response)
                 return response
             }
         }
@@ -1070,6 +1097,7 @@ export default class Record {
                 this._variables.error = ''
                 this._variables.isError = false
                 this._variables.isLoading = false
+                endRequest(result)
                 return result
             }
         }
@@ -1151,6 +1179,7 @@ export default class Record {
         if(this._onEnd)
             this._onEnd(fetchResult.data)
 
+        endRequest(fetchResult.data)
         return fetchResult.data
     }
 

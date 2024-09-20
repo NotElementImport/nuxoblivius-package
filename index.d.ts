@@ -536,6 +536,14 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     public appendsResponse(value?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
+     * `⚙️ Configuration`\
+     * `🪛 For fine-tuning`
+     * 
+     * Can be only one Request at time
+     */
+    public oneRequestAtTime(value?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+
+    /**
      * `📤 Call Request`\
      * `⬆️ Method: GET`
      * 

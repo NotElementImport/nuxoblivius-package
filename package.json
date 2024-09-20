@@ -1,6 +1,6 @@
 {
   "name": "nuxoblivius",
-  "version": "1.5.0-a190915",
+  "version": "1.5.0-beta-2",
   "type": "module",
   "description": "",
   "main": "index.js",
