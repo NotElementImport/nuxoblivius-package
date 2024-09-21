@@ -685,7 +685,7 @@ export default class Record {
                     pThis._variables.expandResponse = false;
                     pThis.pagination.toFirst();
                     pThis._lastStep()
-                        .then(_ => {pThis._onNullCheck = oldValueOnNullCheck; pThis._variables.expandResponse = oldValueExpandCheck })
+                        .then(() => {pThis._onNullCheck = oldValueOnNullCheck; pThis._variables.expandResponse = oldValueExpandCheck })
                 })
                 return
             }
@@ -701,7 +701,7 @@ export default class Record {
                     pThis._variables.expandResponse = false;
                     pThis.pagination.toFirst();
                     pThis._lastStep()
-                        .then(_ => {pThis._onNullCheck = oldValueOnNullCheck; pThis._variables.expandResponse = oldValueExpandCheck })
+                        .then(() => {pThis._onNullCheck = oldValueOnNullCheck; pThis._variables.expandResponse = oldValueExpandCheck })
                 })
             }
         })
@@ -1114,13 +1114,14 @@ export default class Record {
         if(this._body != null) {
             // Getting body
             options.body = refOrVar(this._body);
-            if (options.body instanceof FormData) {
-                delete options.headers?.['Content-Type']
-            }
+            
+            // Form Data:
+            if (options.body instanceof FormData)
+                delete headers['Content-Type']
+            // Json:
             // Convert object to string
-            else if (typeof options.body == 'object') {
+            else if (typeof options.body == 'object')
                 options.body = JSON.stringify(this._body);
-            }
         }
 
         // Request data from http > config
