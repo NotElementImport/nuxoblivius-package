@@ -1113,11 +1113,13 @@ export default class Record {
         // If use body connect to options
         if(this._body != null) {
             // Getting body
-            options['body'] = refOrVar(this._body) as any
-
+            options.body = refOrVar(this._body);
+            if (options.body instanceof FormData) {
+                delete options.headers?.['Content-Type']
+            }
             // Convert object to string
-            if(!(options['body'] instanceof FormData) && typeof options['body'] == 'object') {
-                options['body'] = JSON.stringify(this._body)
+            else if (typeof options.body == 'object') {
+                options.body = JSON.stringify(this._body);
             }
         }
 
