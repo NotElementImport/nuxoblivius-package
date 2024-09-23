@@ -699,10 +699,13 @@ export default class Record {
             // Vue Ref
             if(isReactive(result) || isRef(result) || result?.__v_isRef) {
                 watch(result, () => {
-                    const oldValueOnNullCheck = pThis._onNullCheck
-                    pThis._onNullCheck = false
+                    const oldValueOnNullCheck = pThis._onNullCheck;
+                    const oldValueExpandCheck = pThis._variables.expandResponse;
+                    pThis._onNullCheck = false;
+                    pThis._variables.expandResponse = false;
+                    pThis.pagination.toFirst();
                     pThis._lastStep()
-                        .then(_ => {pThis._onNullCheck = oldValueOnNullCheck})
+                        .then(() => {pThis._onNullCheck = oldValueOnNullCheck; pThis._variables.expandResponse = oldValueExpandCheck })
                 })
                 return
             }
@@ -712,10 +715,13 @@ export default class Record {
                     throw `reloadBy: only ref support`
 
                 result.watch(() => {
-                    const oldValueOnNullCheck = pThis._onNullCheck
-                    pThis._onNullCheck = false
+                    const oldValueOnNullCheck = pThis._onNullCheck;
+                    const oldValueExpandCheck = pThis._variables.expandResponse;
+                    pThis._onNullCheck = false;
+                    pThis._variables.expandResponse = false;
+                    pThis.pagination.toFirst();
                     pThis._lastStep()
-                        .then(_ => {pThis._onNullCheck = oldValueOnNullCheck})
+                        .then(() => {pThis._onNullCheck = oldValueOnNullCheck; pThis._variables.expandResponse = oldValueExpandCheck })
                 })
             }
         })
@@ -1139,12 +1145,15 @@ export default class Record {
         // If use body connect to options
         if(this._body != null) {
             // Getting body
-            options['body'] = refOrVar(this._body) as any
-
+            options.body = refOrVar(this._body);
+            
+            // Form Data:
+            if (options.body instanceof FormData)
+                delete headers['Content-Type']
+            // Json:
             // Convert object to string
-            if(!(options['body'] instanceof FormData) && typeof options['body'] == 'object') {
-                options['body'] = JSON.stringify(this._body)
-            }
+            else if (typeof options.body == 'object')
+                options.body = JSON.stringify(this._body);
         }
 
         // Request data from http > config

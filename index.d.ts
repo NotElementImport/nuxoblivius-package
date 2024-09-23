@@ -384,7 +384,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * 
      * For example, if url differents for loading by one and all we can change url in runtime
      * ```
-     * .keepBy('path:id') // add value to Pipeline
+     * .createTag('path:id') // add value to Pipeline
      * .rule(
      *     {id: '*'}, // if path param `id` sets, using rule
      *     (setup) =>
@@ -412,7 +412,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * 
      * For example, if url differents for loading by one and all we can change url in runtime
      * ```
-     * .keepBy('path:id') // add value to Pipeline
+     * .createTag('path:id') // add value to Pipeline
      * .rule(
      *     {id: '*'}, // if path param `id` sets, using rule
      *     (setup) =>

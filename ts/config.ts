@@ -24,7 +24,7 @@ export const options = {
                 () => options.http(url, options, isblob)
             )
 
-            if(typeof handleResponse === 'undefined' && !handleResponse?._meta?.ok) { // if there were not onFailure function
+            if(typeof handleResponse === 'undefined' || !handleResponse?._meta?.ok) { // if there were not onFailure function
                 return {
                     _meta,
                     header: response.headers,
