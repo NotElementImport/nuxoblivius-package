@@ -239,7 +239,7 @@ export default class Record {
                 return pThis
             },
             prev() { // Move to prev page, while is not first page
-                if(pThis._variables.currentPage > 0) {
+                if(pThis._variables.currentPage > 1) {
                     pThis._variables.currentPage -= 1
                     pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage
                     pThis._pagination.change = true
@@ -1057,8 +1057,12 @@ export default class Record {
         if(this._oneRequestAtTime && this._currentRequest != null) {
             return this._currentRequest
         }
-        const { request, resolve: endRequest } = createRequest()
+        const { request, resolve } = createRequest()
         this._currentRequest = request
+        const endRequest = (value: any) => {
+            this._currentRequest = null
+            resolve(value)
+        }
 
         this._variables.isLoading = true
 
