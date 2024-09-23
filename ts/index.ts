@@ -76,7 +76,7 @@ function raise(store: any) {
         value: {},
         configurable: false
     })
-    Object.defineProperty(instance, '_stores', { // '_stores' property
+    Object.defineProperty(instance, '_watcher', { // '_stores' property
         value: {},
         configurable: false
     })

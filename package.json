@@ -1,10 +1,11 @@
 {
   "name": "nuxoblivius",
-  "version": "1.5.0-a190915",
+  "version": "1.5.0-build2109241",
   "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
+    "compile": "npx tsc -p ./tsconfig.json",
     "test": "echo \"test\" && exit 0"
   },
   "author": "notelementimport",
