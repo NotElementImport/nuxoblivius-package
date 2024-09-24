@@ -346,10 +346,10 @@ export default class Record {
 
         instance._proxies.query = new Proxy({}, {
             get(t, p, r) {
-                if(p in instance._staticQuery)
-                    return refOrVar(instance._staticQuery[p as any])
-                else if(p in instance._query)
+                if(p in instance._query)
                     return refOrVar(instance._query[p as any])
+                else if(p in instance._staticQuery)
+                    return refOrVar(instance._staticQuery[p as any])
                 return undefined
             }
         })
@@ -896,6 +896,26 @@ export default class Record {
     }
 
     /**
+     * Reset specific data
+     */
+    public reset(config = { pagination: true, response: true, query: true }) {
+        if(config.pagination) {
+            this._variables.currentPage = 1
+        }
+
+        if(config.response) {
+            if(typeof config.response === "boolean")
+                this.clearResponse()
+            else if(typeof config.response === 'object')
+                this._variables.response = config.response
+        }
+
+        if(config.query) {
+            this.clearDynamicQuery()
+        }
+    }
+
+    /**
      * Get old response by tag
      * 
      * Example
@@ -1042,7 +1062,7 @@ export default class Record {
         */
         if(this._borrowAnother.size > 0) {
             for(const [rule, searching] of this._borrowAnother.entries()) {
-                if(!checkCondition(condition, rule))
+                if(!checkCondition(condition, rule) || !this._enabledBorrow)
                     continue
 
                 const result = searching(null) // Try find suitable object
@@ -1056,7 +1076,7 @@ export default class Record {
         */
         if(this._borrow.size > 0) {
             for(const [rule, options] of this._borrow.entries()) {
-                if(!checkCondition(condition, rule))
+                if(!checkCondition(condition, rule) || !this._enabledBorrow)
                     continue
 
                 const [ cacheCondition, searching ] = options
@@ -1218,6 +1238,11 @@ export default class Record {
                 this._variables.isError = false
                 this._variables.isLoading = false
                 endRequest(result)
+                
+                // Call finsih handler
+                if(this._onEnd)
+                    this._onEnd(result)
+
                 return result
             }
         }
@@ -1326,10 +1351,12 @@ export default class Record {
      * Compare tags see `createTag`
      */
     private static compareTags(tags: ParamsTags, other: ParamsTags, otherLast?: ParamsTags) {
-        for (const [name, value] of Object.entries(tags)) {
+        for (const [name] of Object.entries(tags)) {
+            const value = refOrVar(tags[name])
+
             if(!(name in other)) 
                 return false // Not includes in other. Not valid
-
+            
             if(otherLast && name in otherLast) {
                 if(value == '<>' && otherLast[name] != other[name])
                     continue;

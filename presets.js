@@ -1,3 +1,71 @@
+import { Record } from "./index.js";
+
+const semiEmptyArray = [{}]
+
+export const useArrayRemesh = (sizeTag, config = {}) => {
+    return $ => {
+        if(config.cacheTag)
+            $.createTag(sizeTag, config.cacheAccess ?? 'simple')
+
+        const [whereTag, nameTag] = sizeTag.split(':')
+
+        const condition = config.condition ?? { }
+        
+        if(!config.condition) {
+            if(config.cacheTag)
+                condition[nameTag] = '*'
+
+            if($._paginationEnabled && (config.pageCheck ?? true))
+                condition[$._pagination.param] = config.page ?? '*'
+        }
+
+        const disableCondition = config.exclude
+
+        console.log(condition)
+
+        $.rule({ notExist: null }, () => {})
+        
+        $.defaultRule($$ => {
+            $$.enableBorrow(true);
+        })
+
+        $.swapMethod('lazy').borrowFrom(
+            condition,
+            () => semiEmptyArray,
+            (...args) => {
+                console.log('im in')
+                if(disableCondition) {
+                    if(Record.compareTags(disableCondition, $._lastRequestTags))
+                        return
+                }
+                const cacheCondition = Object.fromEntries(Object.entries(config.cache ?? {}).map(v => [v[0], v[1]() ]))
+
+                if(config.cacheTag)
+                    cacheCondition[nameTag] = '*'
+
+                if($._paginationEnabled && (config.pageCheck ?? true))
+                    cacheCondition[$._pagination.param] = config.page ?? ($.params[$._pagination.where][$._pagination.param] ?? $._variables.currentPage)
+
+                console.log(cacheCondition)
+
+                const result = $.cached(cacheCondition)
+                const size   = +$.params[whereTag][nameTag]
+
+                console.log(result, size)
+
+                if(!Array.isArray(result)) return
+
+                if(size < result.length) {
+                    return result.slice(0, size)
+                }
+                else if(size > result.length) {
+                    $.enableBorrow(false);
+                }
+            }
+        )
+    }
+};
+
 export const useCached = (tags = []) => {
     return $ => {
         const condition = {}
@@ -8,8 +76,8 @@ export const useCached = (tags = []) => {
 
         $.swapMethod('lazy').borrowFrom(
             condition,
-            () => [{}],
-            () => {
+            () => semiEmptyArray,
+            (...args) => {
                 const cachedCondition = {}
                 for (const itemName of tags) {
                     const [where, name] = itemName.split(':')

@@ -11,3 +11,16 @@ type TagDifinition<T extends PropertyKey> = `query:${T}`|`path:${T}`
  * @param tags Example: `['path:test', 'query:lang']`
  */
 export declare function useCached(tags?: TagDifinition[]): SetupObject
+
+interface IArrayRemesh {
+    cache: { [name: string]: any }
+    cacheTag?: boolean
+    cacheAccess?: 'simple'|'full'
+    condition?: { [name: string]: any }
+    pageCheck?: boolean
+    page?: any
+    exclude?: { [name: string]: any }
+    exclude?: { [name: string]: any }
+}
+
+export declare function useArrayRemesh<T extends PropertyKey>(sizeTag: `query:${T}`|`path:${T}`, config?: IArrayRemesh): SetupObject

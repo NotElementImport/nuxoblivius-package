@@ -8,12 +8,18 @@ interface IJWTConfig<T extends PropertyKey = PropertyKey> {
         
     }
     refresh: {
+        /** Refresh URL @example '/api/auth/login' */
         url: string
-        /** @default method: 'post' */
+        /** Method request @default method: 'post' */
         method?: 'put'|'post'
-        /** @default requestBody: 'string' */
-        requestBody: T&'string'
-        /** @default response: { access: 'access', refresh: 'refresh' } */
+        /** 
+         * How send Refresh Token
+         * Get name of param in JSON. Or write `string` send token without JSON  
+         * @default requestBody: 'string'
+         * */
+        requestBody: 'string'
+        requestBody: T
+        /** Which parameters are responsible for access/refresh. @default response: { access: 'access', refresh: 'refresh' } */
         response?: { access: string, refresh: string }
     }
     /** @default getter: (name) => localStorage.getItem(name) */
@@ -24,20 +30,51 @@ interface IJWTConfig<T extends PropertyKey = PropertyKey> {
     refreshFailed?: () => void
 }
 
-export declare function useJWT<Body extends object>(config?: IJWTConfig): { 
-    login: (body: Body) => Promise<boolean>
-    logout: () => void
-    onFailure: (reason: object, retry: Function) => any
-};
+interface IJWT<Body extends object> {
+    /**
+     * `⚡ Reactive`\
+     * `🔧 Property`
+     * 
+     * Is authorized
+     */
+    readonly authorized: boolean
+    /**
+     * `⚡ Reactive`\
+     * `🔧 Property`
+     * 
+     * On request login
+     */
+    readonly loading: boolean
+    /**
+     * `🛡️ Auth Method`
+     * 
+     * Login, and save access/regresh token
+     */
+    login(body: Body): Promise<{ ok: boolean, response: any }>
+    /**
+     * `🛡️ Auth Method`
+     * 
+     * Logout
+     */
+    logout(): Promise<void>
+    /**
+     * `⚡ Callable Event`
+     * 
+     * Calling on failure when Request if failed by auth issue
+     * 
+     * Example:
+     * ```ts
+     * const jwt = useJWT({})
+     * 
+     * Record.new('/test/')
+     *   .onFailure(jwt.onFailure)
+     * 
+     * // Or
+     * 
+     * SetRequestFailure(jwt.onFailure)
+     * ```
+     */
+    onFailure(reason: object, retry: Function): any
+}
 
-const { login, logout } = useJWT({
-    login: { url: '/api/test', response: { access: 'accessToken', refresh: 'refreshToken' } },
-    refresh: { url: '/api/test/refresh', requestBody: 'string' },
-    setter(access, refresh) {
-        useCookie('access').value = access
-        useCookie('refresh').value = access
-    },
-    getter(name) {
-        return useCookie(name).value
-    },
-});
+export declare function useJWT<Body extends object>(config?: IJWTConfig): IJWT<Body>;

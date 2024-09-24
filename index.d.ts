@@ -136,9 +136,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     /**
      * `⚙️ Configuration`
      * 
-     * ### Search params of Request
-     * 
-     * Simple:
+     * ### 🔧 Search params of Request
      * ```ts
      * query({ 'my-param': 'test' }) 
      * // /link?my-param=test
@@ -147,10 +145,12 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * With dynamic params:
      * ```ts
      * query({ 'dynamic': () => 'Im could be dynamic' }) 
-     * // /link?dynamic=Im%20could%20be%20dynamic
+     * // /link?dynamic=Im could be dynamic
      * ```
      * 
-     * Default values:
+     * #### 🛡️ Default value (Baked):
+     * Baked value cannot be erased, by `clearDynamicQuery()`,
+     * but can be rewrite
      * ```ts
      * query({ 'page': 1 }, true) // Baked
      * 
@@ -158,29 +158,22 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * clearDynamicQuery()  // /link?page=1
      * ```
      * 
-     * Groups:
+     * #### 📁 Groups:
      * ```ts
-     * enum ESortDirection {
-     *  ASC=0,
-     *  DESC=1
-     * }
-     * 
-     * let sortDirection = ESortDirection.DESC
      * query({
      *    filter: {
      *       createdAt: '2020-01-01',
      *       title: 'test'
-     *    },
-     *    sort: () => `${ sortDirection == ESortDirection.ASC ? '' : '-' }id`
+     *    }
      * })
      * // /link?filter[createdAt]=2020-01-01&filter[title]=test&sort=-id
      * ```
-     * Check values:
-     * ```
+     * #### 📤 Getting values:
+     * ```ts
      * query({ 'my-param': 'test', dynamic: () => 'my value' })
      * 
-     * console.log(request.params.query['my-param']) // 'test'
-     * console.log(request.params.query.dynamic) // 'my value'
+     * request.params.query['my-param'] // 'test'
+     * request.params.query.dynamic // 'my value'
      * ```
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#query See more about Query in docs}
      */
@@ -194,14 +187,14 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * Example:
      * ```ts
      * header('Content-Type', 'application/json')
-     * // or
+     * // or dynamic value
      * header('Content-Type', () => myValue)
      * ```
      * 
      * Also can globaly
      * ```ts
      * SetDefaultHeader('Content-Type', 'application/json')
-     * // or
+     * // or dynamic value
      * SetDefaultHeader('Content-Type', () => myValue)
      * ```
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#headers See more about Headers in docs}
@@ -219,7 +212,6 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * // or
      * body(new FormData())
      * ```
-     * 
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#body See more about Body in docs}
      */
     public body(body: BodyParametr<any>): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
@@ -229,10 +221,11 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * 
      * Add individual authorization to request
      * 
-     * To use globaly:
+     * Or use globaly:
      * ```ts
      * SetDefaultAuth(() => YourValue )
      * ```
+     * Also nuxoblivius support `jwt` auth. See `useJWT` in `nuxoblivius/advanced`
      * 
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#authorization See more about Authorization in docs}
      */
@@ -242,7 +235,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * `⚙️ Configuration`\
      * `⚠️ Work only in Client`
      * 
-     * Reloading query if object change
+     * Reloading request if object change
      */
     public reloadBy(object: FakeReactiveFunc|object): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
@@ -267,7 +260,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * ### Create tag to Request
      * 
      * Using in caching Response\
-     * And fast tag condition in `borrowFrom`, `borrowAtSelf`, `rule`, `cached`, `prepare`
+     * And fast tag condition in `borrowFrom`, `rule`, `cached`, `prepare`
      * 
      * #### Example for `cached`:
      * ```ts
@@ -399,7 +392,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * `⚙️ Configuration`\
      * `🪛 For fine-tuning`
      * 
-     * Rules required to separate requests by settings
+     * Rules required to separate requests settings
      * 
      * For example, if url differents for loading by one and all we can change url in runtime
      * ```
@@ -531,6 +524,13 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * Sets response as `null`
      */
     public clearResponse(): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+
+    /**
+     * `🧰 Utils`
+     *
+     * Reset some settings `without affect`
+     */
+    public reset(config: { pagination: boolean, response: boolean|object, query: boolean }): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`
@@ -793,21 +793,68 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     public get protocol(): Dict<Protocol, any>
 }
 
-export declare class Storage {
-    public static client<T>(name: string, value: T): T
-    public static server<T>(name: string, value: T): T
-}
-
+/**
+ * `⚙️ Configuration`\
+ * `🌐 Globaly`\
+ * `pattern response reader`
+ * 
+ * Register new pattern for Template
+ * 
+ * Example:
+ * ```ts
+ * RegisterTemplate('my-template', raw => {
+ *    if(raw.items) {
+ *        return { data: raw.items } // Unpack data
+ *    }
+ * })
+ * 
+ * Record.new('/test')
+ *     .template('my-template')
+ */
 export declare function RegisterTemplate<T, E>(name: string, template: TemplateHandler<T, E>)
+/**
+ * `⚙️ Configuration`\
+ * `🌐 Globaly`\
+ * `pattern response reader`
+ * 
+ * Call registered pattern and format data, need for extends other patterns
+ * 
+ * Example:
+ * ```ts
+ * RegisterTemplate('unpack-items', raw => ({ data: raw.items }))
+ * 
+ * const rawData = { items: [...] }
+ * 
+ * const data = CallPattern('unpack-items', rawData) // { items: [...data] } => { data: [...data], pageCount: undefined, protocol: undefined }
+ * ```
+ */
 export declare function CallPattern<I, E>(name: string, data: I): TemplateStruct<E>
-export declare function ExtendsPattern<I, E>(parent: TemplateStruct<I>, child: TemplateStruct<E>): TemplateStruct<I & E>
+// export declare function ExtendsPattern<I, E>(parent: TemplateStruct<I>, child: TemplateStruct<E>): TemplateStruct<I & E>
 
-export declare function SetDefaultHeader(name: string, value: (() => any)|string|Ref<any>): void
+/**
+ * `⚙️ Configuration`\
+ * `🌐 Globaly affect`
+ * 
+ * Set header for all Requests
+ */
+export declare function SetDefaultHeader(name: keyof IHeaderAttribute, value: (() => any)|string|Ref<any>): void
+/**
+ * `⚙️ Configuration`\
+ * `🌐 Globaly affect`
+ * 
+ * Set default auth for all Requests
+ */
 export declare function SetDefaultAuth(string: (() => any)|string|Ref<any>): void
-export declare function DefaultFetchFailure(handle: (reason: {text: string, code: number}, retry: () => Promise<any>|undefined) => void): void
+/**
+ * `⚙️ Configuration`\
+ * `🌐 Globaly affect`
+ * 
+ * Default onFailure settings for all Requests
+ */
+export declare function SetRequestFailure(handle: (reason: {text: string, code: number}, retry: () => Promise<any>|undefined) => void): void
 
 /** 
- * `Vue Helper`\
+ * `🧩 Vue Helper`\
  * Get Raw value and create link to `ref()` object
 */
 export declare function toRefRaw<T>(object: Ref<T>): T & { raw(): Ref<T> }
