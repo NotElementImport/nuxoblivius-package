@@ -1397,7 +1397,14 @@ export default class Record {
     }
 
     // Cache response by Tags
-    private keep(response: DynamicResponse, recordTag: ParamsTags) {
+    private async keep(response: DynamicResponse, recordTag: ParamsTags) {
+        for (const [key] of this._allCachedResponse.entries()) {
+            if(Record.compareTags(key, recordTag)) {
+                this._allCachedResponse.set(key, response)
+                return
+            }
+        }
+
         this._allCachedResponse.set(
             recordTag, // Generate tag
             response
