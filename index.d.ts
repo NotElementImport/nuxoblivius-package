@@ -32,6 +32,8 @@ type TemplateHandler<T extends any, R extends any> = (raw: T) => TemplateStruct<
 // Tags Interfaces:
 type RuleCallback<P, Q> = (method: { path: Dict<P, any>, query: Q }) => boolean
 
+type TagsCondition<Tags, Value extends any> = Dict<keyof Tags, '*'|'<>'|null|Value>
+
 /** JS Class Definition Store */
 export declare function defineStore<T>(store: { new(): T }): CompiledStore<T>
 /** 
@@ -70,6 +72,23 @@ type ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
             enableBorrow(value: boolean): ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
             prepare(rule: Dict<keyof KeepByInfo, '*'|null>, behaviour?: () => boolean): ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
         }
+
+export interface ISetupConfig {
+    headers?:     {[name: string]: any}
+    body?:        any
+    pathParams?:  {[name: string]: any}
+    query?:       any
+    borrow?:      [ParamsTags, () => any, (iter: any) => any][]
+    rule?:        [ParamsTags, (record: Record) => void][]
+    defaultRule?: (record: Record) => void
+    swapMethod?:  'hot'|'lazy'|'greedy'
+    pagination?:       [string, boolean, boolean]
+    oneRequestAtTime?: boolean
+    onlyOnEmpty?:      boolean
+    appendsResponse?:  boolean
+}
+
+type SetupObject = ISetupConfig|((item: Record<{}, {}, {}, {}, {}, {}>) => void)
 
 /**
  * `⚡ Fetch Client`
@@ -397,8 +416,8 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * )
      * ```
      */
-    public rule(
-        rule: Dict<keyof KeepByInfo, PipelineValues>|RuleCallback<PathParam, QueryParam>,
+    public rule<Value>(
+        rule: TagsCondition<KeepByInfo, Value>|RuleCallback<PathParam, QueryParam>,
         behaviour: (record: 
             ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
         ) => void
@@ -542,6 +561,14 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * Can be only one Request at time
      */
     public oneRequestAtTime(value?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+
+    /**
+     * `⚙️ Configuration`\
+     * `🧩 Load custom preset`
+     * 
+     * Create and use config presets to Record
+     */
+    public preset(setupObject: SetupObject): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `📤 Call Request`\
@@ -784,12 +811,3 @@ export declare function OnRecordFetchFailed(handle: (code: number, retry: () => 
  * Get Raw value and create link to `ref()` object
 */
 export declare function toRefRaw<T>(object: Ref<T>): T & { raw(): Ref<T> }
-
-type TestOf<T> = T extends Ref ? T['value'] : T
-
-declare function extractor<T>(val: Parametr<T>): UnpackParametr<T>
-
-extractor(() => ref('test'))
-
-const test = Record.new()
-    .header('Accept-Language', () => 'test')

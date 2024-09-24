@@ -4,6 +4,22 @@ import { isReactive, reactive, watch } from "vue"
 
 type DynamicResponse = {[key: string]: any}
 
+export interface IRecordSetupObject {
+    [MarkSetup]:  true
+    headers?:     {[name: string]: any}
+    body?:        any
+    pathParams?:  {[name: string]: any}
+    query?:       any
+    borrow?:      [ParamsTags, () => any, (iter: any) => any][]
+    rule?:        [ParamsTags, (record: Record) => void][]
+    defaultRule?: (record: Record) => void
+    swapMethod?:  'hot'|'lazy'|'greedy'
+    pagination?:       [string, boolean, boolean]
+    oneRequestAtTime?: boolean
+    onlyOnEmpty?:      boolean
+    appendsResponse?:  boolean
+}
+
 type DefinitionTags = {[key: string]: ETagPlace }
 type ParamsTags = {[key: string]: string|number|null|'*' }
 type ParamsTagsType = {[key: string]: EParamsTagsType }
@@ -33,6 +49,12 @@ enum ESwapMethod {
  */
 const isClient = typeof document !== 'undefined'
 
+/**
+ * Mark Object as setup object
+ */
+export const MarkSetup = Symbol('Record Setup')
+const isSetup   = (value: any) => (typeof value === 'object' && value[MarkSetup])
+
 const createRequest = () => {
     let   [ resolve, reject ] = [ (data: any) => {}, () => {} ]
     const request: RequestObject<any> = new Promise((res, rej) => { resolve = res as any; reject = rej as any; } )
@@ -41,10 +63,14 @@ const createRequest = () => {
 
 export default class Record {
 
-    // Fetch settings
+    // Details
 
+    /** Redirect to current request if on action */
     private _oneRequestAtTime: boolean = false
+    /** Object of current Request (Promise object when return a response) */
     private _currentRequest: RequestObject<any>|null = null
+
+    // Fetch settings
 
     /** Pathname for fetching  */
     private _url: string = ''
@@ -71,8 +97,9 @@ export default class Record {
 
     // Cachin / Tags
 
-    private _tags: DefinitionTags     = { 'id': ETagPlace.PATH }
-    private _tagsType: ParamsTagsType = { 'id': EParamsTagsType.SIMPLE }
+    private _tags: DefinitionTags       = { 'id': ETagPlace.PATH }
+    private _tagsType: ParamsTagsType   = { 'id': EParamsTagsType.SIMPLE }
+    private _lastRequestTags:ParamsTags = {}
 
     // Pre Fetch config
 
@@ -199,8 +226,8 @@ export default class Record {
 
                 return pThis
             },
-            autoReload() { // Enable auto reload on current page
-                pThis._variables.autoReloadPagination = true
+            autoReload(value = true) { // Enable auto reload on current page
+                pThis._variables.autoReloadPagination = value
                 return pThis
             },
             set enabled(v: boolean) { // Enable pagination
@@ -360,7 +387,76 @@ export default class Record {
         return `Basic ${ btoa(login+":"+password) }`
     }
 
+    /**
+     * [Sugar] body json
+     */
+    public static json(item: any): IRecordSetupObject {
+        return {
+            [MarkSetup]: true,
+            headers: { 'Content-Type': 'application/json' },
+            body: () => JSON.stringify(refOrVar(item)),
+        }
+    }
+
+    /**
+     * [Sugar] body urlEncoded
+     */
+    public static urlEncoded(item: any): IRecordSetupObject {
+        return {
+            [MarkSetup]: true,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: () => {
+                const raw = refOrVar(item)
+                return queryToUrl(raw)
+            },
+        }
+    }
+
     // Configuration
+
+    // Custom presets
+    public preset(object: IRecordSetupObject|((item: Record) => void)) {
+        if(typeof object === 'function') {
+            object(this)
+            return this
+        }
+
+        if('body' in object) this.body(object.body);
+        if('appendsResponse' in object) this.appendsResponse(object.appendsResponse);
+        if('onlyOnEmpty' in object) this.onlyOnEmpty(object.onlyOnEmpty);
+        if('oneRequestAtTime' in object) this.oneRequestAtTime(object.oneRequestAtTime);
+        
+        if(object.headers) {
+            for(const [name, value] of Object.entries(object.headers))
+                this.header(name, value);
+        }
+
+        if(object.rule) {
+            for(const  [condition, apply] of object.rule)
+                this.rule(condition, apply);
+        }
+
+        if(object.borrow) {
+            for(const [condition, from, research] of object.borrow)
+                this.borrowFrom(condition, from, research)
+        }
+
+        if(object.defaultRule) this.defaultRule(object.defaultRule)
+        if(object.query) this.query(object.query)
+        if(object.swapMethod) this.swapMethod(object.swapMethod)
+        if(object.pagination) {
+            const [name, enabled, autoReload] = object.pagination
+            this.pagination.setup(name, enabled)
+            this.pagination.autoReload(autoReload)
+        }
+
+        if(object.pathParams) {
+            for(const [name, value] of Object.entries(object.pathParams))
+                this.pathParam(name, value);
+        }
+
+        return this;
+    }
 
     /**
     * [Configuration]
@@ -445,7 +541,7 @@ export default class Record {
         const check = (recordTag: any) => { // Checking condition a rule valid to record tag
             return typeof rule == 'function'
                 ? rule(this.params)
-                : Record.compareTags(rule, recordTag)
+                : Record.compareTags(rule, recordTag, this._lastRequestTags)
         }
         
         // Adding rule to checking stack
@@ -674,6 +770,11 @@ export default class Record {
      * And enabling force mode for body
     */
     public body(body: FormData|{[key: string]: any}|null) {
+        if(isSetup(body)) {
+            this.preset(body as IRecordSetupObject)
+            return this
+        }
+
         // If we put promise object
         resolveOrLater(body as any, (result: any) => {
             this._body = result
@@ -817,7 +918,7 @@ export default class Record {
      * 
      * @deprecated not needed, while
      */
-    private deleteCached(rule: ParamsTags) {
+    private deleteCached(condition: ParamsTags) {
         // Not working while
         // this._allCachedResponse.clear()
     }
@@ -933,7 +1034,7 @@ export default class Record {
         const checkCondition = (condition: ParamsTags, other: Function|ParamsTags) => {
             return typeof other === 'function'
                 ? other(this.params) 
-                : Record.compareTags(other, condition)
+                : Record.compareTags(other, condition, this._lastRequestTags)
         }
 
         /**
@@ -1018,12 +1119,12 @@ export default class Record {
     /**
      * Try resolve condition to custom setup or use default setup
      */
-    private proccesRules(descriptor: {[key: string]: any}) {
+    private proccesRules(condition: {[key: string]: any}) {
         if(this._recordRuleBehaviour.length == 0)
             return
 
         for (const rule of this._recordRuleBehaviour) {
-            if(rule(descriptor)) // If rule loaded
+            if(rule(condition)) // If rule loaded
                 return // End method
         }
 
@@ -1076,10 +1177,13 @@ export default class Record {
         this._pagination.change = false
 
         // Generate Record Tag for condition
-        const recordTag = this.recordDataTag(this.compileQuery())
+        let recordTag = this.recordDataTag(this.compileQuery())
 
         // Setup request
         this.proccesRules(recordTag)
+
+        recordTag = this.recordDataTag(this.compileQuery())
+        this._lastRequestTags = recordTag;
 
         // Refersh query after Setup
         let queries = this.compileQuery()
@@ -1192,7 +1296,7 @@ export default class Record {
         }
 
         // Cache data
-        this.keep(fetchResult.data as any, queries)
+        this.keep(fetchResult.data as any, recordTag)
 
         // Call finsih handler
         if(this._onEnd)
@@ -1221,10 +1325,15 @@ export default class Record {
     /**
      * Compare tags see `createTag`
      */
-    private static compareTags(tags: ParamsTags, other: ParamsTags) {
+    private static compareTags(tags: ParamsTags, other: ParamsTags, otherLast?: ParamsTags) {
         for (const [name, value] of Object.entries(tags)) {
             if(!(name in other)) 
                 return false // Not includes in other. Not valid
+
+            if(otherLast && name in otherLast) {
+                if(value == '<>' && otherLast[name] != other[name])
+                    continue;
+            }
 
             const otherValue = other[name] ?? null
 
@@ -1261,9 +1370,9 @@ export default class Record {
     }
 
     // Cache response by Tags
-    private keep(response: DynamicResponse, query: any) {
+    private keep(response: DynamicResponse, recordTag: ParamsTags) {
         this._allCachedResponse.set(
-            this.recordDataTag(query), // Generate tag
+            recordTag, // Generate tag
             response
         )
     }

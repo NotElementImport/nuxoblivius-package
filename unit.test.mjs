@@ -13,5 +13,5 @@ console.log(`queryToUrl: ${queryToUrl(testObject)}`)
 // Test: compareTags
 
 console.log(
-    Record.compareTags({ test: null }, { test: null })
+    Record.compareTags({ test: '<>' }, { test: null }, { test: 'data' })
 )
