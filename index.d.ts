@@ -804,7 +804,7 @@ export declare function ExtendsPattern<I, E>(parent: TemplateStruct<I>, child: T
 
 export declare function SetDefaultHeader(name: string, value: (() => any)|string|Ref<any>): void
 export declare function SetDefaultAuth(string: (() => any)|string|Ref<any>): void
-export declare function OnRecordFetchFailed(handle: (code: number, retry: () => Promise<any>) => Promise<any>|undefined): void
+export declare function DefaultFetchFailure(handle: (reason: {text: string, code: number}, retry: () => Promise<any>|undefined) => void): void
 
 /** 
  * `Vue Helper`\

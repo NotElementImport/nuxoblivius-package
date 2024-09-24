@@ -1,5 +1,5 @@
 import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery, urlPathParams } from "./Utils.js"
-import { defaultHeaders, storeFetch } from "./config.js"
+import { defaultHeaders, storeFetch, defaultFetchFailure } from "./config.js"
 import { isReactive, reactive, watch } from "vue"
 
 type DynamicResponse = {[key: string]: any}
@@ -1271,8 +1271,8 @@ export default class Record {
         /**
          * If request had error, call onError handler
         */
-        if(fetchResult.error && this._onError != null) {
-            const answer = await this._onError({text: fetchResult.errorText, code: fetchResult.code}, () => this.doFetch(method));
+        if(fetchResult.error) {
+            const answer = await (this._onError || defaultFetchFailure)({text: fetchResult.errorText, code: fetchResult.code}, () => this.doFetch(method));
 
             // If answer had object data replace
             if(typeof answer == 'object') {

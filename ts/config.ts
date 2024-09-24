@@ -3,7 +3,7 @@ type TemplateLogic = {[key: string]: TemplateFunction}
 type FetchResult = {data: object|Blob|null, error: boolean, errorText: string, code: number, pageCount: number, protocol?: object, header: object}
 
 export const defaultHeaders = {} as any
-let onFetchFail: Function = () => undefined as object
+export let defaultFetchFailure: Function = () => undefined as object
 
 export const options = {
     /**
@@ -19,28 +19,13 @@ export const options = {
         }
 
         if(!response.ok) {
-            const handleResponse = await onFetchFail( // use onFailure function if it were set by user
-                response.status,
-                () => options.http(url, options, isblob)
-            )
-
-            if(typeof handleResponse === 'undefined' || !handleResponse?._meta?.ok) { // if there were not onFailure function
-                return {
-                    _meta,
-                    header: response.headers,
-                    body: {
-                        _errorCode: response.status,
-                        _errorText: response.statusText,
-                        _errorBody: await response.text()
-                    }
-                }
-            }
-            else { // else set data from onFailure function; (and meta)
-                response = handleResponse
-                _meta = {
-                    ok: response.ok,
-                    code: response.status,
-                    text: response.statusText,
+            return {
+                _meta,
+                header: response.headers,
+                body: {
+                    _errorCode: response.status,
+                    _errorText: response.statusText,
+                    _errorBody: await response.text()
                 }
             }
         }
@@ -60,8 +45,8 @@ export const options = {
     get templates() { return this._templates }
 }
 
-export function onRecordFetchFailed(handle: Function) {
-    onFetchFail = handle as any
+export function setRequestFailure(handle: Function) {
+    defaultFetchFailure = handle
 }
 
 /**

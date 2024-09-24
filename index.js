@@ -1,10 +1,10 @@
 import Record1 from './dist/ts/Record.js'
 import Storage1 from './dist/ts/Storage.js'
-import { settings, callPattern, extendsPattern, setDefaultHeader, setDefaultAuth, onRecordFetchFailed } from './dist/ts/config.js'
+import { settings, callPattern, extendsPattern, setDefaultHeader, setDefaultAuth, defaultFetchFailure } from './dist/ts/config.js'
 
 export const SetDefaultHeader = setDefaultHeader
 export const SetDefaultAuth = setDefaultAuth
-export const OnRecordFetchFailed = onRecordFetchFailed
+export const DefaultFetchFailure = defaultFetchFailure
 export const ExtendsPattern = extendsPattern
 export const CallPattern = callPattern
 export const RegisterTemplate = settings.template
