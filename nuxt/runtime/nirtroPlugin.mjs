@@ -1,5 +1,5 @@
 import { useAppConfig } from "#imports";
-import { settings } from "nuxoblivius/dist/ts/Config.js";
+import { settings } from "nuxoblivius/dist/ts/config.js";
 
 export default function(nitroApp) {
   nitroApp.hooks.hook("request", (cont) => {
