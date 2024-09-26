@@ -1,5 +1,4 @@
 import { reactive } from "vue"
-import Storage from "./Storage.js"
 
 const isClient = typeof document !== 'undefined'
 
@@ -85,10 +84,6 @@ function raise(store: any) {
             const proxy = create_proxy(store, // where we create proxy-object for store
                 (target: any, p: any, receiver: any) => {
                     if(p in instance) {
-                        if(instance._variables[p] instanceof Storage) {
-                            return instance._variables[p].ref
-                        }
-
                         return {
                             _module_: 'EX-REF',
                             get value() {
@@ -178,28 +173,9 @@ function raise(store: any) {
                     objectDefine('_'+propertyName, propertyName)
                 }
                 else {
-                    if(instance['_'+propertyName] instanceof Storage) {
-                        instance._variables[propertyName] = instance['_'+propertyName]
-                        instance._defaults[propertyName] = instance['_'+propertyName]
-                        Object.defineProperty(instance, propertyName, {
-                            get() {
-                                return instance._variables[propertyName].value
-                            },
-                        })
-                        Object.defineProperty(instance, '_'+propertyName, {
-                            get() {
-                                return instance._variables[propertyName].value
-                            },
-                            set(value: any) {
-                                instance._variables[propertyName].value = value
-                            }
-                        })
-                    }
-                    else {
-                        instance._stores[propertyName] = instance['_'+propertyName]
-                        objectDefineReadOnly(propertyName, propertyName, '_stores')
-                        objectDefine('_'+propertyName, propertyName, '_stores')
-                    }
+                    instance._stores[propertyName] = instance['_'+propertyName]
+                    objectDefineReadOnly(propertyName, propertyName, '_stores')
+                    objectDefine('_'+propertyName, propertyName, '_stores')
                 }
             }
         }
@@ -209,20 +185,6 @@ function raise(store: any) {
             instance._defaults[propertyName] = valueOfProperty
 
             objectDefine(propertyName, propertyName)
-        }
-        // Is Storage 
-        else if(valueOfProperty instanceof Storage && propertyName[0] != '_') {
-            instance._variables[propertyName] = valueOfProperty
-            instance._defaults[propertyName] = valueOfProperty
-
-            Object.defineProperty(instance, propertyName, {
-                get() {
-                    return valueOfProperty.value
-                },
-                set(value: any) {
-                    valueOfProperty.value = value
-                }
-            })
         }
     }
 
