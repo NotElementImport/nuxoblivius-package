@@ -343,7 +343,8 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     /**
      * `⚙️ Configuration`\
      * `⚡ SPA frendly`\
-     * `🪛 For fine-tuning`
+     * `🪛 For fine-tuning`\
+     * `⚠️ Work only in Client`
      * 
      * Optimization Of Site Speed
      * 

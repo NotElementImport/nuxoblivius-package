@@ -639,6 +639,9 @@ export default class Record {
      * @param as        Logic for finding what you need in an object
      */
     public borrowFrom(condition: ParamsTags | Function, another: object|Function, as: (value: DynamicResponse) => DynamicResponse) {
+        if(!isClient)
+            return this
+
         this._borrowAnother.set(condition as ParamsTags, (_: any) => {
             const object = refOrVar(another) // Get raw data
 
@@ -669,6 +672,9 @@ export default class Record {
      * @param as        Logic for finding what you need in an object
      */
     public borrowAtSelf(where: ParamsTags | Function, from: ParamsTags, as: (value: DynamicResponse) => DynamicResponse) {
+        if(!isClient)
+            return this
+        
         this._borrow.set(where as ParamsTags, [from, (response: any) => {
             if(!Array.isArray(response)) { // If not array skip
                 console.warn('{value} is not array')
