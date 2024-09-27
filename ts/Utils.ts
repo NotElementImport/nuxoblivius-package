@@ -98,7 +98,7 @@ export function queryToUrl(query: Record<string, any>) {
     const flat = (objectToFlat: object, prefix: string = '', suffix: string = ''): object => 
         Object.entries(objectToFlat)
             .map(([ name, value ]) =>
-                typeof value == 'object'
+                typeof value == 'object' && (!isRef(value) && !isVueRef(value))
                     ? flat(value, `${prefix+name+suffix}[`, ']')
                     :  flatObject[`${prefix}${name}${suffix}`] = refOrVar(value)
             )
