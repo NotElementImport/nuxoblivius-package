@@ -1,5 +1,27 @@
 import { Ref, isRef as isVueRef, isReactive } from "vue"
 
+export function spread(struct: Function[]|{[name:PropertyKey]: Function}) {
+    const entries = Object.entries(struct)
+    let completeLength = entries.length
+    let complete = 0
+    const result = {} as {[name:PropertyKey]: unknown}
+
+    return new Promise(resolve => {
+        const tryResolve = () => {
+            if(complete == completeLength)
+                resolve(result)
+        }
+
+        for (const [key, fun] of entries) {
+            (async () => {
+                result[key] = await fun()
+                complete += 1
+                tryResolve()
+            })()
+        }
+    })
+}
+
 export function toRefRaw(object: Ref<any>) {
     const raw = object.value ?? undefined;
     if(typeof raw === 'undefined')
