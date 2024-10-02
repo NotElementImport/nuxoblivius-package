@@ -53,7 +53,7 @@ const isClient = typeof document !== 'undefined'
  * Mark Object as setup object
  */
 export const MarkSetup = Symbol('Record Setup')
-const isSetup   = (value: any) => (typeof value === 'object' && value[MarkSetup])
+const isSetup   = (value: any) => (value && typeof value === 'object' && value[MarkSetup])
 
 const createRequest = () => {
     let   [ resolve, reject ] = [ (data: any) => {}, () => {} ]
@@ -69,6 +69,8 @@ export default class Record {
     private _oneRequestAtTime: boolean = false
     /** Object of current Request (Promise object when return a response) */
     private _currentRequest: RequestObject<any>|null = null
+
+    private _defaultValue: any = null
 
     // Fetch settings
 
@@ -343,6 +345,7 @@ export default class Record {
         const instance = new Record();
         instance._url = url
         instance._variables.response = defaultValue ?? null;
+        instance._defaultValue = defaultValue ?? null;
 
         instance._proxies.query = new Proxy({}, {
             get(t, p, r) {
@@ -896,8 +899,8 @@ export default class Record {
     /**
      * Clearing Response
      */
-    public clearResponse() {
-        this._variables.response = null
+    public clearResponse(defaultValue: boolean = true) {
+        this._variables.response = defaultValue ? this._defaultValue : null
         return this
     }
 
@@ -911,7 +914,7 @@ export default class Record {
 
         if(config.response) {
             if(typeof config.response === "boolean")
-                this.clearResponse()
+                this._variables.response = this._defaultValue
             else if(typeof config.response === 'object')
                 this._variables.response = config.response
         }
@@ -1341,7 +1344,7 @@ export default class Record {
     private swapGreedy() {
         // Disable on appendResponse
         if(this._swapMethod == ESwapMethod.GREEDY && !this._variables.expandResponse) {
-            this.clearResponse()
+            this._variables.response = this._defaultValue
         }
     }
 
@@ -1349,7 +1352,7 @@ export default class Record {
     private swapLazy() {
         // Disable on appendResponse
         if(this._swapMethod == ESwapMethod.LAZY && !this._variables.expandResponse) {
-            this.clearResponse()
+            this._variables.response = this._defaultValue
         }
     }
     

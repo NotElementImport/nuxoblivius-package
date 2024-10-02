@@ -524,7 +524,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * 
      * Sets response as `null`
      */
-    public clearResponse(): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public clearResponse(useDefault: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `🧰 Utils`
@@ -859,3 +859,22 @@ export declare function SetRequestFailure(handle: (reason: {text: string, code: 
  * Get Raw value and create link to `ref()` object
 */
 export declare function toRefRaw<T>(object: Ref<T>): T & { raw(): Ref<T> }
+
+type ISpreadObject = {[name: string]: Function}
+type ISpreadObjectOut<T extends ISpread> = {[K in keyof T]: ReturnType<T[K]> extends Promise<any> ? Awaited<ReturnType<T[K]>> : ReturnType<T[K]>} 
+
+/** 
+ * `🧩 Record Helper`\
+ * Using for spread some async logic, and await all routes
+*/
+export declare function useSpread<T extends ISpreadObject>(object: T): Promise<ISpreadObjectOut<T>>
+export declare function useSpread<T extends any>(object: [...T]): Promise<ISpreadObjectOut<T>>
+
+/** 
+ * `🧩 Record Helper`\
+ * `⚠️ Await not working in Client`
+ * 
+ * Using for spread some async logic, and await all routes `lazy`
+*/
+export declare function useLazySpread<T extends ISpreadObject>(object: T): Promise<ISpreadObjectOut<T>>
+export declare function useLazySpread<T extends any>(object: [...T]): Promise<ISpreadObjectOut<T>>

@@ -1,6 +1,9 @@
 import { Ref, isRef as isVueRef, isReactive } from "vue"
 
+const isClient = typeof document !== 'undefined'
+
 export function spread(struct: Function[]|{[name:PropertyKey]: Function}) {
+    const isArray = Array.isArray(struct)
     const entries = Object.entries(struct)
     let completeLength = entries.length
     let complete = 0
@@ -9,7 +12,7 @@ export function spread(struct: Function[]|{[name:PropertyKey]: Function}) {
     return new Promise(resolve => {
         const tryResolve = () => {
             if(complete == completeLength)
-                resolve(result)
+                resolve(isArray ? Object.values(result) : result)
         }
 
         for (const [key, fun] of entries) {
@@ -20,6 +23,12 @@ export function spread(struct: Function[]|{[name:PropertyKey]: Function}) {
             })()
         }
     })
+}
+
+export function lazySpread(struct: Function[]|{[name:PropertyKey]: Function}) {
+    if(!isClient)
+        return spread(struct)
+    spread(struct)
 }
 
 export function toRefRaw(object: Ref<any>) {
@@ -136,7 +145,7 @@ export function appendMerge(...objects: object[]) {
     const recursive = (value: object, to: object) => {
         for (const [nameRec, valueRec] of Object.entries(value)) {
             if(valueRec == null) continue
-            if(!isRef(valueRec) && !isVueRef(valueRec) && !isReactive(valueRec)) {
+            if(typeof valueRec == 'object' && !isRef(valueRec) && !isVueRef(valueRec) && !isReactive(valueRec)) {
                 if(!(nameRec in to))
                     (to as any)[nameRec] = {}
                 recursive((to as any)[nameRec], valueRec)

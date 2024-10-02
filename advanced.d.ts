@@ -15,10 +15,9 @@ interface IJWTConfig<T extends PropertyKey = PropertyKey> {
         /** 
          * How send Refresh Token
          * Get name of param in JSON. Or write `string` send token without JSON  
-         * @default requestBody: 'string'
+         * @default requestBody: 'string' // Not using JSON
          * */
-        requestBody: 'string'
-        requestBody: T
+        requestBody?: string
         /** Which parameters are responsible for access/refresh. @default response: { access: 'access', refresh: 'refresh' } */
         response?: { access: string, refresh: string }
     }

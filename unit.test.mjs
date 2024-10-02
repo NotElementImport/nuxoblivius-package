@@ -1,5 +1,5 @@
 import { queryToUrl } from './dist/ts/Utils.js'
-import { Record } from './index.js'
+import { Record, useSpread } from './index.js'
 
 // Test: queryToUrl
 
@@ -15,3 +15,12 @@ console.log(`queryToUrl: ${queryToUrl(testObject)}`)
 console.log(
     Record.compareTags({ test: '<>' }, { test: null }, { test: 'data' })
 )
+
+// Test: useSpread
+
+const [ stringTest, arrayTest ] = await useSpread([
+    async () => 'test',
+    () => [ 'array-value' ]
+])
+
+console.log(stringTest, arrayTest)
