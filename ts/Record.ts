@@ -53,7 +53,7 @@ const isClient = typeof document !== 'undefined'
  * Mark Object as setup object
  */
 export const MarkSetup = Symbol('Record Setup')
-const isSetup   = (value: any) => (typeof value === 'object' && value[MarkSetup])
+const isSetup   = (value: any) => (value != null && typeof value === 'object' && value[MarkSetup])
 
 const createRequest = () => {
     let   [ resolve, reject ] = [ (data: any) => {}, () => {} ]
