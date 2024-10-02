@@ -29,7 +29,7 @@ export function refOrVar(value: any) {
         return null
     }
 
-    if(typeof value == 'object' && (isRef(value) || isVueRef(value) || value?.__v_isRef)) {
+    if(isRef(value) || isVueRef(value) || value?.__v_isRef) {
         return value.value
     }
 
@@ -98,7 +98,7 @@ export function queryToUrl(query: Record<string, any>) {
     const flat = (objectToFlat: object, prefix: string = '', suffix: string = ''): object => 
         Object.entries(objectToFlat)
             .map(([ name, value ]) =>
-                typeof value == 'object'
+                typeof value == 'object' && (!isRef(value) && !isVueRef(value))
                     ? flat(value, `${prefix+name+suffix}[`, ']')
                     :  flatObject[`${prefix}${name}${suffix}`] = refOrVar(value)
             )
@@ -114,7 +114,7 @@ export function appendMerge(...objects: object[]) {
     const recursive = (value: object, to: object) => {
         for (const [nameRec, valueRec] of Object.entries(value)) {
             if(valueRec == null) continue
-            if(typeof valueRec == 'object' && !isRef(value) && !isVueRef(value) && !isReactive(value)) {
+            if(!isRef(valueRec) && !isVueRef(valueRec) && !isReactive(valueRec)) {
                 if(!(nameRec in to))
                     (to as any)[nameRec] = {}
                 recursive((to as any)[nameRec], valueRec)
