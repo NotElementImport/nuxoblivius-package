@@ -40,7 +40,7 @@ export const options = {
         return {header: response.headers, body: raw, _meta} // this function returns RAW DATA (before template using)
     },
     cookie: { get: (name: string) => '', set: (name: string, value: any) => null as any} as any as { get(name: string): any, set(name: string, value: any): void },
-    router: {} as any as { currentRoute: '', params: {}, query: {} },
+    router: {} as any as { path: '', params: Record<string, any>, query: Record<string, any> },
     _templates: {} as TemplateLogic, // incapsulated templates
     get templates() { return this._templates }
 }
@@ -102,6 +102,35 @@ function isValidPattern(pattern: string|Function) {
     else // if pattern were not set or incorrect
         return false
 }
+
+export function routerInterpolation(data: string, where: 'path'|'query') {
+    const fromPath = (name: string) => {
+        let index = +(name);
+        const isNumber = !Number.isNaN(index);
+
+        if(isNumber) {
+            return [name, () => {
+                const splitedPath = options.router.path.split('/')
+                if(index < 0) return splitedPath[splitedPath.length - index] ?? null
+                return splitedPath[index]
+            }]
+        }
+        return [name, () => options.router.params[name] ?? null];
+    }
+
+    const fromQuery = (name: string) => {
+        return [name, () => options.router.query[name] ?? null];
+    }
+
+    if(data.startsWith('path.')) {
+        return fromPath(data.replace('path.', ''));
+    }
+    else if(data.startsWith('query.')) {
+        return fromQuery(data.replace('query.', ''));
+    }
+
+    return where == 'path' ? fromPath(data) : fromQuery(data);
+} 
 
 /**
  * Fetching data for store

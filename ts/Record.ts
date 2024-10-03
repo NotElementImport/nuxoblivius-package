@@ -1,5 +1,5 @@
 import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery, urlPathParams } from "./Utils.js"
-import { defaultHeaders, storeFetch, defaultFetchFailure } from "./config.js"
+import { defaultHeaders, storeFetch, defaultFetchFailure, routerInterpolation } from "./config.js"
 import { isReactive, reactive, watch } from "vue"
 
 type DynamicResponse = {[key: string]: any}
@@ -343,7 +343,34 @@ export default class Record {
 
     public static new(url: string, defaultValue?: any) {
         const instance = new Record();
-        instance._url = url
+        
+        const isShortURL = url[0] == '/'
+        const urlReader = new URL(url, isShortURL ? 'http://localhost:3000' : undefined);
+
+        instance._url = isShortURL ? urlReader.pathname : urlReader.origin+urlReader.pathname;
+        
+        // Path Interpolation
+        const pathInterpolation = instance._url.split('[').splice(1);
+        if(pathInterpolation.length != 0) {
+            for (let data of pathInterpolation) {
+                data = data.split(']').shift().trim();
+                const [ name, value ] = routerInterpolation(data, 'path')
+                instance._url = instance._url.replaceAll(`[${data}]`, `{${name}}`)
+                instance.pathParam(name as string, value)
+            }
+        }
+
+        for (const [key, value] of urlReader.searchParams.entries()) {
+            if(value[0] == '[') {
+                const [ _, queryValue ] = routerInterpolation(value.slice(1, -1), 'query')
+                instance._query[key] = queryValue;
+                continue;
+            }
+
+            instance._query[key] = value;
+        }
+
+        // instance._url = url
         instance._variables.response = defaultValue ?? null;
         instance._defaultValue = defaultValue ?? null;
 

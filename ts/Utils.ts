@@ -42,23 +42,17 @@ export function toRefRaw(object: Ref<any>) {
 
 export async function resolveOrLater(data: Promise<any>|any, callback: Function) {
     if(data instanceof Promise)
-        return data.then((value) => {
-            callback(value)
-        })
+        return data.then(value => callback(value))
 
     callback(data)
 }
 
 export function refOrVar(value: any) {
-    if(!value) return value
-
     if(typeof value == 'function') {
         value = value()
     }
 
-    if(value == null) {
-        return null
-    }
+    if(!value) return value
 
     if(isRef(value) || isVueRef(value) || value?.__v_isRef) {
         return value.value

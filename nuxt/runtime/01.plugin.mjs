@@ -26,6 +26,18 @@ export default defineNuxtPlugin({
             deleteDump();
         });
         _nuxtApp.hook('app:created', function () {
+            settings.router({
+                get path() {
+                    return _nuxtApp.$router.currentRoute.value.path
+                },
+                get query() {
+                    return _nuxtApp.$router.currentRoute.value.query
+                },
+                get params() {
+                    return _nuxtApp.$router.currentRoute.value.params
+                }
+            })
+
             const uid = getUID();
             if (!isClient && isUseLogs) {
                 console.log(' ');
