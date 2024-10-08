@@ -80,10 +80,14 @@ export default class Record {
     private _queryStore: object = null
     /** Query for fetching */
     private _query: {[key: string]: any} = {}
+    /** Interpolated Query for fetching */
+    private _interQuery: {[key: string]: any} = {}
     /** Baked Query for fetching [cannot be removed] */
     private _staticQuery: {[key: string]: any} = {}
     /** Path params for query */
     private _pathParams: {[key: string]: any} = {}
+    /** Interpolated path params for query */
+    private _interPathParams: {[key: string]: any} = {}
     /** Headers for query */
     private _headers: {[key: string]: any} = {}
     /** Body request for query */
@@ -303,7 +307,7 @@ export default class Record {
         const pthis = this
         return {
             get path() {
-                return pthis._pathParams
+                return pthis._proxies.pathParam
             },
             get query() {
                 return pthis._proxies.query
@@ -347,14 +351,15 @@ export default class Record {
         const isShortURL = url[0] == '/'
         const urlReader = new URL(url, isShortURL ? 'http://localhost:3000' : undefined);
 
-        instance._url = isShortURL ? urlReader.pathname : urlReader.origin+urlReader.pathname;
+        instance._url = decodeURIComponent(isShortURL ? urlReader.pathname : urlReader.origin+urlReader.pathname);
         
         // Path Interpolation
         const pathInterpolation = instance._url.split('[').splice(1);
         if(pathInterpolation.length != 0) {
             for (let data of pathInterpolation) {
                 data = data.split(']').shift().trim();
-                const [ name, value ] = routerInterpolation(data, 'path')
+                const [ name, value ] = routerInterpolation(data, 'path') as [string, Function]
+                instance._interPathParams[name as string] = value
                 instance._url = instance._url.replaceAll(`[${data}]`, `{${name}}`)
                 instance.pathParam(name as string, value)
             }
@@ -363,7 +368,7 @@ export default class Record {
         for (const [key, value] of urlReader.searchParams.entries()) {
             if(value[0] == '[') {
                 const [ _, queryValue ] = routerInterpolation(value.slice(1, -1), 'query')
-                instance._query[key] = queryValue;
+                instance._interQuery[key] = queryValue;
                 continue;
             }
 
@@ -380,11 +385,50 @@ export default class Record {
                     return refOrVar(instance._query[p as any])
                 else if(p in instance._staticQuery)
                     return refOrVar(instance._staticQuery[p as any])
+                else if(p in instance._interQuery)
+                    return refOrVar(instance._interQuery[p as any])
+                return undefined
+            }
+        })
+
+        instance._proxies.pathParam = new Proxy({}, {
+            get(t, p, r) {
+                if(p in instance._pathParams)
+                    return refOrVar(instance._pathParams[p as any])
+                else if(p in instance._interPathParams)
+                    return refOrVar(instance._interPathParams[p as any])
                 return undefined
             }
         })
 
         return instance
+    }
+
+    public static ff(code: string = '', defaultValue?: any) {
+        const instruction = code.split(';')
+        const record = Record.new(instruction.pop().trim(), defaultValue)
+
+        for (let tag of instruction) {
+            tag = tag.trim()
+
+            switch(tag) {
+                case 'swap-lazy': record.swapMethod('lazy'); continue;
+                case 'swap-greedy': record.swapMethod('greedy'); continue;
+                case 'swap-hot': record.swapMethod('hot'); continue;
+                case 'on-empty': record.onlyOnEmpty(); continue;
+                case 'one-at-time': record.oneRequestAtTime(); continue;
+            }
+
+            if(tag.startsWith("template ")) {
+                record.template(tag.replace('template ', ''))
+            }
+            else if(tag.startsWith("page ")) {
+                record.pagination.setup(tag.replace('page ', '').trim())
+                record.pagination.autoReload()
+            }
+        }
+
+        return record
     }
 
     // Sugar
@@ -747,7 +791,10 @@ export default class Record {
     public pathParam(name: string, value: any) {
         // If we put promise object
         resolveOrLater(value, (result: any) => {
-            this._pathParams[name] = result
+            if(result == null && this._interPathParams[name])
+                this._pathParams[name] = this._interPathParams[name]
+            else
+                this._pathParams[name] = result
         })
 
         return this
@@ -1143,6 +1190,7 @@ export default class Record {
 
         return appendMerge(
             queryObject, 
+            this._interQuery, 
             this._staticQuery, 
             this._query,
             this.compilePagination()

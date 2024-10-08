@@ -1,6 +1,10 @@
 import { queryToUrl } from './dist/ts/Utils.js'
 import { Record, useSpread } from './index.js'
 
+const record = Record.ff('->/api/test/{page}')
+
+console.log(record)
+
 // // Test: queryToUrl
 
 // const testObject = {

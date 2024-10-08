@@ -106,6 +106,17 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     public static new<T>(url: string, defaultValue?: T): Record<T, 'id', {}, {'id': 'path'}, {}, ''>
 
     /**
+     * `⚙️ Creating new Record object`
+     * 
+     * With string config
+     * 
+     * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#define See more about Defintion in docs}
+     * @param conf Path to api and config
+     * @param defaultValue Init response value
+     */
+    public static ff<T>(url: string, defaultValue?: T): Record<T, 'id', {}, {'id': 'path'}, {}, ''>
+
+    /**
      * `🧰 Utils`\
      * `🧩 Sugar`
      * 

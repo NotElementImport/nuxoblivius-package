@@ -28,6 +28,8 @@ export default defineNuxtPlugin({
         _nuxtApp.hook('app:created', function () {
             settings.router({
                 get path() {
+                    console.log('test')
+
                     return _nuxtApp.$router.currentRoute.value.path
                 },
                 get query() {

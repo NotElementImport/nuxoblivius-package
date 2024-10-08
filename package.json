@@ -1,11 +1,11 @@
 {
   "name": "nuxoblivius",
-  "version": "1.5.7",
+  "version": "1.6.0",
   "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "compile": "npx tsc -p ./tsconfig.json",
+    "compile": "node ./cleanup.js --esm && npx tsc -p ./tsconfig.json",
     "test": "echo \"test\" && exit 0"
   },
   "author": "notelementimport",

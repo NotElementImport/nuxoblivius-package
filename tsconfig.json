@@ -2,7 +2,11 @@
   "exclude": [
     "./dist/*",
     "dist/*",
-    "*.js"
+    "./nuxt/*",
+    "nuxt/*",
+    "nuxt",
+    "*.js",
+    "unit.test.mjs"
   ],
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig to read more about this file */
