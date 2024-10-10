@@ -1,6 +1,6 @@
-import Record1 from './dist/ts/Record.js'
-import { settings, callPattern, extendsPattern, setDefaultHeader, setDefaultAuth, setRequestFailure } from './dist/ts/config.js'
-import { spread, lazySpread } from './dist/ts/Utils.js'
+import Record1 from './dist/Record.js'
+import { settings, callPattern, extendsPattern, setDefaultHeader, setDefaultAuth, setRequestFailure } from './dist/config.js'
+import { spread, lazySpread } from './dist/Utils.js'
 
 export const SetDefaultHeader = setDefaultHeader
 export const SetDefaultAuth = setDefaultAuth
@@ -11,6 +11,6 @@ export const RegisterTemplate = settings.template
 export const useSpread = spread
 export const useLazySpread = lazySpread
 export const Record = Record1
-export * from './dist/ts/index.js'
+export * from './dist/index.js'
 export class IStore {}
-export { toRefRaw } from './dist/ts/Utils.js'
+export { toRefRaw } from './dist/Utils.js'

@@ -1,12 +1,12 @@
 {
   "name": "nuxoblivius",
-  "version": "1.6.0",
+  "version": "1.6.2",
   "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "compile": "node ./cleanup.js --esm && npx tsc -p ./tsconfig.json",
-    "test": "echo \"test\" && exit 0"
+    "start": "node ./cleanup.js --esm && npx tsc -p ./tsconfig.json && npm test",
+    "test": "node ./unit.test.mjs --esm"
   },
   "author": "notelementimport",
   "license": "ISC",

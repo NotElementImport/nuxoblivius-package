@@ -1,6 +1,6 @@
 import { defineNuxtPlugin, useAppConfig, useAsyncData } from "#app";
-import { settings, options as ConfigOptions } from "nuxoblivius/dist/ts/config.js";
-import { deleteDump } from "nuxoblivius/dist/ts/index.js";
+import { settings, options as ConfigOptions } from "nuxoblivius/dist/config.js";
+import { deleteDump } from "nuxoblivius/dist/index.js";
 const defaultFetch = ConfigOptions.http;
 let oblivStats = {
     connections: {},

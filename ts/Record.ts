@@ -365,7 +365,10 @@ export default class Record {
             }
         }
 
-        for (const [key, value] of urlReader.searchParams.entries()) {
+        for (let [key, value] of urlReader.searchParams.entries()) {
+            value = decodeURIComponent(value);
+            key   = decodeURIComponent(key);
+
             if(value[0] == '[') {
                 const [ _, queryValue ] = routerInterpolation(value.slice(1, -1), 'query')
                 instance._interQuery[key] = queryValue;
