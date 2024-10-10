@@ -24,6 +24,7 @@ export function deleteDump() {
             const value = _value[name]
             if(typeof value == 'object' && value != null && '_variables' in value && value._variables && typeof value._variables == 'object' && 'response' in value._variables) {
                 value._variables.response = null
+                value._query = {}
             }
         }
     }

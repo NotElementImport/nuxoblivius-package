@@ -222,5 +222,30 @@ await check('Record / URL Query Interpolation', _ => {
         throw `URL Reader, Query 'q', returns ${record.params.query.q}`
 })
 
+await check('Record / SSR cleaning', _ => {
+    class Store {
+        test = Record.new("/api/test")
+    }
+
+    let store;
+    try { store = defineStore(Store) }
+    catch (e) { throw `Store cannot be defined` }
+
+    store.test.response = { 'test': 'test' }
+    store.test.query({ 'test': 'test' })
+
+    if(JSON.stringify(store.test.response) != JSON.stringify({ 'test': 'test' }))
+        throw `Test Record, return ${JSON.stringify(store.test.response)}`
+    else if(JSON.stringify(store.test._query) != JSON.stringify({ 'test': 'test' }))
+        throw `Test Record Query, return ${JSON.stringify(store.test._query)}`
+
+    deleteDump()
+
+    if(store.test.response != null)
+        throw `After clear: Test Record, return ${JSON.stringify(store.test.response)}`
+    else if(JSON.stringify(store.test._query) != JSON.stringify({}))
+        throw `After clear: Test Record Query, return ${JSON.stringify(store.test._query)}`
+})
+
 console.log(isFail ? ' ❌ Unit Testing: FAILED' : ' ✅ Unit Testing: OK')
 console.log('')
