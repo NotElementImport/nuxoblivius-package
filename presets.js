@@ -5,7 +5,7 @@ const semiEmptyArray = [{}]
 export const useArrayRemesh = (sizeTag, config = {}) => {
     return $ => {
         if(config.cacheTag)
-            $.createTag(sizeTag, config.cacheAccess ?? 'simple')
+            $.createTag(sizeTag, config.cacheAccess ?? 'full')
 
         const [whereTag, nameTag] = sizeTag.split(':')
 
@@ -21,8 +21,6 @@ export const useArrayRemesh = (sizeTag, config = {}) => {
 
         const disableCondition = config.exclude
 
-        console.log(condition)
-
         $.rule({ notExist: null }, () => {})
         
         $.defaultRule($$ => {
@@ -33,7 +31,6 @@ export const useArrayRemesh = (sizeTag, config = {}) => {
             condition,
             () => semiEmptyArray,
             (...args) => {
-                console.log('im in')
                 if(disableCondition) {
                     if(Record.compareTags(disableCondition, $._lastRequestTags))
                         return
@@ -41,21 +38,18 @@ export const useArrayRemesh = (sizeTag, config = {}) => {
                 const cacheCondition = Object.fromEntries(Object.entries(config.cache ?? {}).map(v => [v[0], v[1]() ]))
 
                 if(config.cacheTag)
-                    cacheCondition[nameTag] = '*'
+                    cacheCondition[nameTag] = +$.params[whereTag][nameTag]
 
                 if($._paginationEnabled && (config.pageCheck ?? true))
                     cacheCondition[$._pagination.param] = config.page ?? ($.params[$._pagination.where][$._pagination.param] ?? $._variables.currentPage)
 
-                console.log(cacheCondition)
-
                 const result = $.cached(cacheCondition)
                 const size   = +$.params[whereTag][nameTag]
-
-                console.log(result, size)
 
                 if(!Array.isArray(result)) return
 
                 if(size < result.length) {
+                    $.onlyOnEmpty();
                     return result.slice(0, size)
                 }
                 else if(size > result.length) {

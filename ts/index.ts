@@ -6,16 +6,20 @@ const storageOfStores = new Map<object, any>()
 
 const laterAwaiter: Function[] = []
 
+export function forgetAllStores() {
+    storageOfStores.clear()
+}
+
 export function deleteDump() {
     const recursiveDeleteDump = (_value: any) => {
         if(_value._variables) {
-            for (const [key, value] of Object.entries(_value._variables)) {
+            for (const [key, _] of Object.entries(_value._variables)) {
                 _value._variables[key] = _value._defaults[key]
             }
         }
 
         if(_value._stores) {
-            for (const [key, value] of Object.entries(_value._stores)) {
+            for (const [_, value] of Object.entries(_value._stores)) {
                 recursiveDeleteDump(value)
             }
         }

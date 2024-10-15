@@ -110,7 +110,7 @@ export function urlPathParams(url: string, params: Record<string, any>) {
             url = url.replaceAll(
                 `{${param}}`, 
                 typeof value !== "number"
-                    ? (value ? value : "")
+                    ? (value ? refOrVar(value) : "")
                     : value
             )
         })

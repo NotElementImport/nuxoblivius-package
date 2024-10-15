@@ -1,6 +1,6 @@
 import { defineNuxtPlugin, useAppConfig, useAsyncData } from "#app";
 import { settings, options as ConfigOptions } from "nuxoblivius/dist/config.js";
-import { deleteDump } from "nuxoblivius/dist/index.js";
+import { forgetAllStores } from "nuxoblivius/dist/index.js";
 const defaultFetch = ConfigOptions.http;
 let oblivStats = {
     connections: {},
@@ -23,7 +23,7 @@ export default defineNuxtPlugin({
                 console.log(' 🪄  Nuxoblivius - Clearing trash after SSR ');
                 console.log(' ');
             }
-            deleteDump();
+            forgetAllStores();
         });
         _nuxtApp.hook('app:created', function () {
             settings.router({

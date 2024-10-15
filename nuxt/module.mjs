@@ -42,10 +42,6 @@ const module = defineNuxtModule({
       logs : _options.logs,
     };
 
-    _nuxt.hook("nitro:config", (nitro) => {
-      nitro.plugins = nitro.plugins || [];
-      nitro.plugins.push(resolver.resolve("./runtime/nirtroPlugin"));
-    });
     addPlugin({
       order: -Infinity,
       mode: "all",
