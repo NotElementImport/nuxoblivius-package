@@ -1,4 +1,4 @@
-import { defineFactory } from './index.js'
+import { defineFactory } from "./index.js";
 
 const Circle = defineFactory(({ mut, scoped }, [ radius ]) => {
     const commit = () => {
@@ -16,5 +16,3 @@ const Circle = defineFactory(({ mut, scoped }, [ radius ]) => {
 })
 
 const c1 = Circle([ 32 ])
-
-console.log(c1.radius)

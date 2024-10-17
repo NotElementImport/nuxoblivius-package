@@ -6,7 +6,10 @@
     "nuxt/*",
     "nuxt",
     "*.js",
+    "./ts/legacy",
+    "./ts/legacy/*",
     "unit.test.mjs"
+    "unit.test.ts"
   ],
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig to read more about this file */
