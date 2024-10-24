@@ -16,9 +16,15 @@ export interface ObliviusRecordOptions extends RequestInit {
     type: 'json'|'text'|'blob'|'arrayBuffer'
 }
 
-export type TemplateResponse<T> = {response: T} & {[P in T]: T[P]}
+export type TemplateResponse<T> = ({response: T} & {[P in T]: T[P]})
 export type TemplateHandle<T extends object|any[]> = (data: T) => TemplateResponse<T>
 export type TemplateInit<T extends object|any[]> = string|TemplateHandle<T>
+
+interface RecordPromise<T> extends Promise<T> {
+    readonly lazy: Ref<T>
+    useTemplate(template: string): RecordPromise<T>
+    castTo(to: 'array'|'object'|'string'): RecordPromise<T>
+}
 
 export declare class Record<R, PathParam extends object, Query> {
     static new<R>(url: string, initValue?: R): Record<R, {}>
@@ -40,6 +46,11 @@ export declare class Record<R, PathParam extends object, Query> {
 
     header(key: string, value: any): Record<R, PathParam, Query>
 
+    asJson(): Record<R, PathParam, Query>
+    asText(): Record<R, PathParam, Query>
+    asBlob(): Record<R, PathParam, Query>
+    asArrayBuffer(): Record<R, PathParam, Query>
+
     reset(items: {
         query?: boolean|'dynamic'|'baked'
         response?: boolean|R|object
@@ -52,4 +63,10 @@ export declare class Record<R, PathParam extends object, Query> {
     readonly headers: RawHeader
 
     toURL(): string
+
+    get(): RecordPromise<R>
+    post(): RecordPromise<R>
+    put(): RecordPromise<R>
+    patch(): RecordPromise<R>
+    delete(): RecordPromise<R>
 }

@@ -4,15 +4,41 @@ import { libTemplate } from "./config.js";
 
 export const useTemplate = <T extends object|any[]>(template: TemplateInit<T>, raw: T): TemplateResponse<T> => {
     if(typeof template == 'function')
-        return template(raw)
+        return template(raw) ?? { response: raw } as TemplateResponse<T>
     else if(typeof template == 'string' && template in libTemplate)
-        return libTemplate[template](raw) as TemplateResponse<T>
+        return libTemplate[template](raw) as TemplateResponse<T> ?? { response: raw } as TemplateResponse<T>
 
-    throw `Template in libary not found: "${template}"`
+    throw `Use Template: Template in libary not found: "${template}"`
 }
 
-export const defineTemplate = <T extends object|any[]>(name: string, handle: TemplateHandle<T>) => {
+export const defineTemplate = <T extends object|any[]>(name: string, handle: TemplateHandle<T>, config: { extends?: string } = {}): void => {
+    if(config.extends) {
+        const fromExtends = config.extends
+        if(!libTemplate[fromExtends])
+            throw `Extends Template: Template in libary not found: "${fromExtends}"`
+    
+        const unpack = libTemplate[fromExtends]
+    
+        return (libTemplate[name] = (raw: T) => {
+            const response = unpack(raw)
+            if(!response)
+                return
+    
+            const mainResponse = handle(response.response)
+            if(!mainResponse)
+                return response
+    
+            return {
+                ...response,
+                ...mainResponse,
+                response: mainResponse.response
+            }
+        }, void 0)
+    }
+
     libTemplate[name] = handle
+
+    return void 0
 }
 
 const charTable = 'qwertyuiopasdfghjklzxcvbnm1234567890@$&'

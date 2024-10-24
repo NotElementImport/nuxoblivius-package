@@ -1,11 +1,24 @@
-import { defineSingletone, defineFactory, toComputed, useRecord } from './index.js'
+import { defineSingletone, defineTemplate, useRecord } from './index.js'
 
-const test = useRecord('/api/test')
-    .query.set({ test: 10 })
-    .query.add({ new: 'asdas' })
-
-test.reset({
-    query: 'dynamic'
+defineTemplate('unpack-product', (raw) => {
+    if(raw.products)
+        return {
+            response: raw.products
+        }
 })
 
-console.log(test.toURL())
+defineTemplate('ant-select', (raw) => {
+    if(Array.isArray(raw))
+        return {
+            response: raw.map((item) => ({ label: item.title, value: item.id }))
+        }
+})
+
+const product = useRecord('https://dummyjson.com/products', [])
+    .query.set({ limit: 3, select: 'id,title,price' })
+    .get()
+    .useTemplate('unpack-product')
+    .useTemplate('ant-select')
+    .lazy
+
+console.log(product)

@@ -12,7 +12,7 @@ export let useFetch = async (url: string, options: ObliviusRecordOptions) => {
                 return text
             return JSON.parse(text)
         },
-        'text': response.text,
+        'text': () => response.text(),
         'blob': response.blob,
         'arrayBuffer': response.arrayBuffer
     }

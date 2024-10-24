@@ -1,5 +1,5 @@
 import { Ref } from "vue"
-import { Record } from "./types.js"
+import { Record, TemplateHandle, TemplateInit, TemplateResponse } from "./types.js"
 
 interface State<T> {
     value: T
@@ -42,3 +42,6 @@ declare export function defineSingletone<T>(store: { new(): T }, key: string|nul
 
 declare export function defineFactory<T, P>(store: (t: Templater, props: P) => T): (props: P) => InlineStore<T>
 declare export function defineFactory<T, P>(store: { new(props: P): T }): (props: P) => ClassStore<T>
+
+declare export function useTemplate<T extends object|any[], K extends any>(init: TemplateInit<T>, raw: K): TemplateResponse<K>
+declare export function defineTemplate<T extends any>(name: string, handle: TemplateHandle<T>, config?: { extends?: string }): TemplateResponse<T>
