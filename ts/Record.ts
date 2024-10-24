@@ -1020,13 +1020,10 @@ export default class Record {
     }
 
     /**
-     * Delete cache by tag 
-     * 
-     * @deprecated not needed, while
+     * Delete all caches 
      */
-    private deleteCached(condition: ParamsTags) {
-        // Not working while
-        // this._allCachedResponse.clear()
+    public deleteAllCache() {
+        this._allCachedResponse.clear()
     }
     
     /**
