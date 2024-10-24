@@ -1352,7 +1352,7 @@ export default class Record {
         const options:RequestInit = {
             // Append headers + auth
             headers: appendMerge(headers, {'Authorization': refOrVar(this._auth)}),
-            method,
+            method: method.toUpperCase(),
         }
 
         // If use body connect to options
