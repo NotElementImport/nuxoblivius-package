@@ -327,6 +327,13 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     /**
      * `🧰 Utils`
      * 
+     * Remove all cached data from memory
+     */ 
+    public deleteAllCache(): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
+
+    /**
+     * `🧰 Utils`
+     * 
      * Launch custom logic. Uses for extend methods link
      * 
      * Example:

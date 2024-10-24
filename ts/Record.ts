@@ -1024,6 +1024,7 @@ export default class Record {
      */
     public deleteAllCache() {
         this._allCachedResponse.clear()
+        return this
     }
     
     /**
