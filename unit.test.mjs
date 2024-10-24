@@ -1,20 +1,11 @@
-import { defineFactory } from './index.js'
+import { defineSingletone, defineFactory, toComputed, useRecord } from './index.js'
 
-const Circle = defineFactory(({ mut, scoped }, [ radius ]) => {
-    const commit = () => {
-        halfRadius.value = radius.value * 0.5
-    }
+const test = useRecord('/api/test')
+    .query.set({ test: 10 })
+    .query.add({ new: 'asdas' })
 
-    const halfRadius = scoped(0)
-
-    radius = mut(radius ?? 16).change(commit)
-    
-    return commit(), {
-        radius,
-        halfRadius
-    }
+test.reset({
+    query: 'dynamic'
 })
 
-const c1 = Circle([ 32 ])
-
-console.log(c1.radius)
+console.log(test.toURL())
