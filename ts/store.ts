@@ -138,6 +138,9 @@ const initStore = (store: Definition<any>, props: Record<string, any> = {}) => {
             else if(isRef(toProxy)) {
                 $append(key, () => toProxy.value, (v) => toProxy.value = v)
             }
+            else {
+                $append(key, () => storeContent[key], (v) => storeContent[key] = v)
+            }
         }
         else if(typeof toProxy == 'function')
             $append(key, () => storeContent[key])

@@ -23,8 +23,11 @@ export type TemplateInit<T extends object|any[]> = string|TemplateHandle<T>
 interface RecordPromise<T> extends Promise<T> {
     readonly lazy: Ref<T>
     useTemplate(template: string): RecordPromise<T>
-    castTo(to: 'array'|'object'|'string'): RecordPromise<T>
+    castTo(to: 'string'): RecordPromise<string>
+    castTo(to: 'array'|'object'): RecordPromise<T>
 }
+
+Object.fromEntries()
 
 export declare class Record<R, PathParam extends object, Query> {
     static new<R>(url: string, initValue?: R): Record<R, {}>
@@ -42,9 +45,29 @@ export declare class Record<R, PathParam extends object, Query> {
         add<T extends SearchParams>(item: T|Query): Record<R, PathParam, Query | T>
 
         clear(type?: 'dynamic'|'baked'): Record<R, PathParam, Query>
+        
+        entries(): [string, unknown][]
+        fromEntries(item: Iterable<readonly [PropertyKey, any]>): Record<R, PathParam, Query>
+        toObject(): Query
+    }
+
+    readonly pagination: {
+        use(where: string, config?: { start?: number, step?: number }): Record<R, PathParam, Query | T>
+        use(where: 'query.', config?: { start?: number, step?: number }): Record<R, PathParam, Query | T>
+        use(where: 'path.', config?: { start?: number, step?: number }): Record<R, PathParam, Query | T>
+        firstPage(config?: { silent?: boolean }): Record<R, PathParam, Query | T>
+        nextPage(config?: { force?:boolean, silent?: boolean }): Record<R, PathParam, Query | T>
+        prevPage(config?: { force?:boolean, silent?: boolean }): Record<R, PathParam, Query | T>
+        lastPage(config?: { silent?: boolean }): Record<R, PathParam, Query | T>
+        goToPage(value: number, config?: { silent?: boolean }): Record<R, PathParam, Query | T>
+        enable(value: boolean): Record<R, PathParam, Query | T>
+        readonly currentPage: number
+        readonly countPages: number
+        readonly isEnd: boolean
     }
 
     header(key: string, value: any): Record<R, PathParam, Query>
+    template(...templates: TemplateInit<any>[]): Record<R, PathParam, Query>
 
     asJson(): Record<R, PathParam, Query>
     asText(): Record<R, PathParam, Query>
