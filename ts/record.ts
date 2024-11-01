@@ -1,6 +1,7 @@
 import { isReactive, reactive, ref, shallowRef, watch } from "vue"
 import type { Nullable, PathParams, RawHeader, RequestMethod, SearchParams, WithMutatble, TemplateInit, QueryConfig, ObjectConfig } from "../types.js"
 import { objectMergeRecursive, toRaw } from './utils.js'
+import { useFetch } from "./config.js"
 
 const EResponseFormat = {
     json: 'json',
@@ -17,11 +18,17 @@ class ObliviusRequest<T> {
     private _afterRequest: Function[] = []
     private _endRequest?: Function
 
+    public get promise() {
+        return this._promise
+    }
+
     constructor() {
         this._promise = new Promise((res, rej) => {
             this._accept = res
             this._reject = res
         })
+
+        this._promise
 
         const request = this
 
@@ -38,11 +45,10 @@ class ObliviusRequest<T> {
         this._endRequest = handle
     }
 
-    protected get promise() {
-        return this._promise
-    }
+    protected resolve(value: T, silent: boolean = false) {
+        if(silent)
+            return (this._accept(value), value)
 
-    protected resolve(value: T) {
         try {
             this._afterRequest.forEach(callback => {
                 value = callback(value)
@@ -55,7 +61,7 @@ class ObliviusRequest<T> {
 
         if(this._endRequest) this._endRequest(true, value)
 
-        return this._accept(value)
+        return (this._accept(value), value)
     }
 
     protected reject(reason: any) {
@@ -63,6 +69,8 @@ class ObliviusRequest<T> {
         return this._reject(reason)
     }
 }
+
+type OnlyConfig = { empty?: boolean, idle?: boolean }
 
 class ObliviusRecord {
     private _requestInfo = {
@@ -73,7 +81,7 @@ class ObliviusRecord {
         headers:             {} as RawHeader,
         body:                null as any,
         format:              EResponseFormat.json,
-        only:                false as false|string
+        only:                {} as OnlyConfig
     }
     private _listiners = {
         headers:             [] as Function[],
@@ -103,12 +111,17 @@ class ObliviusRecord {
         lastPage: shallowRef(true)
     }
 
+    private _flags = {
+        idle: true
+    }
+
     private _query: any   = {}
     private _raw: any     = {}
     private _headers: any = {}
     private _as: any      = {}
     private _rules: any = {}
 
+    private _currentRequest?: ObliviusRequest<any>
     private _lastStep: Function = () => {}
 
     public get response() { return this._response.value }
@@ -116,6 +129,15 @@ class ObliviusRecord {
 
     constructor(url: string, initValue: any = null) {
         const record = this
+
+        const isShortURL = url[0] == '/'
+        const urlReader = new URL(url, isShortURL ? 'http://localhost' : undefined)
+
+        record._requestInfo.path = decodeURIComponent(
+            isShortURL 
+                ? urlReader.pathname
+                : `${urlReader.origin}${urlReader.pathname}`
+        )
 
         this.commit(() => {
             this._defaultResponse = initValue
@@ -136,6 +158,11 @@ class ObliviusRecord {
 
         record._query = {
             set(value: Record<string, any>, { baked = false, as = 'clone', listen = false, entries = false }: QueryConfig = {}) {
+                if(value instanceof URLSearchParams) {
+                    value = value.entries()
+                    entries = true
+                }
+
                 const placing = baked ? 'defaultSearchParams' : 'searchParams'
                 value = entries ? Object.fromEntries(value as any) : value
 
@@ -167,6 +194,11 @@ class ObliviusRecord {
                 return record
             },
             add(value: Record<string, any>, { baked = false, as = 'clone', listen = false, entries = false }: QueryConfig = {}) {
+                if(value instanceof URLSearchParams) {
+                    value = value.entries()
+                    entries = true
+                }
+
                 const placing = baked ? 'defaultSearchParams' : 'searchParams'
                 value = entries ? Object.fromEntries(value as any) : value
                 let adds = value
@@ -341,8 +373,8 @@ class ObliviusRecord {
         Object.defineProperty(record, 'as', { get() { return record._as } })
 
         record._rules = {
-            only(type: false|'on-empty'|'on-null'|'on-idle') {
-                record._requestInfo.only = type
+            only(config: OnlyConfig) {
+                record._requestInfo.only = config
                 return record
             },
             define(handle: Function) {
@@ -357,6 +389,17 @@ class ObliviusRecord {
         }
         Object.defineProperty(record, 'raw', { get() { return record._raw } })
 
+        record._query.set(urlReader.searchParams)
+    }
+
+    public toURL() {
+        const query = this._query.toObject()
+        let path = Object.entries(this._requestInfo.pathParams)
+            .reduce((p, [key, value]) => p.replace(`{${key}}`, toRaw(value, '') as string), this._requestInfo.path)
+
+        return Object.keys(query).length != 0
+            ? `${path}?${(new URLSearchParams(query)).toString()}`
+            : path
     }
 
     private commit(value: any): void {
@@ -364,6 +407,61 @@ class ObliviusRecord {
             return (this._response.value = value(this._rawResponse), void 0)
         }
         this._response.value = value
+    }
+
+    public get() {
+        const request = this._createRequest()
+        
+        if(!request)
+            return this._currentRequest.promise
+        else
+            this._currentRequest = request
+
+        this._procces(request, 'get')
+
+        return request.promise
+    }
+
+    private _isResponseEmpty() {
+        const response = this._response.value
+
+        return (response ?? null) == null ||
+            (typeof response == 'object' && Object.keys(response).length == 0)
+    }
+
+    private _createRequest() {
+        if(this._requestInfo.only.idle && !this._flags.idle)
+            return
+        this._flags.idle = false
+        return new ObliviusRequest()
+    }
+
+    private async _procces(request: ObliviusRequest<any>, method: RequestMethod) {
+        if(this._requestInfo.only.empty && this._isResponseEmpty()) {
+            return this.commit(() => {
+                // @ts-ignore
+                this._rawResponse = request.resolve(this._rawResponse, true)
+                return this._rawResponse
+            })
+        }
+
+        const url = this.toURL()
+
+        const result = await useFetch(url, {
+            type: this._requestInfo.format,
+            headers: this._headers.toObject(),
+            method: method.toLocaleUpperCase()
+        } as any)
+
+        this._rawResponse = result.response
+
+        this.commit(() => {
+            // @ts-ignore
+            this._rawResponse = request.resolve(
+                this._rawResponse
+            )
+            return this._rawResponse
+        })
     }
 }
 
