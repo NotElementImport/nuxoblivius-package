@@ -142,9 +142,9 @@ function raise(store: any) {
 
     const triggerToChanges = (nameObject: string) => {
         if(instance._watcher[nameObject]) { // get functions that should be called after watcher triggering
-            for (const func of instance._watcher[nameObject]) {
-                func() // call them
-            }
+            instance._watcher[nameObject].forEach((callback: any, key: string) => {
+                callback()
+            })
         }
     }
 
