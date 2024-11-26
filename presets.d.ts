@@ -10,7 +10,7 @@ type TagDifinition<T extends PropertyKey> = `query:${T}`|`path:${T}`
  * 
  * @param tags Example: `['path:test', 'query:lang']`
  */
-export declare function useCached(tags?: TagDifinition[]): SetupObject
+export declare function useCached(tags?: TagDifinition[], config?: { strict?: boolean, breakRule?: (q: { path: Record<string, any>, query: Record<string, any> }) => boolean|void }): SetupObject
 
 interface IArrayRemesh {
     cache: { [name: string]: any }

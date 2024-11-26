@@ -1,4 +1,5 @@
 import { reactive } from "vue"
+import { uniqId } from "./Utils.js"
 
 const isClient = typeof document !== 'undefined'
 
@@ -102,16 +103,33 @@ function raise(store: any) {
                             get isImportant() { // isImportant property
                                 return (p as string)[0] == '$'
                             },
-                            watch(func: Function) {
+                            watch(func: Function, customKey?: string) {
                                 if(!isClient)
                                     return
 
+                                const uid = customKey ?? uniqId()
+
                                 if(!(p in instance._watcher)) {
-                                    later(() => instance._watcher[p].push(func))
+                                    later(() => instance._watcher[p].set(uid, func))
                                 }
                                 else {
-                                    instance._watcher[p].push(func)
+                                    instance._watcher[p].set(uid, func)
                                 }
+
+                                return () => instance._watcher[p].delete(uid)
+                            },
+                            unwatch(key: string) {
+                                return instance._watcher[p].delete(key)
+                            },
+                            clearWatching(startWith?: string) {
+                                if(!startWith) return instance._watcher[p].clear()
+                                
+                                if(startWith) {
+                                    instance._watcher[p].forEach((_: any, key: string) => {
+                                        if(key.startsWith(startWith))
+                                            instance._watcher[p].delete(key)
+                                    })
+                                }    
                             }
                         }
                     }
@@ -149,7 +167,7 @@ function raise(store: any) {
             }
         })
 
-        instance._watcher[name] = []
+        instance._watcher[name] = new Map()
     }
 
     // checking if property name is not default (private)
@@ -219,7 +237,7 @@ function raise(store: any) {
                         triggerToChanges(name)
                     }
                 })
-                instance._watcher[name] = []
+                instance._watcher[name] = new Map()
             }
         }
     }

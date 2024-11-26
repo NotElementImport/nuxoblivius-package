@@ -2,6 +2,15 @@ import { Ref, isRef as isVueRef, isReactive } from "vue"
 
 const isClient = typeof document !== 'undefined'
 
+const charTable = '0123456789qwertyuiopasdfghjklzxcvbnm#@$%&*'
+
+export const uniqId = (len = 10) => {
+    let result = ''
+    for(let i = 0; i < len; i++)
+        result += charTable.charAt(Math.floor(Math.random() * (charTable.length - 1)))
+    return result
+}
+
 export function spread(struct: Function[]|{[name:PropertyKey]: Function}) {
     const isArray = Array.isArray(struct)
     const entries = Object.entries(struct)

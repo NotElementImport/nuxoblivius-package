@@ -60,7 +60,7 @@ export const useArrayRemesh = (sizeTag, config = {}) => {
     }
 };
 
-export const useCached = (tags = []) => {
+export const useCached = (tags = [], { strict, breakRule } = {}) => {
     return $ => {
         const condition = {}
         for (const itemName of tags) {
@@ -69,9 +69,12 @@ export const useCached = (tags = []) => {
         }
 
         $.swapMethod('lazy').borrowFrom(
-            condition,
+            (strict ?? true) ? condition : () => true,
             () => semiEmptyArray,
             (...args) => {
+                if(breakRule && breakRule({ path: $.params.path, query: $.params.query }))
+                    return
+
                 const cachedCondition = {}
                 for (const itemName of tags) {
                     const [where, name] = itemName.split(':')

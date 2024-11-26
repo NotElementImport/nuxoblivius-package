@@ -3,10 +3,18 @@ import { IHeaderAttribute } from './headers.js'
 
 // Basics Interfaces:
 interface StoreRef<T> {
+    /** Field name */
     name: string
+    /** Field value */
     value: T
+    /** Valid status */
     isEmpty: boolean
-    watch(handle: Function): void
+    /** Observe for changes */
+    watch(handle: Function, customKey?: string): (() => boolean)
+    /** Unsubscribe for changes by `key` */
+    unwatch(key: string): boolean
+    /** Unsubscribe for changes all */
+    clearWatching(startWith?: string)
 }
 
 type ExtractFrom<T, K extends PropertyKey> = T[K] 
