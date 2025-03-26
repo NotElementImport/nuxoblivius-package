@@ -1,6 +1,6 @@
 import type { SetupObject } from "./index";
 
-type TagDifinition<T extends PropertyKey> = `query:${T}`|`path:${T}`
+type TagDifinition<T extends PropertyKey> = `query:${T}` | `path:${T}`
 
 /**
  * `🔧 Caching`\
@@ -10,17 +10,11 @@ type TagDifinition<T extends PropertyKey> = `query:${T}`|`path:${T}`
  * 
  * @param tags Example: `['path:test', 'query:lang']`
  */
-export declare function useCached(tags?: TagDifinition[], config?: { strict?: boolean, breakRule?: (q: { path: Record<string, any>, query: Record<string, any> }) => boolean|void }): SetupObject
+export declare function useCached(tags?: TagDifinition[], config?: { strict?: boolean, breakRule?: (q: { path: Record<string, any>, query: Record<string, any> }) => boolean | void }): SetupObject
 
 interface IArrayRemesh {
-    cache: { [name: string]: any }
-    cacheTag?: boolean
-    cacheAccess?: 'simple'|'full'
-    condition?: { [name: string]: any }
-    pageCheck?: boolean
-    page?: any
-    exclude?: { [name: string]: any }
-    exclude?: { [name: string]: any }
+    withTags?: string[];
+    withPage?: { tag: PropertyKey | 'auto', value?: number };
 }
 
-export declare function useArrayRemesh<T extends PropertyKey>(sizeTag: `query:${T}`|`path:${T}`, config?: IArrayRemesh): SetupObject
+export declare function useArrayRemesh<T extends PropertyKey>(sizeTag: `query:${T}` | `path:${T}`, config?: IArrayRemesh): SetupObject

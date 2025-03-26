@@ -571,7 +571,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * 
      * Hook on Finish
      */
-    public onFinish(method: (result: T) => void): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public onFinish(method: (result: ReturnType, meta: { fromCache: boolean, oldResponse: ReturnType }) => void): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`\

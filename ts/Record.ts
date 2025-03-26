@@ -2,46 +2,46 @@ import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery,
 import { defaultHeaders, storeFetch, defaultFetchFailure, routerInterpolation } from "./config.js"
 import { isReactive, reactive, watch } from "vue"
 
-type DynamicResponse = {[key: string]: any}
+type DynamicResponse = { [key: string]: any }
 
 export interface IRecordSetupObject {
-    [MarkSetup]:  true
-    headers?:     {[name: string]: any}
-    body?:        any
-    pathParams?:  {[name: string]: any}
-    query?:       any
-    borrow?:      [ParamsTags, () => any, (iter: any) => any][]
-    rule?:        [ParamsTags, (record: Record) => void][]
+    [MarkSetup]: true
+    headers?: { [name: string]: any }
+    body?: any
+    pathParams?: { [name: string]: any }
+    query?: any
+    borrow?: [ParamsTags, () => any, (iter: any) => any][]
+    rule?: [ParamsTags, (record: Record) => void][]
     defaultRule?: (record: Record) => void
-    swapMethod?:  'hot'|'lazy'|'greedy'
-    pagination?:       [string, boolean, boolean]
+    swapMethod?: 'hot' | 'lazy' | 'greedy'
+    pagination?: [string, boolean, boolean]
     oneRequestAtTime?: boolean
-    onlyOnEmpty?:      boolean
-    appendsResponse?:  boolean
+    onlyOnEmpty?: boolean
+    appendsResponse?: boolean
 }
 
-type DefinitionTags = {[key: string]: ETagPlace }
-type ParamsTags = {[key: string]: string|number|null|'*' }
-type ParamsTagsType = {[key: string]: EParamsTagsType }
+type DefinitionTags = { [key: string]: ETagPlace }
+type ParamsTags = { [key: string]: string | number | null | '*' }
+type ParamsTagsType = { [key: string]: EParamsTagsType }
 
 type Dict<T extends keyof any, K> = { [P in T]: K }
 
 type RequestObject<T> = Promise<T>
 
 enum ETagPlace {
-    PATH  = 0,
+    PATH = 0,
     QUERY = 1
 }
 
 enum EParamsTagsType {
     SIMPLE = 0,
-    FULL   = 1
+    FULL = 1
 }
 
 enum ESwapMethod {
-    HOT        = 0,
-    LAZY       = 1,
-    GREEDY     = 2,
+    HOT = 0,
+    LAZY = 1,
+    GREEDY = 2,
     PAGINATION = 3
 }
 /**
@@ -53,12 +53,12 @@ const isClient = typeof document !== 'undefined'
  * Mark Object as setup object
  */
 export const MarkSetup = Symbol('Record Setup')
-const isSetup   = (value: any) => (value && typeof value === 'object' && value[MarkSetup])
+const isSetup = (value: any) => (value && typeof value === 'object' && value[MarkSetup])
 
 const createRequest = () => {
-    let   [ resolve, reject ] = [ (data: any) => {}, () => {} ]
-    const request: RequestObject<any> = new Promise((res, rej) => { resolve = res as any; reject = rej as any; } )
-    return { request, resolve, reject }    
+    let [resolve, reject] = [(data: any) => { }, () => { }]
+    const request: RequestObject<any> = new Promise((res, rej) => { resolve = res as any; reject = rej as any; })
+    return { request, resolve, reject }
 };
 
 export default class Record {
@@ -68,7 +68,7 @@ export default class Record {
     /** Redirect to current request if on action */
     private _oneRequestAtTime: boolean = false
     /** Object of current Request (Promise object when return a response) */
-    private _currentRequest: RequestObject<any>|null = null
+    private _currentRequest: RequestObject<any> | null = null
 
     private _defaultValue: any = null
 
@@ -79,33 +79,33 @@ export default class Record {
     /** @deprecated Other Stores as Query object */
     private _queryStore: object = null
     /** Query for fetching */
-    private _query: {[key: string]: any} = {}
+    private _query: { [key: string]: any } = {}
     /** Interpolated Query for fetching */
-    private _interQuery: {[key: string]: any} = {}
+    private _interQuery: { [key: string]: any } = {}
     /** Baked Query for fetching [cannot be removed] */
-    private _staticQuery: {[key: string]: any} = {}
+    private _staticQuery: { [key: string]: any } = {}
     /** Path params for query */
-    private _pathParams: {[key: string]: any} = {}
+    private _pathParams: { [key: string]: any } = {}
     /** Interpolated path params for query */
-    private _interPathParams: {[key: string]: any} = {}
+    private _interPathParams: { [key: string]: any } = {}
     /** Headers for query */
-    private _headers: {[key: string]: any} = {}
+    private _headers: { [key: string]: any } = {}
     /** Body request for query */
-    private _body: {[key: string]: any}|FormData = null
+    private _body: { [key: string]: any } | FormData = null
     /** Authorization for query */
-    private _auth: string|null = null
+    private _auth: string | null = null
     /** Always use body */
     private _forceBody: boolean = false
     /** Response type is blob */
     private _isBlob: boolean = false
     /** Current `pattern response reader` */
-    private _template: string|Function = ''
+    private _template: string | Function = ''
 
     // Cachin / Tags
 
-    private _tags: DefinitionTags       = { 'id': ETagPlace.PATH }
-    private _tagsType: ParamsTagsType   = { 'id': EParamsTagsType.SIMPLE }
-    private _lastRequestTags:ParamsTags = {}
+    private _tags: DefinitionTags = { 'id': ETagPlace.PATH }
+    private _tagsType: ParamsTagsType = { 'id': EParamsTagsType.SIMPLE }
+    private _lastRequestTags: ParamsTags = {}
 
     // Pre Fetch config
 
@@ -115,7 +115,7 @@ export default class Record {
     private _swapMethod: ESwapMethod = ESwapMethod.HOT
 
     // Post Fetch config
-    
+
     /** Data from `pattern response reader` */
     private _protocol: any = {}
     /** Rebuild the object at the specified rule */
@@ -126,9 +126,9 @@ export default class Record {
     // Event Handlers:
 
     /** Error Handler */
-    private _onError:   Function|null = null;
+    private _onError: Function | null = null;
     /** Finish Response Handler */
-    private _onEnd:     Function|null = null;
+    private _onEnd: Function | null = null;
 
     // Links
 
@@ -142,7 +142,7 @@ export default class Record {
     private _borrow: Map<ParamsTags, [ParamsTags, (response: any) => any]> = new Map()
     private _borrowAnother: Map<ParamsTags, (response: any) => any> = new Map()
     private _enabledBorrow = true
-    
+
     /** Old Response / Cached Data */
     private _allCachedResponse: Map<ParamsTags, any> = new Map()
 
@@ -153,7 +153,7 @@ export default class Record {
         where: 'path',
         param: 'page'
     }
-    
+
     /** Vue Reactive Variables */
     private _variables = reactive({
         currentPage: 1,              // Pagination.current
@@ -168,7 +168,7 @@ export default class Record {
 
         frozenKey: 0,                /** @deprecated [Nerd] :key variable, for manual watch effect */
 
-        isError: false,             
+        isError: false,
         isLoading: false
     })
 
@@ -219,11 +219,11 @@ export default class Record {
             setup(how: string, enabledByDefault = true) {
                 this.enabled = enabledByDefault
 
-                if(how.startsWith('query:')) {
+                if (how.startsWith('query:')) {
                     pThis._pagination.where = 'query'
                     pThis._pagination.param = how.slice(6)
                 }
-                else if(how.startsWith('path:')) {
+                else if (how.startsWith('path:')) {
                     pThis._pagination.where = 'path'
                     pThis._pagination.param = how.slice(5)
                 }
@@ -240,43 +240,43 @@ export default class Record {
                 pThis._paginationEnabled = v
             },
             toFirst() { // Go to first page, if on isnt
-                if(pThis._variables.currentPage == 1)
+                if (pThis._variables.currentPage == 1)
                     return pThis
 
                 pThis._variables.currentPage = 1
                 pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage
-                if(pThis._variables.autoReloadPagination)
+                if (pThis._variables.autoReloadPagination)
                     pThis._lastStep()
                 return pThis
             },
             toLast() { // Go to last page, if on isnt
-                if(pThis._variables.currentPage == pThis._variables.maxPages)
+                if (pThis._variables.currentPage == pThis._variables.maxPages)
                     return pThis
 
                 pThis._variables.currentPage = pThis._variables.maxPages;
                 pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage
                 pThis._pagination.change = true
-                if(pThis._variables.autoReloadPagination)
+                if (pThis._variables.autoReloadPagination)
                     pThis._lastStep()
                 return pThis
             },
             next() { // Move to next page, while is not last page
-                if(pThis._variables.maxPages > pThis._variables.currentPage) {
+                if (pThis._variables.maxPages > pThis._variables.currentPage) {
                     pThis._variables.currentPage += 1
                     pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage
                     pThis._pagination.change = true
-                    if(pThis._variables.autoReloadPagination)
+                    if (pThis._variables.autoReloadPagination)
                         pThis._lastStep()
                 }
 
                 return pThis
             },
             prev() { // Move to prev page, while is not first page
-                if(pThis._variables.currentPage > 1) {
+                if (pThis._variables.currentPage > 1) {
                     pThis._variables.currentPage -= 1
                     pThis._variables.isLastPage = pThis._variables.maxPages == pThis._variables.currentPage
                     pThis._pagination.change = true
-                    if(pThis._variables.autoReloadPagination)
+                    if (pThis._variables.autoReloadPagination)
                         pThis._lastStep()
                 }
 
@@ -288,7 +288,7 @@ export default class Record {
             set current(v: number) { // Set current page
                 pThis._variables.currentPage = v
                 pThis._pagination.change = true
-                if(pThis._variables.autoReloadPagination)
+                if (pThis._variables.autoReloadPagination)
                     pThis._lastStep()
             },
             get current() {
@@ -299,7 +299,7 @@ export default class Record {
             }
         }
     }
-    
+
     /**
      * Get Path Param and Query, values
      */
@@ -347,18 +347,18 @@ export default class Record {
 
     public static new(url: string, defaultValue?: any) {
         const instance = new Record();
-        
+
         const isShortURL = url[0] == '/'
         const urlReader = new URL(url, isShortURL ? 'http://localhost:3000' : undefined);
 
-        instance._url = decodeURIComponent(isShortURL ? urlReader.pathname : urlReader.origin+urlReader.pathname);
-        
+        instance._url = decodeURIComponent(isShortURL ? urlReader.pathname : urlReader.origin + urlReader.pathname);
+
         // Path Interpolation
         const pathInterpolation = instance._url.split('[').splice(1);
-        if(pathInterpolation.length != 0) {
+        if (pathInterpolation.length != 0) {
             for (let data of pathInterpolation) {
                 data = data.split(']').shift().trim();
-                const [ name, value ] = routerInterpolation(data, 'path') as [string, Function]
+                const [name, value] = routerInterpolation(data, 'path') as [string, Function]
                 instance._interPathParams[name as string] = value
                 instance._url = instance._url.replaceAll(`[${data}]`, `{${name}}`)
                 instance.pathParam(name as string, value)
@@ -367,10 +367,10 @@ export default class Record {
 
         for (let [key, value] of urlReader.searchParams.entries()) {
             value = decodeURIComponent(value);
-            key   = decodeURIComponent(key);
+            key = decodeURIComponent(key);
 
-            if(value[0] == '[') {
-                const [ _, queryValue ] = routerInterpolation(value.slice(1, -1), 'query')
+            if (value[0] == '[') {
+                const [_, queryValue] = routerInterpolation(value.slice(1, -1), 'query')
                 instance._interQuery[key] = queryValue;
                 continue;
             }
@@ -384,11 +384,11 @@ export default class Record {
 
         instance._proxies.query = new Proxy({}, {
             get(t, p, r) {
-                if(p in instance._query)
+                if (p in instance._query)
                     return refOrVar(instance._query[p as any])
-                else if(p in instance._staticQuery)
+                else if (p in instance._staticQuery)
                     return refOrVar(instance._staticQuery[p as any])
-                else if(p in instance._interQuery)
+                else if (p in instance._interQuery)
                     return refOrVar(instance._interQuery[p as any])
                 return undefined
             }
@@ -396,9 +396,9 @@ export default class Record {
 
         instance._proxies.pathParam = new Proxy({}, {
             get(t, p, r) {
-                if(p in instance._pathParams)
+                if (p in instance._pathParams)
                     return refOrVar(instance._pathParams[p as any])
-                else if(p in instance._interPathParams)
+                else if (p in instance._interPathParams)
                     return refOrVar(instance._interPathParams[p as any])
                 return undefined
             }
@@ -414,7 +414,7 @@ export default class Record {
         for (let tag of instruction) {
             tag = tag.trim()
 
-            switch(tag) {
+            switch (tag) {
                 case 'swap-lazy': record.swapMethod('lazy'); continue;
                 case 'swap-greedy': record.swapMethod('greedy'); continue;
                 case 'swap-hot': record.swapMethod('hot'); continue;
@@ -422,10 +422,10 @@ export default class Record {
                 case 'one-at-time': record.oneRequestAtTime(); continue;
             }
 
-            if(tag.startsWith("template ")) {
+            if (tag.startsWith("template ")) {
                 record.template(tag.replace('template ', ''))
             }
-            else if(tag.startsWith("page ")) {
+            else if (tag.startsWith("page ")) {
                 record.pagination.setup(tag.replace('page ', '').trim())
                 record.pagination.autoReload()
             }
@@ -461,7 +461,7 @@ export default class Record {
     * [Sugar] Creating Basic auth string  
     */
     public static Basic(login: string, password: string) {
-        return `Basic ${ btoa(login+":"+password) }`
+        return `Basic ${btoa(login + ":" + password)}`
     }
 
     /**
@@ -492,43 +492,43 @@ export default class Record {
     // Configuration
 
     // Custom presets
-    public preset(object: IRecordSetupObject|((item: Record) => void)) {
-        if(typeof object === 'function') {
+    public preset(object: IRecordSetupObject | ((item: Record) => void)) {
+        if (typeof object === 'function') {
             object(this)
             return this
         }
 
-        if('body' in object) this.body(object.body);
-        if('appendsResponse' in object) this.appendsResponse(object.appendsResponse);
-        if('onlyOnEmpty' in object) this.onlyOnEmpty(object.onlyOnEmpty);
-        if('oneRequestAtTime' in object) this.oneRequestAtTime(object.oneRequestAtTime);
-        
-        if(object.headers) {
-            for(const [name, value] of Object.entries(object.headers))
+        if ('body' in object) this.body(object.body);
+        if ('appendsResponse' in object) this.appendsResponse(object.appendsResponse);
+        if ('onlyOnEmpty' in object) this.onlyOnEmpty(object.onlyOnEmpty);
+        if ('oneRequestAtTime' in object) this.oneRequestAtTime(object.oneRequestAtTime);
+
+        if (object.headers) {
+            for (const [name, value] of Object.entries(object.headers))
                 this.header(name, value);
         }
 
-        if(object.rule) {
-            for(const  [condition, apply] of object.rule)
+        if (object.rule) {
+            for (const [condition, apply] of object.rule)
                 this.rule(condition, apply);
         }
 
-        if(object.borrow) {
-            for(const [condition, from, research] of object.borrow)
+        if (object.borrow) {
+            for (const [condition, from, research] of object.borrow)
                 this.borrowFrom(condition, from, research)
         }
 
-        if(object.defaultRule) this.defaultRule(object.defaultRule)
-        if(object.query) this.query(object.query)
-        if(object.swapMethod) this.swapMethod(object.swapMethod)
-        if(object.pagination) {
+        if (object.defaultRule) this.defaultRule(object.defaultRule)
+        if (object.query) this.query(object.query)
+        if (object.swapMethod) this.swapMethod(object.swapMethod)
+        if (object.pagination) {
             const [name, enabled, autoReload] = object.pagination
             this.pagination.setup(name, enabled)
             this.pagination.autoReload(autoReload)
         }
 
-        if(object.pathParams) {
-            for(const [name, value] of Object.entries(object.pathParams))
+        if (object.pathParams) {
+            for (const [name, value] of Object.entries(object.pathParams))
                 this.pathParam(name, value);
         }
 
@@ -542,17 +542,17 @@ export default class Record {
     * simple - check has value or not
     * full   - can access to value
     */
-    public createTag(field: string, access: 'simple'|'full' = 'simple') {
-        const acecssValue = access == 'simple' 
-            ? EParamsTagsType.SIMPLE 
+    public createTag(field: string, access: 'simple' | 'full' = 'simple') {
+        const acecssValue = access == 'simple'
+            ? EParamsTagsType.SIMPLE
             : EParamsTagsType.FULL
 
-        if(field.startsWith('query:')) { // Query Tag
+        if (field.startsWith('query:')) { // Query Tag
             const name = field.slice(6) // remove 'query:'
             this._tags[name] = ETagPlace.QUERY
             this._tagsType[name] = acecssValue
         }
-        else if(field.startsWith("path:")) { // Path Param Tag
+        else if (field.startsWith("path:")) { // Path Param Tag
             const name = field.slice(5) // remove 'path:'
             this._tags[name] = ETagPlace.PATH
             this._tagsType[name] = acecssValue
@@ -577,7 +577,7 @@ export default class Record {
      * ! If enable disabled swapMethod [Nerd thing]
      */
     public appendsResponse(value: boolean = true) {
-        if(isClient)
+        if (isClient)
             this._variables.expandResponse = value
         return this
     }
@@ -587,7 +587,7 @@ export default class Record {
      * Only do Fetch if response == null
      */
     public onlyOnEmpty(enabled = true) {
-        if(isClient)
+        if (isClient)
             this._onNullCheck = enabled
         return this
     }
@@ -614,19 +614,18 @@ export default class Record {
      * )
      * ```
      */
-    public rule(rule: ParamsTags|Function, behaviour: (setup: any) => void) {
+    public rule(rule: ParamsTags | Function, behaviour: (setup: any) => void) {
         const check = (recordTag: any) => { // Checking condition a rule valid to record tag
             return typeof rule == 'function'
                 ? rule(this.params)
                 : Record.compareTags(rule, recordTag, this._lastRequestTags)
         }
-        
+
         // Adding rule to checking stack
         this._recordRuleBehaviour.push((recordTag: ParamsTags) => {
-            if(!check(recordTag))
+            if (!check(recordTag))
                 return false // Not valid skip
-            behaviour(this) // Valid process
-            return true
+            return behaviour(this) ?? true; // Valid process
         })
 
         return this
@@ -642,7 +641,7 @@ export default class Record {
         this._defaultRule = () => behaviour(this)
         return this
     }
-    
+
     /**
      * [Configuration]
      * Rewrite url, using in `rule` and `defaultRule` section 
@@ -672,10 +671,10 @@ export default class Record {
         let data = this.cached(condition)
 
         // Custom checking to valid, isnt -> break logic
-        if(!behaviour())
+        if (!behaviour())
             return this
 
-        if(data != null) {
+        if (data != null) {
             this.setResponse(data);
             this._variables.currentPage = 1
             this._variables.isLastPage = this._variables.currentPage == this._variables.maxPages
@@ -696,13 +695,13 @@ export default class Record {
      * `greedy` - Immediately delete current data from start fetching
      */
     public swapMethod(method: string) {
-        if(method == 'hot')
+        if (method == 'hot')
             this._swapMethod = ESwapMethod.HOT
-        else if(method == 'greedy')
+        else if (method == 'greedy')
             this._swapMethod = ESwapMethod.GREEDY
-        else if(method == 'lazy')
+        else if (method == 'lazy')
             this._swapMethod = ESwapMethod.LAZY
-        else if(method == 'pagination')
+        else if (method == 'pagination')
             this._swapMethod = ESwapMethod.PAGINATION
         return this
     }
@@ -715,14 +714,14 @@ export default class Record {
      * @param another   The object we're going to take from
      * @param as        Logic for finding what you need in an object
      */
-    public borrowFrom(condition: ParamsTags | Function, another: object|Function, as: (value: DynamicResponse) => DynamicResponse) {
-        if(!isClient)
+    public borrowFrom(condition: ParamsTags | Function, another: object | Function, as: (value: DynamicResponse) => DynamicResponse) {
+        if (!isClient)
             return this
 
         this._borrowAnother.set(condition as ParamsTags, (_: any) => {
             const object = refOrVar(another) // Get raw data
 
-            if(!Array.isArray(object)) { // If not array skip
+            if (!Array.isArray(object)) { // If not array skip
                 console.warn('borrow, from value is not array')
                 return null;
             }
@@ -730,7 +729,7 @@ export default class Record {
             for (const part of object) { // Search, what you need
                 const result = as(part)
 
-                if(typeof result != 'undefined' && result != null) {
+                if (typeof result != 'undefined' && result != null) {
                     return result
                 }
             }
@@ -749,11 +748,11 @@ export default class Record {
      * @param as        Logic for finding what you need in an object
      */
     public borrowAtSelf(where: ParamsTags | Function, from: ParamsTags, as: (value: DynamicResponse) => DynamicResponse) {
-        if(!isClient)
+        if (!isClient)
             return this
-        
+
         this._borrow.set(where as ParamsTags, [from, (response: any) => {
-            if(!Array.isArray(response)) { // If not array skip
+            if (!Array.isArray(response)) { // If not array skip
                 console.warn('{value} is not array')
                 return null;
             }
@@ -761,7 +760,7 @@ export default class Record {
             for (const part of response) {
                 const result = as(part)
 
-                if(typeof result != 'undefined' && result != null) {
+                if (typeof result != 'undefined' && result != null) {
                     return result
                 }
             }
@@ -782,7 +781,7 @@ export default class Record {
      * 
      * More in: https://notelementimport.github.io/nuxoblivius-docs/release/template.html
      */
-    public template(template: string|Function) {
+    public template(template: string | Function) {
         this._template = template
         return this
     }
@@ -794,7 +793,7 @@ export default class Record {
     public pathParam(name: string, value: any) {
         // If we put promise object
         resolveOrLater(value, (result: any) => {
-            if(result == null && this._interPathParams[name])
+            if (result == null && this._interPathParams[name])
                 this._pathParams[name] = this._interPathParams[name]
             else
                 this._pathParams[name] = result
@@ -810,16 +809,16 @@ export default class Record {
      */
     public query(query: object, baked = false) {
         // Store as Query, not to use
-        if(isRef(query)) {
+        if (isRef(query)) {
             this._queryStore = query
             return this
         }
 
-        if(baked) {
+        if (baked) {
             this._staticQuery = query
         }
         else {
-            if(isReactive(query)) // Reactive rewrite old (not baked) query
+            if (isReactive(query)) // Reactive rewrite old (not baked) query
                 this._query = query
             else
                 this._query = appendMerge(this._query, query)
@@ -855,8 +854,8 @@ export default class Record {
      * Body of request
      * And enabling force mode for body
     */
-    public body(body: FormData|{[key: string]: any}|null) {
-        if(isSetup(body)) {
+    public body(body: FormData | { [key: string]: any } | null) {
+        if (isSetup(body)) {
             this.preset(body as IRecordSetupObject)
             return this
         }
@@ -876,7 +875,7 @@ export default class Record {
      */
     public reloadBy(object: any) {
         // Disable feature in Server (leak fix)
-        if(!isClient)
+        if (!isClient)
             return this
 
         // Extract context
@@ -884,7 +883,7 @@ export default class Record {
         // If we put promise object
         resolveOrLater(object, (result: any) => {
             // Vue Ref
-            if(isReactive(result) || isRef(result) || result?.__v_isRef) {
+            if (isReactive(result) || isRef(result) || result?.__v_isRef) {
                 watch(result, () => {
                     const oldValueOnNullCheck = pThis._onNullCheck;
                     const oldValueExpandCheck = pThis._variables.expandResponse;
@@ -892,13 +891,13 @@ export default class Record {
                     pThis._variables.expandResponse = false;
                     pThis.pagination.toFirst();
                     pThis._lastStep()
-                        .then(() => {pThis._onNullCheck = oldValueOnNullCheck; pThis._variables.expandResponse = oldValueExpandCheck })
+                        .then(() => { pThis._onNullCheck = oldValueOnNullCheck; pThis._variables.expandResponse = oldValueExpandCheck })
                 })
                 return
             }
             else {
                 // State Manager Ref
-                if(!('_module_' in result))
+                if (!('_module_' in result))
                     throw `reloadBy: only ref support`
 
                 result.watch(() => {
@@ -908,7 +907,7 @@ export default class Record {
                     pThis._variables.expandResponse = false;
                     pThis.pagination.toFirst();
                     pThis._lastStep()
-                        .then(() => {pThis._onNullCheck = oldValueOnNullCheck; pThis._variables.expandResponse = oldValueExpandCheck })
+                        .then(() => { pThis._onNullCheck = oldValueOnNullCheck; pThis._variables.expandResponse = oldValueExpandCheck })
                 })
             }
         })
@@ -964,7 +963,7 @@ export default class Record {
     }
 
     // Utils
-    
+
     /**
      * Extends link of Method
      */
@@ -985,18 +984,18 @@ export default class Record {
      * Reset specific data
      */
     public reset(config = { pagination: true, response: true, query: true }) {
-        if(config.pagination) {
+        if (config.pagination) {
             this._variables.currentPage = 1
         }
 
-        if(config.response) {
-            if(typeof config.response === "boolean")
+        if (config.response) {
+            if (typeof config.response === "boolean")
                 this._variables.response = this._defaultValue
-            else if(typeof config.response === 'object')
+            else if (typeof config.response === 'object')
                 this._variables.response = config.response
         }
 
-        if(config.query) {
+        if (config.query) {
             this.clearDynamicQuery()
         }
     }
@@ -1011,8 +1010,8 @@ export default class Record {
      * ```
      */
     public cached(rule: ParamsTags, defaultIsnt: any = null) {
-        for(const [descriptor, value] of this._allCachedResponse.entries()) {
-            if(Record.compareTags(rule, descriptor)) {
+        for (const [descriptor, value] of this._allCachedResponse.entries()) {
+            if (Record.compareTags(rule, descriptor)) {
                 return value
             }
         }
@@ -1026,7 +1025,7 @@ export default class Record {
         this._allCachedResponse.clear()
         return this
     }
-    
+
     /**
      * Not using
      * @deprecated
@@ -1045,7 +1044,7 @@ export default class Record {
     public async get(id: number = null) {
         this.swapGreedy()
 
-        if(!this._forceBody)
+        if (!this._forceBody)
             this._body = null
 
         this.pathParam('id', id)
@@ -1060,13 +1059,13 @@ export default class Record {
      * @param body setting body (can be ignored)
      */
     public async post(body: any = null) {
-        if(this._onNullCheck && this._variables.response != null) {
+        if (this._onNullCheck && this._variables.response != null) {
             return this._variables.response
         }
 
         this.swapGreedy()
 
-        if(!this._forceBody)
+        if (!this._forceBody)
             this._body = body
 
         this._lastStep = () => this.post(body)
@@ -1081,7 +1080,7 @@ export default class Record {
     public async put(body: any = null) {
         this.swapGreedy()
 
-        if(!this._forceBody)
+        if (!this._forceBody)
             this._body = body
 
         this._lastStep = () => this.put(body)
@@ -1096,11 +1095,11 @@ export default class Record {
     public async delete(id: number = null) {
         this.swapGreedy()
 
-        if(!this._forceBody)
+        if (!this._forceBody)
             this._body = null
 
         this.pathParam('id', id)
-        
+
         this._lastStep = () => this.delete(id)
 
         return this.doFetch('delete')
@@ -1113,44 +1112,44 @@ export default class Record {
     public async patch(id: number = null) {
         this.swapGreedy()
 
-        if(!this._forceBody)
+        if (!this._forceBody)
             this._body = null
 
         this.pathParam('id', id)
-        
+
         this._lastStep = () => this.patch(id)
 
         return this.doFetch('patch')
     }
 
     // Private Methods :
-    
+
     /**
      * Getting from other object_data if suitable
      */
     private borrowingFromAnother(condition: ParamsTags): any {
-        if(!this._enabledBorrow)
+        if (!this._enabledBorrow)
             return null
 
         /**
          * Checking condition, checking can be as Compare Tags or Function with boolean return 
         */
-        const checkCondition = (condition: ParamsTags, other: Function|ParamsTags) => {
+        const checkCondition = (condition: ParamsTags, other: Function | ParamsTags) => {
             return typeof other === 'function'
-                ? other(this.params) 
+                ? other(this.params)
                 : Record.compareTags(other, condition, this._lastRequestTags)
         }
 
         /**
          * Borrow From (From other object) 
         */
-        if(this._borrowAnother.size > 0) {
-            for(const [rule, searching] of this._borrowAnother.entries()) {
-                if(!checkCondition(condition, rule) || !this._enabledBorrow)
+        if (this._borrowAnother.size > 0) {
+            for (const [rule, searching] of this._borrowAnother.entries()) {
+                if (!checkCondition(condition, rule) || !this._enabledBorrow)
                     continue
 
                 const result = searching(null) // Try find suitable object
-                if(result)
+                if (result)
                     return result
             }
         }
@@ -1158,21 +1157,21 @@ export default class Record {
         /**
          * Borrow At Self (From cache)
         */
-        if(this._borrow.size > 0) {
-            for(const [rule, options] of this._borrow.entries()) {
-                if(!checkCondition(condition, rule) || !this._enabledBorrow)
+        if (this._borrow.size > 0) {
+            for (const [rule, options] of this._borrow.entries()) {
+                if (!checkCondition(condition, rule) || !this._enabledBorrow)
                     continue
 
-                const [ cacheCondition, searching ] = options
+                const [cacheCondition, searching] = options
 
                 let cached = this.cached(cacheCondition) // Getting cached by condition
 
-                if(!cached)
+                if (!cached)
                     break; // Not found cache
 
                 const result = searching(cached) // Try find suitable object from cache
-        
-                if(result)
+
+                if (result)
                     return result
             }
         }
@@ -1184,15 +1183,15 @@ export default class Record {
      * Collect all queries into one
      */
     private compileQuery() {
-        const queryObject = 
-            this._queryStore != null 
-                    ? storeToQuery(this._queryStore)
-                    : {}
+        const queryObject =
+            this._queryStore != null
+                ? storeToQuery(this._queryStore)
+                : {}
 
         return appendMerge(
-            queryObject, 
-            this._interQuery, 
-            this._staticQuery, 
+            queryObject,
+            this._interQuery,
+            this._staticQuery,
             this._query,
             this.compilePagination()
         )
@@ -1202,11 +1201,11 @@ export default class Record {
      * Creating pagination, or setup path-param
      */
     private compilePagination() {
-        if(!this._paginationEnabled)
+        if (!this._paginationEnabled)
             return {}
 
         // Pagination in Path Param
-        if(this._pagination.where == 'path') {
+        if (this._pagination.where == 'path') {
             this.pathParam(
                 this._pagination.param,
                 this._variables.currentPage
@@ -1214,7 +1213,7 @@ export default class Record {
             return {}
         }
         // Pagination in Query
-        else if(this._pagination.where == "query") {
+        else if (this._pagination.where == "query") {
             return {
                 [this._pagination.param]: this._variables.currentPage
             }
@@ -1224,12 +1223,12 @@ export default class Record {
     /**
      * Try resolve condition to custom setup or use default setup
      */
-    private proccesRules(condition: {[key: string]: any}) {
-        if(this._recordRuleBehaviour.length == 0)
+    private proccesRules(condition: { [key: string]: any }) {
+        if (this._recordRuleBehaviour.length == 0)
             return
 
         for (const rule of this._recordRuleBehaviour) {
-            if(rule(condition)) // If rule loaded
+            if (rule(condition)) // If rule loaded
                 return // End method
         }
 
@@ -1245,15 +1244,15 @@ export default class Record {
         const tag = {} as ParamsTags;
 
         // Get all registered Tags
-        for(const [paramName, type] of Object.entries(this._tags)) {
+        for (const [paramName, type] of Object.entries(this._tags)) {
             const access = this._tagsType[paramName] // Access of Tag
-            const value  = 
+            const value =
                 type == ETagPlace.PATH
                     ? refOrVar(this._pathParams[paramName]) // Getting value from Path param
                     : refOrVar(compiledQuery[paramName])    // Getting value from Query
 
             // Write data like { "param": null } or { "param": 1 }
-            if(access == EParamsTagsType.FULL)
+            if (access == EParamsTagsType.FULL)
                 tag[paramName] = value ?? null
             else
                 tag[paramName] = value ? '*' : null
@@ -1266,7 +1265,7 @@ export default class Record {
      * Call request
      */
     private async doFetch(method: string = 'get') {
-        if(this._oneRequestAtTime && this._currentRequest != null) {
+        if (this._oneRequestAtTime && this._currentRequest != null) {
             return this._currentRequest
         }
         const { request, resolve } = createRequest()
@@ -1298,13 +1297,13 @@ export default class Record {
          * If is enable to continue, Response must be empty
          * Else return old response
         */
-        if(this._onNullCheck) {
+        if (this._onNullCheck) {
             const response = this._variables.response;
-            const isEmpty  = (response == null)
+            const isEmpty = (response == null)
                 || (typeof response == 'object' && Object.keys(response ?? []).length == 0)
                 || (this._swapMethod == ESwapMethod.PAGINATION && pageChange)
 
-            if(!isEmpty) {
+            if (!isEmpty) {
                 this._variables.isLoading = false
                 endRequest(response)
                 return response
@@ -1315,18 +1314,20 @@ export default class Record {
          * If enable borrow data:
          * Borrow data from another object whenever possible
          */
-        if(method == 'get' || method == "post") {
+        if (method == 'get' || method == "post") {
             const result = this.borrowingFromAnother(recordTag)
-            if(result != null) { // If found return this data
+            if (result != null) { // If found return this data
+                const oldResponse = this._variables.response;
                 this.setResponse(result);
+
                 this._variables.error = ''
                 this._variables.isError = false
                 this._variables.isLoading = false
+
                 endRequest(result)
-                
-                // Call finsih handler
-                if(this._onEnd)
-                    this._onEnd(result)
+
+                if (this._onEnd)
+                    this._onEnd(result, { fromCache: true, oldResponse })
 
                 return result
             }
@@ -1338,7 +1339,7 @@ export default class Record {
         this.swapLazy()
 
         // Compile final URL
-        const url = 
+        const url =
             urlPathParams(this._url, this._pathParams) // Base path + path params
             + queryToUrl(queries) // Search param
 
@@ -1350,17 +1351,17 @@ export default class Record {
             headers[key] = refOrVar(value);
 
         // Generate Options for `fetch()`
-        const options:RequestInit = {
+        const options: RequestInit = {
             // Append headers + auth
-            headers: appendMerge(headers, {'Authorization': refOrVar(this._auth)}),
+            headers: appendMerge(headers, { 'Authorization': refOrVar(this._auth) }),
             method: method.toUpperCase(),
         }
 
         // If use body connect to options
-        if(this._body != null) {
+        if (this._body != null) {
             // Getting body
             options.body = refOrVar(this._body);
-            
+
             // Form Data:
             if (options.body instanceof FormData)
                 delete headers['Content-Type']
@@ -1372,26 +1373,26 @@ export default class Record {
 
         // Request data from http > config
         let fetchResult = await storeFetch(
-                url, 
-                options,
-                this._isBlob,
-                this._template as any
-            )
+            url,
+            options,
+            this._isBlob,
+            this._template as any
+        )
 
         /**
          * If request had error, call onError handler
         */
-        if(fetchResult.error) {
-            const answer = await (this._onError || defaultFetchFailure)({text: fetchResult.errorText, code: fetchResult.code}, () => this.doFetch(method));
+        if (fetchResult.error) {
+            const answer = await (this._onError || defaultFetchFailure)({ text: fetchResult.errorText, code: fetchResult.code }, () => this.doFetch(method));
 
             // If answer had object data replace
-            if(typeof answer == 'object') {
+            if (typeof answer == 'object') {
                 fetchResult.data = answer
                 fetchResult.error = false
             }
         }
 
-        // Write response to Record Object
+        const oldResponse = this._variables.response;
         this.setResponse(fetchResult.data);
 
         // Set Meta
@@ -1401,25 +1402,26 @@ export default class Record {
         this._variables.isLoading = false
         this._variables.headers = fetchResult.header
 
-        if(fetchResult.protocol != null) {
+        if (fetchResult.protocol != null) {
             this._protocol = fetchResult.protocol
         }
 
         // Cache data
         this.keep(fetchResult.data as any, recordTag)
 
-        // Call finsih handler
-        if(this._onEnd)
-            this._onEnd(fetchResult.data)
-
         endRequest(fetchResult.data)
+
+        // Call finsih handler
+        if (this._onEnd)
+            this._onEnd(fetchResult.data, { fromCache: false, oldResponse })
+
         return fetchResult.data
     }
 
     /** Erase response after call doFetch */
     private swapGreedy() {
         // Disable on appendResponse
-        if(this._swapMethod == ESwapMethod.GREEDY && !this._variables.expandResponse) {
+        if (this._swapMethod == ESwapMethod.GREEDY && !this._variables.expandResponse) {
             this._variables.response = this._defaultValue
         }
     }
@@ -1427,11 +1429,11 @@ export default class Record {
     /** Erase response after borrow function */
     private swapLazy() {
         // Disable on appendResponse
-        if(this._swapMethod == ESwapMethod.LAZY && !this._variables.expandResponse) {
+        if (this._swapMethod == ESwapMethod.LAZY && !this._variables.expandResponse) {
             this._variables.response = this._defaultValue
         }
     }
-    
+
     /**
      * Compare tags see `createTag`
      */
@@ -1439,23 +1441,23 @@ export default class Record {
         for (const [name] of Object.entries(tags)) {
             const value = refOrVar(tags[name])
 
-            if(!(name in other)) 
+            if (!(name in other))
                 return false // Not includes in other. Not valid
-            
-            if(otherLast && name in otherLast) {
-                if(value == '<>' && otherLast[name] != other[name])
+
+            if (otherLast && name in otherLast) {
+                if (value == '<>' && otherLast[name] != other[name])
                     continue;
             }
 
             const otherValue = other[name] ?? null
 
-            if(value == otherValue) // If equal each others
+            if (value == otherValue) // If equal each others
                 continue
 
             // If one use `any` and other not use `null`
             // Like: { tag: '*' } + { tag: null } = false
             // Like: { tag: '*' } + { tag: 1 }    = true
-            if((value == '*' && otherValue != null) || (otherValue == '*' && value != null))
+            if ((value == '*' && otherValue != null) || (otherValue == '*' && value != null))
                 continue
 
             // Else not valid
@@ -1467,8 +1469,8 @@ export default class Record {
     // Write response to Record
     private setResponse(v: any) {
         // Appends Mode
-        if(this._variables.expandResponse) {
-            if(!this._variables.response) // Not Exist create
+        if (this._variables.expandResponse) {
+            if (!this._variables.response) // Not Exist create
                 this._variables.response = [];
 
             this._variables.response.push(...v);
@@ -1483,16 +1485,18 @@ export default class Record {
 
     // Cache response by Tags
     private async keep(response: DynamicResponse, recordTag: ParamsTags) {
+        const deepClone = (v: object) => JSON.parse(JSON.stringify(v));
+
         for (const [key] of this._allCachedResponse.entries()) {
-            if(Record.compareTags(key, recordTag)) {
-                this._allCachedResponse.set(key, response)
+            if (Record.compareTags(key, recordTag)) {
+                this._allCachedResponse.set(key, deepClone(response))
                 return
             }
         }
 
         this._allCachedResponse.set(
             recordTag, // Generate tag
-            response
+            deepClone(response)
         )
     }
 }

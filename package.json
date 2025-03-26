@@ -1,6 +1,6 @@
 {
   "name": "nuxoblivius",
-  "version": "1.6.10",
+  "version": "1.7.3",
   "type": "module",
   "description": "",
   "main": "index.js",
@@ -10,8 +10,8 @@
   },
   "author": "notelementimport",
   "license": "ISC",
-  "dependencies": {
-    "typescript": "^5.4.4",
+  "devDependencies": {
+    "typescript": "^5.8.2",
     "vue": "^3.4.21"
   }
 }

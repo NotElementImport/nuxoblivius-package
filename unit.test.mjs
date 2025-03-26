@@ -338,6 +338,13 @@ await check('Record / Path Params', _ => {
         throw `Render [static] path param {id}: return ${urlPathParams(record._url, record._pathParams)}`
 })
 
+await check('Record / On Fininsh', async _ => {
+    let record = Record.new('https://dummyjson.com/products/{id}', {})
+        .onFinish((result, { fromCache }) => {})
+
+    await record.get(1)
+})
+
 forgetAllStores()
 
 await speedRun('Store / Complining', _ => {
