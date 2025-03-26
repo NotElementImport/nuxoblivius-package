@@ -889,7 +889,7 @@ export default class Record {
                     const oldValueExpandCheck = pThis._variables.expandResponse;
                     pThis._onNullCheck = false;
                     pThis._variables.expandResponse = false;
-                    pThis.pagination.toFirst();
+                    pThis._variables.currentPage = 1;
                     pThis._lastStep()
                         .then(() => { pThis._onNullCheck = oldValueOnNullCheck; pThis._variables.expandResponse = oldValueExpandCheck })
                 })
@@ -905,7 +905,7 @@ export default class Record {
                     const oldValueExpandCheck = pThis._variables.expandResponse;
                     pThis._onNullCheck = false;
                     pThis._variables.expandResponse = false;
-                    pThis.pagination.toFirst();
+                    pThis._variables.currentPage = 1;
                     pThis._lastStep()
                         .then(() => { pThis._onNullCheck = oldValueOnNullCheck; pThis._variables.expandResponse = oldValueExpandCheck })
                 })
