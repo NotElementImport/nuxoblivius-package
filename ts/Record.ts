@@ -165,6 +165,7 @@ export default class Record {
         response: null,              // Reactive Response Object
         headers: {},                 // Response headers
         error: '',                   // status text
+        errorCode: 200,              // status code
 
         frozenKey: 0,                /** @deprecated [Nerd] :key variable, for manual watch effect */
 
@@ -341,6 +342,13 @@ export default class Record {
      */
     public get errorText() {
         return this._variables.error
+    }
+
+    /**
+     * If catch error set errorCode
+     */
+    public get errorCode() {
+        return this._variables.errorCode
     }
 
     // Creating
@@ -1322,6 +1330,7 @@ export default class Record {
 
                 this._variables.error = ''
                 this._variables.isError = false
+                this._variables.errorCode = 200
                 this._variables.isLoading = false
 
                 endRequest(result)
@@ -1399,6 +1408,7 @@ export default class Record {
         this._variables.error = fetchResult.errorText
         this._variables.maxPages = fetchResult.pageCount
         this._variables.isError = fetchResult.error
+        this._variables.errorCode = fetchResult.code
         this._variables.isLoading = false
         this._variables.headers = fetchResult.header
 
