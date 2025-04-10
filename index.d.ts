@@ -800,6 +800,14 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * `⚡ Reactive`\
      * `🔧 Property`
      * 
+     * Status Error Code 
+     */
+    public get errorCode(): number
+
+    /**
+     * `⚡ Reactive`\
+     * `🔧 Property`
+     * 
      * Response is with Error
      */
     public get error(): boolean
