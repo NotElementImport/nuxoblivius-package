@@ -1,30 +1,86 @@
 import { defineNuxtPlugin, useAppConfig, useAsyncData } from "#app";
 import { settings, options as ConfigOptions } from "nuxoblivius/dist/config.js";
 import { forgetAllStores } from "nuxoblivius/dist/index.js";
-const defaultFetch = ConfigOptions.http;
-let oblivStats = {
-    connections: {},
-    uses: {}
+
+const isServer = typeof document === "undefined";
+const nxDefaultFetch = ConfigOptions.http;
+
+const printOnServer = (...args) => {
+    if (!isServer) {
+        return
+    }
+    console.log(...args);
 };
+
+const isUseAsyncDataFetch = (url, isHydrate) => {
+    return isServer || isHydrate;
+};
+
+const useDefaultFetch = async (url, options, isBlob) => {
+    const result = await nxDefaultFetch(url, options, isBlob);
+    result.header = Object.fromEntries(result.header.entries());
+    return JSON.stringify(result);
+};
+
+const useFetch = async (isHydrate, key, url, options, isBlob) => {
+    if (isUseAsyncDataFetch(key, isHydrate)) {
+        var { data } = await useAsyncData(key, async () => {
+            return await useDefaultFetch(url, options, isBlob);
+        });
+        return data.value;
+    }
+
+    var response = await useDefaultFetch(url, options, isBlob);
+
+    return response;
+};
+
+const useTrackFetch = async (isHydrate, key, url, options, isBlob) => {
+    var isAsyncBehaviour = isUseAsyncDataFetch(key, isHydrate);
+
+    var response = await useFetch(isHydrate, key, url, options, isBlob);
+
+    if (!isServer) {
+        console.groupCollapsed(` ⟡ - Nuxoblivius /  ${isAsyncBehaviour ? "[Hydrating] Request" : "Request"} : ${options.method ?? "GET"} ${url}`);
+        console.table({
+            url: url,
+            options: JSON.stringify(options),
+        })
+        console.log(` ⟡ - Response:`, response);
+        console.groupEnd();
+    }
+
+    return response;
+};
+
 const getUID = () => {
+    if (!isServer) {
+        return "";
+    }
+
     let result = '';
     const hashTable = 'qwertyuiopasdfghjklzxcvbnm123456789#@';
     for (let i = 0; i < 16; i++)
         result += hashTable[~~(Math.random() * (hashTable.length - 1))];
     return result;
 };
-const isClient = typeof document !== "undefined";
+
 export default defineNuxtPlugin({
     setup: (_nuxtApp) => {
-        const isUseLogs = useAppConfig().nuxoblivius.logs;
+        const isUseLogs = useAppConfig().nuxoblivius.logs ?? false;
+        const isUseClientLogs = useAppConfig().nuxoblivius.clientLogs ?? false;
+
         _nuxtApp.hook('app:rendered', function () {
             if (isUseLogs) {
-                console.log(' ');
-                console.log(' 🪄  Nuxoblivius - Clearing trash after SSR ');
-                console.log(' ');
+                printOnServer(`  _`)
+                printOnServer(` |`)
+                printOnServer(` ⟡ ✄ Nuxoblivius: Cleaning stores`)
+                printOnServer(` |_`)
             }
+
             forgetAllStores();
         });
+
         _nuxtApp.hook('app:created', function () {
             settings.router({
                 get path() {
@@ -41,17 +97,21 @@ export default defineNuxtPlugin({
             })
 
             const uid = getUID();
-            if (!isClient && isUseLogs) {
-                console.log(' ');
-                console.log(` ⚡  Awake [caller: ${uid}] `);
+
+            if (isUseLogs) {
+                printOnServer(`  _`)
+                printOnServer(` | \\\\`)
+                printOnServer(` ⟡  ·•—– Nuxoblivius: New request \`${uid}\``)
+                printOnServer(` |_//`)
             }
+
             settings.httpClient(async (url, options, isBlob) => {
                 const startStamp = performance.now();
                 const rules = useAppConfig().nuxoblivius.rules;
                 let fetchUrl = url;
                 let rule = 'without';
                 let ruleURL = '';
-                if (!isClient && !fetchUrl.startsWith('http')) {
+                if (isServer && !fetchUrl.startsWith('http')) {
                     for (const [prefix, to] of Object.entries(rules)) {
                         if (url.startsWith(prefix)) {
                             fetchUrl = to + fetchUrl.replace(prefix, '');
@@ -60,16 +120,17 @@ export default defineNuxtPlugin({
                         }
                     }
                 }
-                const { data } = await useAsyncData(url, async () => {
-                    const result = await defaultFetch(fetchUrl, options, isBlob);
-                    result.header = Object.fromEntries(result.header.entries());
-                    return JSON.stringify(result);
-                });
-                const response = JSON.parse(data.value);
+                const response = JSON.parse(
+                    await (isUseClientLogs
+                        ? useTrackFetch(_nuxtApp.isHydrating, url, fetchUrl, options, isBlob)
+                        : useFetch(_nuxtApp.isHydrating, url, fetchUrl, options, isBlob))
+                );
+
                 response.header = new Headers(response.header);
-                if (!isClient && isUseLogs) {
+
+                if (isServer && isUseLogs) {
                     const busyAt = (performance.now() - startStamp) * (1 / 1000);
-                    let speedRating = 'Best  ⭐';
+                    let speedRating = ' ·•—– Best —–•·';
                     if (busyAt > 8)
                         speedRating = 'Danger';
                     else if (busyAt >= 4)
@@ -86,22 +147,25 @@ export default defineNuxtPlugin({
                         speedRating = 'Good';
                     else if (busyAt >= 0.1)
                         speedRating = 'Fast';
-                    console.log(' ');
-                    console.log(' 🔗  Nuxoblivius  : SSR Fetch info ');
-                    console.log(` 🔗  UID          : ${uid} `);
-                    console.log(` 🔗  URL          : ${(options.method ?? 'GET').toLocaleUpperCase()} ${fetchUrl} `);
-                    console.log(` ⚡  It took time : ${(busyAt).toFixed(4)} s. / ${speedRating}`);
+
+                    const method = (options.method ?? 'get').toLocaleUpperCase();
+
+                    printOnServer(`  _`)
+                    printOnServer(` | Nuxoblisius: SSR Info`)
+                    printOnServer(` | `)
+                    printOnServer(` ⟡ Uniq ID      : ${uid}`)
+                    printOnServer(` ⟡ URL          : ${response._meta.code} ${method} ${fetchUrl}`)
+                    printOnServer(` ⟡ Request Time : ${(busyAt).toFixed(4)} s. / ${speedRating}`);
                     if (ruleURL != '') {
-                        console.log(` 🔗  Rule Prefix  : ${rule} `);
+                        printOnServer(` ⟡ Rule URL     : ${rule}`);
                     }
-                    console.log(` ⚠️  Code         : ${response._meta.code} / ${response._meta.text} `);
                     if (typeof response.body == 'object' && response.body._errorCode) {
-                        console.log(` 🚫  Error        : ${response.body._errorBody} `);
+                        printOnServer(` 🚫 Error       : ${response.body._errorBody} `);
                     }
                     else {
-                        console.log(` ✅  OK `);
+                        printOnServer(` ✅ OK `);
                     }
-                    console.log(' ');
+                    printOnServer(` |_`);
                 }
                 return response;
             });
