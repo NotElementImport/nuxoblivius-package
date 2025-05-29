@@ -5,4 +5,5 @@ suite("mod: core", async () => {
   await import("./ObserverRepositoryTest.js");
   await import("./PropertyInfoTest.js");
   await import("./PropertyServiceTest.js");
+  await import("./GarbageServiceTest.js");
 });

@@ -1,9 +1,11 @@
 import { GarbageService } from "./application/service/GarbageService.js";
+import { IBackend } from "./domain/interface/IBackend.js";
+import { IDefaults } from "./domain/interface/IDefaults.js";
 
 export interface INuxobliviusConfig {
-  backend: unknown;
+  backend: IBackend;
   garbage?: GarbageService;
-  defaults?: unknown;
+  defaults?: IDefaults;
 };
 
 export class Nuxoblivius {
@@ -15,14 +17,14 @@ export class Nuxoblivius {
     return this.instance;
   }
 
-  private readonly backend: unknown;
+  private readonly backend: IBackend;
   private readonly garbage: GarbageService;
-  private readonly defaults: unknown;
+  private readonly defaults: IDefaults;
 
   public constructor(config: INuxobliviusConfig) {
     this.backend = config.backend;
     this.garbage = config.garbage ?? new GarbageService();
-    this.defaults = config.defaults ?? null;
+    this.defaults = config.defaults ?? {};
 
     Nuxoblivius.instance = this;
   }
