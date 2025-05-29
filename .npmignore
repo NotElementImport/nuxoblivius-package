@@ -4,3 +4,4 @@ node_modules
 package-lock.json
 unit.test.mjs
 cleanup.js
+tsconfig.json
