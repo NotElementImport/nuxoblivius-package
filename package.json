@@ -5,13 +5,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node ./cleanup.js --esm && npx tsc -p ./tsconfig.json && npm test",
-    "test": "node ./unit.test.mjs --esm"
+    "start": "npx tsc -p ./tsconfig.json && npm test",
+    "test": "node ./dist/test.js --esm"
   },
   "author": "notelementimport",
   "license": "ISC",
   "devDependencies": {
     "typescript": "^5.8.2",
     "vue": "^3.4.21"
+  },
+  "dependencies": {
+    "@types/node": "^22.15.21"
   }
 }
