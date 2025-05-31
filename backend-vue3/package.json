@@ -1,0 +1,25 @@
+{
+  "name": "@nuxoblivius/vue3",
+  "version": "1.0.0",
+  "description": "Nuxoblivius Backend for Vue3",
+  "keywords": [
+    "nuxoblivius",
+    "vue3",
+    "backend"
+  ],
+  "homepage": "https://github.com/NotElementImport/nuxoblivius-package#readme",
+  "bugs": {
+    "url": "https://github.com/NotElementImport/nuxoblivius-package/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NotElementImport/nuxoblivius-package.git"
+  },
+  "license": "ISC",
+  "author": "Nuxoblivius Group",
+  "type": "module",
+  "dependencies": {
+    "@nuxoblivius/core": "^1.0.0",
+    "vue": "^3.5.16"
+  }
+}

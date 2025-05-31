@@ -1,17 +1,24 @@
 {
   "name": "nuxoblivius",
-  "version": "1.7.7-rc-3",
   "type": "module",
-  "description": "",
-  "main": "index.js",
   "scripts": {
-    "start": "node ./cleanup.js --esm && npx tsc -p ./tsconfig.json && npm test",
-    "test": "node ./unit.test.mjs --esm"
+    "build:core": "npx tsc -p ./core/tsconfig.json",
+    "build:backend-vue3": "npx tsc -p ./backend-vue3/tsconfig.json",
+    "build:backend-react": "npx tsc -p ./core/tsconfig.json",
+    "test:core": "node --test ./@test/test.core.js",
+    "test:backend-vue3": "node --test ./@test/test.vue3.js",
+    "test:backend-react": "node --test ./@test/test.react.js",
+    "build": "npm run build:core; npm run build:backend-vue3",
+    "test": "node --test ./@test/test.js",
+    "start": "npm run build; npm test"
   },
-  "author": "notelementimport",
+  "author": "NotElementImport",
   "license": "ISC",
   "devDependencies": {
-    "typescript": "^5.8.2",
-    "vue": "^3.4.21"
+    "@testing-library/react-hooks": "^8.0.1",
+    "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "@types/node": "^22.15.29"
   }
 }

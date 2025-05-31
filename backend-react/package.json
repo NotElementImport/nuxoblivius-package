@@ -1,0 +1,24 @@
+{
+  "name": "@nuxoblivius/react",
+  "version": "1.0.0",
+  "description": "Nuxoblivius Backend for React",
+  "keywords": [
+    "nuxoblivius",
+    "react",
+    "backend"
+  ],
+  "homepage": "https://github.com/NotElementImport/nuxoblivius-package#readme",
+  "bugs": {
+    "url": "https://github.com/NotElementImport/nuxoblivius-package/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NotElementImport/nuxoblivius-package.git"
+  },
+  "license": "ISC",
+  "author": "Nuxoblivius Group",
+  "type": "module",
+  "dependencies": {
+    "react": "^19.1.0"
+  }
+}

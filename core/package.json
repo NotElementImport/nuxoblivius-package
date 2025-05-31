@@ -1,0 +1,52 @@
+{
+  "name": "@nuxoblivius/core",
+  "version": "1.0.0",
+  "description": "Nuxoblivius Core Manager",
+  "keywords": [
+    "nuxoblivius",
+    "manager",
+    "core"
+  ],
+  "homepage": "https://github.com/NotElementImport/nuxoblivius-package#readme",
+  "bugs": {
+    "url": "https://github.com/NotElementImport/nuxoblivius-package/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NotElementImport/nuxoblivius-package.git"
+  },
+  "main": "index.js",
+  "license": "ISC",
+  "author": "Nuxoblivius Group",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/Nuxoblivius.js",
+      "types": "./dist/Nuxoblivius.d.ts"
+    },
+    "./application/property": {
+      "import": "./dist/application/service/ProperyService.js",
+      "types": "./dist/application/service/ProperyService.d.ts"
+    },
+    "./domain/property": {
+      "import": "./dist/domain/valueObject/PropertyInfo.js",
+      "types": "./dist/domain/valueObject/PropertyInfo.d.ts"
+    },
+    "./interface/IBackend": {
+      "import": "./dist/domain/interface/IBackend.js",
+      "types": "./dist/domain/interface/IBackend.d.ts"
+    },
+    "./interface/IDeepClone": {
+      "import": "./dist/domain/interface/IDeepClone.js",
+      "types": "./dist/domain/interface/IDeepClone.d.ts"
+    },
+    "./interface/IObservable": {
+      "import": "./dist/domain/interface/IObservable.js",
+      "types": "./dist/domain/interface/IObservable.d.ts"
+    },
+    "./infrastructure/ObserverRepository": {
+      "import": "./dist/infrastructure/repository/ObserverRepository.js",
+      "types": "./dist/infrastructure/repository/ObserverRepository.d.ts"
+    }
+  }
+}
