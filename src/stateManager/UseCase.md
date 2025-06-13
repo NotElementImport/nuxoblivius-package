@@ -1,5 +1,7 @@
 # Nuxoblivius / State Manager Use Case:
 
+В данной документации показан low-level код, программы
+
 ## Nuxoblivius / Fabric Store
 
 Создание временного StateManager(-а), каждый вызов, создаёт уникальную сущность
