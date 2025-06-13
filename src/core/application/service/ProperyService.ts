@@ -4,7 +4,7 @@ import { PropertyInfo } from "../../domain/valueObject/PropertyInfo.js";
 
 export interface IPropertyConfig<T> {
   property: PropertyInfo<T>,
-  observer: IObservable<T>,
+  observer?: IObservable<T>,
   deepClone: IDeepClone
 }
 
@@ -12,7 +12,7 @@ export class PropertyService<T> {
   private readonly initialValue: T;
 
   private readonly propertyInfo: PropertyInfo<T>;
-  private readonly observer: IObservable<T>;
+  private readonly observer?: IObservable<T>;
   private readonly deepClone: IDeepClone;
 
   public constructor(config: IPropertyConfig<T>) {
@@ -36,14 +36,19 @@ export class PropertyService<T> {
   public setValue(value: T): void {
     this.propertyInfo.setValue(value);
 
-    // Tell to subs, value change
-    this.observer.dispatch(
-      this.getValue()
-    );
+    if (this.observer) {
+      // Tell to subs, value change
+      this.observer.dispatch(
+        this.getValue()
+      );
+
+    }
   }
 
   public destroy(): void {
-    this.observer.cleanUp();
+    if (this.observer) {
+      this.observer.cleanUp();
+    }
 
     // Reset value to default
     this.propertyInfo.setValue(

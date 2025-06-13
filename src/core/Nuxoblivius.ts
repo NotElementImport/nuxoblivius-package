@@ -17,6 +17,10 @@ export class Nuxoblivius {
     return this.instance;
   }
 
+  public static destroy(): void {
+    this.instance = null as any;
+  }
+
   private readonly backend: IBackend;
   private readonly garbage: GarbageService;
   private readonly defaults: IDefaults;

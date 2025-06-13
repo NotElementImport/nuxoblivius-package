@@ -7,6 +7,10 @@ export class GarbageService {
     this.propertyList.add(item);
   }
 
+  public removeProperty(item: PropertyService<any>) {
+    this.propertyList.delete(item);
+  }
+
   public clean() {
     this.propertyList.forEach((value) => {
       value.destroy();

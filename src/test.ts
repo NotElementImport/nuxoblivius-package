@@ -6,3 +6,4 @@ suite("init", () => {
 });
 
 await import("./core/test/__boot.js");
+await import("./stateManager/test/__boot.js");
