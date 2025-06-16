@@ -1,0 +1,17 @@
+import { IStorage } from "../../domain/interface/IStorage.js";
+
+export class BasicStorage implements IStorage {
+  private storage: Map<string, any> = new Map<string, any>();
+
+  public write(name: string, value: any): void {
+    this.storage.set(name, value);
+  }
+
+  public read(name: string) {
+    return this.storage.get(name);
+  }
+
+  public *entries(): Iterator<[string, any], void, unknown> {
+    return this.storage.entries() as any;
+  }
+};
