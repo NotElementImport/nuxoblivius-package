@@ -35,3 +35,17 @@ Uses the principle of rapid development, and the ability to customise logic. Cli
 Has ongoing support and refinements to simplify, reduce code, and speed up important processes
 
 [🔧 Official Documentation](https://notelementimport.github.io/nuxoblivius-docs)
+
+## Development:
+
+**Init project:**
+
+```bash
+npm ci
+```
+
+**Build project:**
+
+```bash
+npm start
+```
