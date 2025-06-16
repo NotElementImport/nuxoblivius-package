@@ -1,0 +1,17 @@
+{
+  "name": "nuxoblivius",
+  "version": "1.8.0",
+  "description": "A store/fetch manager for vue and nuxt",
+  "type": "module",
+  "author": "NotElementImport",
+  "license": "ISC",
+  "dependencies": {
+    "vue": "^3.4.21"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+export enum EProprtyType {
+  DEFAULT,
+  WRITEBLE_COMPUTED,
+  READONLY_COMPUTED,
+  SCOPED
+};
