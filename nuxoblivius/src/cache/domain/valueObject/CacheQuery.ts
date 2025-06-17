@@ -11,6 +11,16 @@ export interface ICacheQueryConfig {
 };
 
 export class CacheQuery {
+  public static andRegExp(...formulas: RegExp[]): RegExp {
+    let finalFormula = "";
+
+    for (const formula of formulas) {
+      finalFormula += `(?=.*(${formula.source}))`;
+    }
+
+    return new RegExp(finalFormula);
+  }
+
   private readonly path?: PathExp;
   private readonly query?: QueryExp;
   private readonly headers?: HeadersExp;
@@ -48,7 +58,7 @@ export class CacheQuery {
       return this.query(query);
     }
 
-    return !!url.searchParams.toString().match(this.query);
+    return !!decodeURIComponent(url.searchParams.toString()).match(this.query);
   }
 
   public checkHeader(header: Headers): boolean {
@@ -60,15 +70,19 @@ export class CacheQuery {
       return this.headers(header);
     }
 
-    for (const [key, value] of header.entries()) {
-      var combine = `${key}: ${value}`;
+    const toUpperHeaderName = (key: string) => {
+      return key.split("-")
+        .map((v) => v[0].toUpperCase() + v.slice(1))
+        .join("-");
+    };
 
-      if (combine.match(this.headers)) {
-        return true;
-      }
+    var finalResponse: string[] = [];
+
+    for (const [key, value] of header.entries()) {
+      finalResponse.push(`${toUpperHeaderName(key)}: ${value};`);
     }
 
-    return false;
+    return !!finalResponse.join(" ").match(this.headers);
   }
 
   public checkParams(params: Record<string, any>): boolean {

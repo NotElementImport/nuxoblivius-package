@@ -17,7 +17,9 @@ export class StorageService {
     return this.storage.read(name) as T | null;
   }
 
-  public entries(): Generator<[string, unknown], void, unknown> {
-    return this.entries();
+  public *entries(): Generator<[string, unknown], void, unknown> {
+    for (const item of this.storage.entries() as any) {
+      yield item;
+    }
   }
 };

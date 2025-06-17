@@ -35,7 +35,7 @@ export class SearchService {
   public searchAll(query: CacheQuery): CacheRecord[] {
     var records: CacheRecord[] = [];
 
-    for (var [_, value] of this.storage.entries()) {
+    for (const [_, value] of this.storage.entries()) {
       if (this.validate(value, query)) {
         records.push(value);
       }

@@ -15,7 +15,9 @@ export class BasicStorage implements IStorage {
     return this.storage.get(name);
   }
 
-  public *entries(): Iterator<[string, any], void, unknown> {
-    return this.storage.entries() as any;
+  public *entries(): Generator<[string, any], void, unknown> {
+    for (const item of this.storage.entries() as any) {
+      yield item;
+    }
   }
 };
