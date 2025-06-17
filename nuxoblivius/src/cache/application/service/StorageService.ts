@@ -5,6 +5,10 @@ export class StorageService {
     private readonly storage: IStorage
   ) { }
 
+  public count(): number {
+    return this.storage.count();
+  }
+
   public write(name: string, value: any) {
     this.storage.write(name, value);
   }

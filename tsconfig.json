@@ -1,8 +1,4 @@
 {
-  "exclude": [
-    "./dist/*",
-    "dist/*"
-  ],
   "include": [
     "./nuxoblivius/src/*"
   ],

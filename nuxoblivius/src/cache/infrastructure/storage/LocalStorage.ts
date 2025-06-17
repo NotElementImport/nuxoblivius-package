@@ -15,6 +15,10 @@ export class LocalStorage implements IStorage {
     }
   }
 
+  public count(): number {
+    return Object.values(this.cells).length;
+  }
+
   public write(name: string, value: any): void {
     this.tryParse();
     this.cells[name] = value;

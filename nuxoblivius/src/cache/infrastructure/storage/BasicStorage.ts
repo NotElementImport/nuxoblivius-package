@@ -3,6 +3,10 @@ import { IStorage } from "../../domain/interface/IStorage.js";
 export class BasicStorage implements IStorage {
   private storage: Map<string, any> = new Map<string, any>();
 
+  public count(): number {
+    return this.storage.size;
+  }
+
   public write(name: string, value: any): void {
     this.storage.set(name, value);
   }

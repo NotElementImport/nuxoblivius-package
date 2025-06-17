@@ -1,4 +1,3 @@
-
 import { suite } from "node:test";
 
 suite("mod: State Manager", async () => {
