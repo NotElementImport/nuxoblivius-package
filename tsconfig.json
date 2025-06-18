@@ -1,6 +1,9 @@
 {
   "include": [
-    "./nuxoblivius/src/*"
+    "nuxoblivius/src/*"
+  ],
+  "exclude": [
+    "**/test/**"
   ],
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig to read more about this file */
