@@ -4,6 +4,7 @@ import * as assert from "node:assert";
 import { Nuxoblivius } from "../../core/Nuxoblivius.js";
 import { Vue3Backend } from "../../backend/vue3/Vue3Backend.js";
 import { SingletonBuilder } from "../infrastructure/builder/SingletonBuilder.js";
+import { StoreRuleService } from "../application/service/StoreRuleService.js";
 
 test("stateManager/intrastructure/builder/SingletonBuilder: Behaviour", () => {
   class Test {
@@ -19,7 +20,7 @@ test("stateManager/intrastructure/builder/SingletonBuilder: Behaviour", () => {
   });
 
   const backend = Nuxoblivius.getInstance().getBackend();
-  const builder = new SingletonBuilder();
+  const builder = new SingletonBuilder(new StoreRuleService());
 
   // Test
 

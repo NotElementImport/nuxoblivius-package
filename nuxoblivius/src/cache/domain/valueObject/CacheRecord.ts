@@ -10,6 +10,7 @@ export class CacheRecord {
   private readonly headers: Headers;
   private readonly params: Record<string, any>;
   private readonly body?: string;
+  private readonly createdAt: number;
 
   public constructor(config: ICacheRecordConfig) {
     this.path = config.url;
@@ -23,6 +24,7 @@ export class CacheRecord {
 
     this.params = config.params ?? {};
     this.body = config.body;
+    this.createdAt = Date.now();
   }
 
   public getParams() {
@@ -31,6 +33,10 @@ export class CacheRecord {
 
   public getPath() {
     return this.path;
+  }
+
+  public getCreatedAt() {
+    return this.createdAt;
   }
 
   public getPathAsUrl() {

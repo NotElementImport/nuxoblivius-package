@@ -20,4 +20,8 @@ export class BasicStorage implements IStorage {
       yield item;
     }
   }
+
+  public delete(name: string) {
+    this.storage.delete(name);
+  }
 };

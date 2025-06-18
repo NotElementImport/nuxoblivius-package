@@ -4,6 +4,10 @@ import * as assert from "node:assert";
 import { CacheController } from "../interface/CacheController.js";
 import { CacheRecord } from "../domain/valueObject/CacheRecord.js";
 import { CacheQuery } from "../domain/valueObject/CacheQuery.js";
+import { CacheRuleService } from "../application/service/CacheRuleService.js";
+import { ICacheRule } from "../domain/interface/ICacheRule.js";
+import { IStorage } from "../domain/interface/IStorage.js";
+import { CacheControlRule } from "../infrastructure/rules/CacheControlRule.js";
 
 test("cache/interface/CacheController: Write", () => {
   const instance = new CacheController();
@@ -212,5 +216,53 @@ test("cache/interface/CacheController: Headers Read", async () => {
   }));
 
   assert.equal(!!instanceXmlRu, false);
+});
+
+test("cache/interface/CacheController: Cache Rules", async () => {
+  class NoCacheRule implements ICacheRule {
+    public onWrite(record: CacheRecord): boolean {
+      if (record.getHeaders().has("No-Cache")) {
+        return false;
+      }
+
+      return true;
+    }
+
+    public onRead(_: CacheRecord): boolean {
+      return true
+    }
+
+    public async onAudit(_: IStorage): Promise<void> { }
+  };
+
+  const instance = new CacheController({
+    rules: new CacheRuleService([
+      new NoCacheRule(),
+      new CacheControlRule()
+    ])
+  });
+
+  await Promise.all([
+    instance.writeAsync(new CacheRecord({
+      url: "/test1",
+      headers: {
+        "No-Cache": "true",
+      }
+    })),
+    instance.writeAsync(new CacheRecord({
+      url: "/test1",
+    })),
+    instance.writeAsync(new CacheRecord({
+      url: "/test2",
+    })),
+    instance.writeAsync(new CacheRecord({
+      url: "/test1",
+      headers: {
+        "Cache-Control": "no-cache",
+      }
+    })),
+  ]);
+
+  assert.equal(instance.count(), 2);
 });
 

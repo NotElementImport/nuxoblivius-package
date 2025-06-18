@@ -13,6 +13,11 @@ export class SessionStorage implements IStorage {
     if (data) {
       this.cells = JSON.parse(atob(data));
     }
+    this.isParsed = true;
+  }
+
+  private async trySave() {
+    sessionStorage.setItem("nx_storage", btoa(JSON.stringify(this.cells)));
   }
 
   public count(): number {
@@ -22,10 +27,7 @@ export class SessionStorage implements IStorage {
   public write(name: string, value: any): void {
     this.tryParse();
     this.cells[name] = value;
-
-    (async () => {
-      sessionStorage.setItem("nx_storage", btoa(JSON.stringify(this.cells)));
-    })();
+    this.trySave();
   }
 
   public read(name: string) {
@@ -36,5 +38,11 @@ export class SessionStorage implements IStorage {
   public *entries(): Iterator<[string, any], void, unknown> {
     this.tryParse();
     return Object.entries(this.cells) as any;
+  }
+
+  public delete(name: string) {
+    this.tryParse();
+    delete this.cells[name];
+    this.trySave();
   }
 };

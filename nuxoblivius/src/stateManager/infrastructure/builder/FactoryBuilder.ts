@@ -4,22 +4,40 @@ import { EProprtyType } from "../../domain/enum/EPropertyType.js";
 import { PropertyInspector } from "../inspector/PropertyInspector.js";
 import { PropertyService } from "../../../core/application/service/ProperyService.js";
 import { DeepClone } from "../../../core/intrastructure/utils/DeepClone.js";
+import type { StoreRuleService } from "../../application/service/StoreRuleService.js";
 
 const FactoryDestroyToken = Symbol();
 
 export class FactoryBuilder implements IStoreBuilder<any, any> {
   private readonly propertyInspector = new PropertyInspector();
 
+  public constructor(
+    private readonly rules: StoreRuleService
+  ) { }
+
   public getInstance(store: new (...args: any) => any, ...args: any) {
     const nx = Nuxoblivius.getInstance();
     const backend = nx.getBackend();
     const garbage = nx.getGarbage();
+    const builderContext = this;
 
     const instance = new store(...args);
     var cleanListCallback: Function[] = [];
 
     for (const propMeta of this.propertyInspector.inspectAll(instance)) {
+      const propName = propMeta.getName();
+
       if (propMeta.isType(EProprtyType.DEFAULT)) {
+        const propName = propMeta.getName();
+        const isCouldBeReactive = this.rules.canReactive(
+          propName,
+          propMeta.getValue()
+        );
+
+        if (!isCouldBeReactive) {
+          continue;
+        }
+
         const property = new PropertyService({
           property: backend.newState(propMeta.getValue()),
           deepClone: DeepClone.getInstance(),
@@ -30,13 +48,20 @@ export class FactoryBuilder implements IStoreBuilder<any, any> {
           () => garbage.removeProperty(property)
         );
 
-        Object.defineProperty(instance, propMeta.getName(), {
+        Object.defineProperty(instance, propName, {
           configurable: true,
           get() {
-            return property.getValue();
+            return builderContext.rules.transformGet(
+              propName,
+              property.getValue()
+            );
           },
           set(v) {
-            property.setValue(v);
+            property.setValue(
+              builderContext.rules.transformSet(
+                propName, v
+              )
+            );
           }
         });
       }
@@ -44,14 +69,20 @@ export class FactoryBuilder implements IStoreBuilder<any, any> {
         const property = backend.newComputed(() => propMeta.accessorGet().call(instance));
         const accessorSet = propMeta.accessorSet();
 
-        Object.defineProperty(instance, propMeta.getName(), {
+        Object.defineProperty(instance, propName, {
           configurable: true,
           get() {
-            return property.getValue();
+            return builderContext.rules.transformGet(
+              propName,
+              property.getValue()
+            );
           },
           set(v) {
             if (accessorSet) {
-              accessorSet.call(instance, v);
+              accessorSet.call(
+                instance,
+                builderContext.rules.transformSet(propName, v)
+              );
             }
           }
         });

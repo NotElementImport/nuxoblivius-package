@@ -4,6 +4,7 @@ import * as assert from "node:assert";
 import { Nuxoblivius } from "../../core/Nuxoblivius.js";
 import { Vue3Backend } from "../../backend/vue3/Vue3Backend.js";
 import { FactoryBuilder } from "../infrastructure/builder/FactoryBuilder.js";
+import { StoreRuleService } from "../application/service/StoreRuleService.js";
 
 test("stateManager/intrastructure/builder/FactoryBuilder: Behaviour", () => {
   class Test {
@@ -22,7 +23,7 @@ test("stateManager/intrastructure/builder/FactoryBuilder: Behaviour", () => {
   });
 
   const backend = Nuxoblivius.getInstance().getBackend();
-  const builder = new FactoryBuilder();
+  const builder = new FactoryBuilder(new StoreRuleService());
 
   // Test: Is reactive
 
@@ -84,7 +85,7 @@ test("stateManager/intrastructure/builder/FactoryBuilder: With Args", () => {
   });
 
   const backend = Nuxoblivius.getInstance().getBackend();
-  const builder = new FactoryBuilder();
+  const builder = new FactoryBuilder(new StoreRuleService());
 
   // Test: Is Reactive
 

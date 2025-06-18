@@ -1,10 +1,12 @@
-import { CacheQuery } from "../../domain/valueObject/CacheQuery.js";
+import type { CacheQuery } from "../../domain/valueObject/CacheQuery.js";
 import { CacheRecord } from "../../domain/valueObject/CacheRecord.js";
-import { StorageService } from "./StorageService.js";
+import type { StorageService } from "./StorageService.js";
+import type { CacheRuleService } from "./CacheRuleService.js";
 
 export class SearchService {
   public constructor(
-    private readonly storage: StorageService
+    private readonly storage: StorageService,
+    private readonly ruleService?: CacheRuleService
   ) { }
 
   public validate(record: any, query: CacheQuery): record is CacheRecord {
@@ -16,7 +18,11 @@ export class SearchService {
       const isHeadersCorrect = query.checkHeader(record.getHeaders());
       const isParamsCorrect = query.checkParams(record.getParams());
 
-      return isPathCorrect && isQueryCorrect && isHeadersCorrect && isParamsCorrect;
+      const canReadIt = this.ruleService
+        ? this.ruleService.canRead(record)
+        : false;
+
+      return canReadIt && isPathCorrect && isQueryCorrect && isHeadersCorrect && isParamsCorrect;
     }
 
     return false;

@@ -5,6 +5,7 @@ import { PropertyInspector } from "../inspector/PropertyInspector.js";
 import { PropertyService } from "../../../core/application/service/ProperyService.js";
 import { DeepClone } from "../../../core/intrastructure/utils/DeepClone.js";
 import { PropertyInfo } from "../../../core/domain/valueObject/PropertyInfo.js";
+import type { StoreRuleService } from "../../application/service/StoreRuleService.js";
 
 const SingletonDestroyToken = Symbol();
 
@@ -14,6 +15,10 @@ export class SingletonBuilder implements IStoreBuilder<any, any> {
   private parent?: any;
   private cleanListCallback: Function[] = [];
   private childrens: Set<any> = new Set();
+
+  public constructor(
+    private readonly rules: StoreRuleService
+  ) { }
 
   protected getParentInstance(store: new (...args: any) => any) {
     if (this.parent) {
@@ -71,6 +76,7 @@ export class SingletonBuilder implements IStoreBuilder<any, any> {
 
   public getInstance(store: new (...args: any) => any, ...args: any) {
     const backend = Nuxoblivius.getInstance().getBackend();
+    const builderContext = this;
 
     const instance = new store(...args);
     const parentInstance = this.getParentInstance(store);
@@ -85,37 +91,63 @@ export class SingletonBuilder implements IStoreBuilder<any, any> {
           continue;
         }
 
-        const property = backend.newState(Reflect.get(parentInstance, propName, parentInstance));
-
-        let isInnerChanges = false;
-
-        localCleanListDestroy.push(
-          backend.watch(property, () => {
-            if (!isInnerChanges) {
-              Reflect.set(parentInstance, propName, property.getValue(), parentInstance);
-            }
-            isInnerChanges = false;
-          })
+        const isCouldBeReactive = this.rules.canReactive(
+          propName,
+          propMeta.getValue()
         );
 
-        // Callback for parent
-        Object.defineProperty(instance, `&${propName}`, {
-          set(v) {
-            isInnerChanges = true;
-            property.setValue(v);
-          }
-        });
+        if (isCouldBeReactive) {
+          const property = backend.newState(Reflect.get(parentInstance, propName, parentInstance));
 
-        Object.defineProperty(instance, propName, {
-          configurable: true,
-          get() {
-            // console.log(propName, property.getValue());
-            return property.getValue();
-          },
-          set(v) {
-            parentInstance[propName] = v;
-          }
-        });
+          let isInnerChanges = false;
+
+          localCleanListDestroy.push(
+            backend.watch(property, () => {
+              if (!isInnerChanges) {
+                Reflect.set(parentInstance, propName, property.getValue(), parentInstance);
+              }
+              isInnerChanges = false;
+            })
+          );
+
+          // Callback for parent
+          Object.defineProperty(instance, `&${propName}`, {
+            set(v) {
+              isInnerChanges = true;
+              property.setValue(v);
+            }
+          });
+
+          Object.defineProperty(instance, propName, {
+            configurable: true,
+            get() {
+              return builderContext.rules.transformGet(
+                propName,
+                property.getValue()
+              );
+            },
+            set(v) {
+              parentInstance[propName] = builderContext.rules.transformSet(propName, v);
+            }
+          });
+        }
+        else {
+          Object.defineProperty(instance, `&${propName}`, {
+            value: null
+          });
+
+          Object.defineProperty(instance, propName, {
+            configurable: true,
+            get() {
+              return builderContext.rules.transformGet(propName, parentInstance[propName]);
+            },
+            set(v) {
+              parentInstance[propName] = builderContext.rules.transformSet(
+                propName, v
+              );
+            }
+          });
+        }
       }
       else if (propMeta.isType(EProprtyType.READONLY_COMPUTED) || propMeta.isType(EProprtyType.WRITEBLE_COMPUTED)) {
         const property = backend.newComputed(() => propMeta.accessorGet().call(instance));
@@ -124,11 +156,17 @@ export class SingletonBuilder implements IStoreBuilder<any, any> {
         Object.defineProperty(instance, propMeta.getName(), {
           configurable: true,
           get() {
-            return property.getValue();
+            return builderContext.rules.transformGet(
+              propName,
+              property.getValue()
+            );
           },
           set(v) {
             if (accessorSet) {
-              accessorSet.call(instance, v);
+              accessorSet.call(
+                instance,
+                builderContext.rules.transformSet(propName, v)
+              );
             }
           }
         });
