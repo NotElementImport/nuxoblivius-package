@@ -1,4 +1,4 @@
-import { IPaginationType, MetaConfig } from "../../domain/interface/IPagination";
+import type { IPaginationType, MetaConfig } from "../../domain/interface/IPagination.js";
 
 export type PageMetaType = {
   page: number;

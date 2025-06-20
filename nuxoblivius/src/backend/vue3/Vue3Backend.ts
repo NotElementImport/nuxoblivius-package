@@ -45,7 +45,7 @@ export class Vue3Backend implements IBackend {
       prop,
       () => { },
       {
-        onTrack: (ev) => {
+        onTrack: (_) => {
           isReactive = true
         },
         immediate: true,

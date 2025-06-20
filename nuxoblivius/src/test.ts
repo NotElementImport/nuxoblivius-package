@@ -5,6 +5,8 @@ suite("init", () => {
   test(`Heating ${new Date().toISOString()}`, () => { });
 });
 
-await import("./core/test/__boot.js");
-await import("./stateManager/test/__boot.js");
-await import("./cache/test/__boot.js");
+(async () => {
+  await import("./core/test/__boot.js");
+  await import("./stateManager/test/__boot.js");
+  await import("./cache/test/__boot.js");
+})();

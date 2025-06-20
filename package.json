@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build:prod": "npx tsc -p ./tsconfig.light.json",
     "build:nuxoblivius": "npx tsc -p ./tsconfig.json",
     "test:nuxoblivius": "node ./nuxoblivius/dist/test.js --esm",
     "package:link": "cd ./nuxoblivius && npm link && cd ..",

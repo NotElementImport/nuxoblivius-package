@@ -1,5 +1,5 @@
-import type { IObservable } from "../../../core/domain/interface/IObservable";
-import type { IPaginationType } from "../../domain/interface/IPagination";
+import type { IObservable } from "../../../core/domain/interface/IObservable.js";
+import type { IPaginationType } from "../../domain/interface/IPagination.js";
 
 export interface IOptions {
   noEmit?: boolean
