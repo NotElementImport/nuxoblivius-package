@@ -1,9 +1,24 @@
 import { defineNuxtPlugin, useAppConfig, useAsyncData } from "#app";
 import { settings, options as ConfigOptions } from "nuxoblivius/dist/config.js";
 import { forgetAllStores } from "nuxoblivius/dist/index.js";
+import { version } from 'nuxt/package.json'
 
 const isServer = typeof document === "undefined";
 const nxDefaultFetch = ConfigOptions.http;
+
+const [nuxtMajorVersion, nuxtMinorVersion, nuxtAtomVersion] = version.split(".");
+let nuxtIs3_17_4;
+
+const isNuxt3_17_4 = () => {
+    if (nuxtIs3_17_4) {
+        return nuxtIs3_17_4;
+    }
+    if (+nuxtMajorVersion >= 3 && +nuxtMinorVersion >= 17 && +nuxtAtomVersion >= 4) {
+        nuxtIs3_17_4 = true;
+    }
+    nuxtIs3_17_4 = false;
+    return nuxtIs3_17_4;
+};
 
 const printOnServer = (...args) => {
     if (!isServer) {
@@ -23,16 +38,24 @@ const useDefaultFetch = async (url, options, isBlob) => {
 };
 
 const useFetch = async (isHydrate, key, url, options, isBlob) => {
-    if (isUseAsyncDataFetch(key, isHydrate)) {
+    if (isNuxt3_17_4()) {
+        if (isUseAsyncDataFetch(key, isHydrate)) {
+            var { data } = await useAsyncData(key, async () => {
+                return await useDefaultFetch(url, options, isBlob);
+            });
+            return data.value;
+        }
+
+        var response = await useDefaultFetch(url, options, isBlob);
+        return response;
+    }
+    else {
         var { data } = await useAsyncData(key, async () => {
             return await useDefaultFetch(url, options, isBlob);
         });
+
         return data.value;
     }
-
-    var response = await useDefaultFetch(url, options, isBlob);
-
-    return response;
 };
 
 const useTrackFetch = async (isHydrate, key, url, options, isBlob) => {
