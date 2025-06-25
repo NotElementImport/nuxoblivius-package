@@ -564,7 +564,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * 
      * Hook on fail
      */
-    public onFailure(method: (reason: {text: string, code: number}, retry: () => Promise<any>) => any): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public onFailure(method: (reason: {text: string, code: number, response: any}, retry: () => Promise<any>) => any): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`
@@ -886,7 +886,7 @@ export declare function SetDefaultAuth(string: (() => any)|string|Ref<any>): voi
  * 
  * Default onFailure settings for all Requests
  */
-export declare function SetRequestFailure(handle: (reason: {text: string, code: number}, retry: () => Promise<any>|undefined) => void): void
+export declare function SetRequestFailure(handle: (reason: {text: string, code: number, response: any}, retry: () => Promise<any>|undefined) => void): void
 
 /** 
  * `🧩 Vue Helper`\

@@ -1392,7 +1392,7 @@ export default class Record {
          * If request had error, call onError handler
         */
         if (fetchResult.error) {
-            const answer = await (this._onError || defaultFetchFailure)({ text: fetchResult.errorText, code: fetchResult.code }, () => this.doFetch(method));
+            const answer = await (this._onError || defaultFetchFailure)({ text: fetchResult.errorText, code: fetchResult.code, response: fetchResult.data }, () => this.doFetch(method));
 
             // If answer had object data replace
             if (typeof answer == 'object') {
