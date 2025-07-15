@@ -1418,6 +1418,7 @@ export default class Record {
 
         // Cache data
         if (method.toLowerCase() == "get" && fetchResult.code == 200) {
+            this._variables.isLastPage = this._variables.maxPages == this._variables.currentPage
             this.keep(fetchResult.data, recordTag)
         }
 
