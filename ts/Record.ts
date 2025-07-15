@@ -1416,8 +1416,10 @@ export default class Record {
             this._protocol = fetchResult.protocol
         }
 
-        // Cache data
-        this.keep(fetchResult.data as any, recordTag)
+        if (method.toLowerCase() == "get" && fetchResult.code == 200) {
+            // Cache data
+            this.keep(fetchResult.data as any, recordTag)
+        }
 
         endRequest(fetchResult.data)
 

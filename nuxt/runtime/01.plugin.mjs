@@ -63,8 +63,43 @@ const useTrackFetch = async (isHydrate, key, url, options, isBlob) => {
 
     var response = await useFetch(isHydrate, key, url, options, isBlob);
 
+    const statusColor = {
+        '1': "#f8f8f8",
+        '2': "#78be7e",
+        '3': "#e1d040",
+        '4': "#b04540",
+        '5': '#b04540'
+    };
+
+    const statusSymbol = {
+        '1': '✪',
+        '2': '✔',
+        '3': '♻',
+        '4': '✖',
+        '5': '✖'
+    };
+
     if (!isServer) {
-        console.groupCollapsed(` ⟡ - Nuxoblivius /  ${isAsyncBehaviour ? "[Hydrating] Request" : "Request"} : ${options.method ?? "GET"} ${url}`);
+        const statusType = `${response._meta.code}`[0];
+
+        console.groupCollapsed(`%c ⟡ - Nuxoblivius %c Request %c ${statusSymbol[statusType]} ${response._meta.code} %c ${options.method ?? "GET"} ${url}`, `
+        font-weight: bold;
+            background: #78be7e;
+            color: black;
+            border-radius: 3px;
+        `, `
+        font-weight: bold;
+            background: #008f99;
+            color: black;
+            margin-left: 5px;
+            border-radius: 3px;
+        `, `
+        font-weight: bold;
+            background: ${statusColor[statusType]};
+            color: black;
+            margin-left: 5px;
+            border-radius: 3px;
+        `);
         console.table({
             url: url,
             options: JSON.stringify(options),
