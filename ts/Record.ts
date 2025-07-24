@@ -1336,7 +1336,7 @@ export default class Record {
                 endRequest(result)
 
                 if (this._onEnd)
-                    this._onEnd(result, { fromCache: true, oldResponse })
+                    await this._onEnd(result, { fromCache: true, oldResponse })
 
                 return result
             }
@@ -1426,7 +1426,7 @@ export default class Record {
 
         // Call finsih handler
         if (this._onEnd)
-            this._onEnd(fetchResult.data, { fromCache: false, oldResponse })
+            await this._onEnd(fetchResult.data, { fromCache: false, oldResponse })
 
         return fetchResult.data
     }
