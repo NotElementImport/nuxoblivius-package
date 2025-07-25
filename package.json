@@ -6,7 +6,7 @@
     "build:nuxoblivius": "npx tsc -p ./tsconfig.json",
     "test:nuxoblivius": "node ./nuxoblivius/dist/test.js --esm",
     "package:link": "cd ./nuxoblivius && npm link && cd ..",
-    "test:vite": "cd ./demo/vite/ && npm ci && npm link nuxoblivius && npx vitest run && cd ../..",
+    "test:vite": "cd ./demo/vite/ && npm link nuxoblivius && npx vitest run && cd ../..",
     "test": "npm run test:nuxoblivius && npm run test:vite",
     "start": "npm run build:nuxoblivius && npm run package:link && npm test",
     "postinstall": "cd ./demo/vite && npm ci && cd ../.."

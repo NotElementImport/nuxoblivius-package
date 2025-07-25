@@ -1,10 +1,3 @@
-export interface IHttpResponse {
-  url: string;
-  status: number;
-  headers: Record<string, string>;
-  body: unknown;
-};
-
 export type IHttpMethods = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export interface IHttpRequest {
@@ -15,5 +8,5 @@ export interface IHttpRequest {
 };
 
 export interface IHttpClient {
-  send(request: IHttpRequest): Promise<IHttpResponse>;
+  send(request: IHttpRequest): Promise<Response>;
 };
