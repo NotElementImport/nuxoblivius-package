@@ -4,4 +4,5 @@ export interface IStorage {
   entries(): Iterator<[string, any], void, unknown>;
   delete(name: string): void;
   count(): number;
+  clear(): void;
 };

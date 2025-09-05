@@ -5,7 +5,7 @@ export class FetchAPIClient implements IHttpClient {
     return fetch(request.url, {
       body: request.body,
       method: request.method,
-      headers: request.headers
+      headers: request.headers,
     });
   }
 }

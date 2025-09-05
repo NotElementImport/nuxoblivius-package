@@ -1,4 +1,5 @@
 import { IStorage } from "../../domain/interface/IStorage.js";
+import { CacheRecord } from "../../domain/valueObject/CacheRecord.js";
 
 export class SessionStorage implements IStorage {
   private cells: Record<string, any> = {};
@@ -26,23 +27,31 @@ export class SessionStorage implements IStorage {
 
   public write(name: string, value: any): void {
     this.tryParse();
-    this.cells[name] = value;
+    this.cells[name] = `${value}`;
     this.trySave();
   }
 
   public read(name: string) {
     this.tryParse();
-    return this.cells[name];
+    return CacheRecord.fromJson(this.cells[name]);
   }
 
   public *entries(): Iterator<[string, any], void, unknown> {
     this.tryParse();
-    return Object.entries(this.cells) as any;
+
+    for (const key of Object.keys(this.cells)) {
+      yield [key, this.read(key)];
+    }
   }
 
   public delete(name: string) {
     this.tryParse();
     delete this.cells[name];
+    this.trySave();
+  }
+
+  public clear(): void {
+    this.cells = {};
     this.trySave();
   }
 };

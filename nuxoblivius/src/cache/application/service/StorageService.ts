@@ -22,4 +22,12 @@ export class StorageService {
       yield item;
     }
   }
+
+  public delete(name: string): void {
+    this.storage.delete(name);
+  }
+
+  public clear(): void {
+    this.storage.clear();
+  }
 };

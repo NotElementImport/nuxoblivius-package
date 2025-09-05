@@ -49,8 +49,20 @@ export class BaseParams<T extends BaseParams<any> = BaseParams<any>> {
     return this.get(name) != null;
   }
 
+  public delete(name: string): void {
+    this.set(name, null);
+  }
+
   public link(other: T): this {
     this._links.push(other);
+    return this;
+  }
+
+  public merge(other: T): this {
+    for (const [otherKeyItem, otherValueItem] of other.entries()) {
+      this.set(otherKeyItem, otherValueItem);
+    }
+
     return this;
   }
 
@@ -58,6 +70,10 @@ export class BaseParams<T extends BaseParams<any> = BaseParams<any>> {
     for (const key of this.keys()) {
       yield [key, this.get(key)] as [string, unknown];
     }
+  }
+
+  public get length() {
+    return Array.from(this.keys()).length;
   }
 
   public keys() {
@@ -80,5 +96,29 @@ export class BaseParams<T extends BaseParams<any> = BaseParams<any>> {
     for (const key of this.keys()) {
       yield this.get(key);
     }
+  }
+
+  public toObject(): object {
+    const filteredData = Array.from(this.entries())
+      .filter(([_, value]) => value != null);
+
+    return Object.fromEntries(filteredData);
+  }
+
+  public compare(other: T): boolean {
+    if (this.length != other.length) {
+      return false;
+    }
+
+    for (const keyValue of this.keys()) {
+      const a = this.get(keyValue);
+      const b = other.get(keyValue);
+
+      if (a != b) {
+        return false;
+      }
+    }
+
+    return true;
   }
 };

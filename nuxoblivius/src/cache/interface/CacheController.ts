@@ -74,4 +74,9 @@ export class CacheController {
   public async readAllAsync(query: CacheQuery): Promise<CacheRecord[]> {
     return this.readAll(query);
   }
+
+  public clear(): void {
+    this.cacheRules.audit(this.storage);
+    this.storage.clear();
+  }
 };

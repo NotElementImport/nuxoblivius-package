@@ -1,78 +1,84 @@
 interface HttpResponseBodySafe extends HttpResponse {
-  getBody<T = unknown>(): T;
+  getData<T = unknown>(): T;
 };
 
-interface HttpResponseErrorSafe extends HttpResponse {
-  getError(): Error;
+interface HttpResponseBodyError extends HttpResponse {
+  getData<T = Error>(): T;
+};
+
+interface HttpResponseConfig {
+  headers: Headers;
+  status: number;
+  body?: unknown | Error;
+  dataTransfer?: Record<string, unknown>;
 };
 
 export class HttpResponse {
-  private readonly _hrefAsUrl: URL;
-  private _isOkComputed: boolean;
-  private _error: Error;
-  private _dataTransfer: Record<string, unknown>;
+  private readonly _isOkComputed: boolean;
+  private readonly _error: Error;
 
   public constructor(
-    href: string,
-    private readonly _headers: Headers,
-    private _body: unknown,
-    private readonly _status: number,
-    private readonly _isOk: boolean,
+    private readonly _config: Readonly<HttpResponseConfig>
   ) {
-    this._hrefAsUrl = new URL(href);
-    this._isOkComputed = this._isOk;
-  }
+    if (this._config.body instanceof Error) {
+      this._error = this._config.body;
+    }
 
-  public getUrl(): URL {
-    return this._hrefAsUrl;
+    const statusFirstNum = +`${this._config.status}`[0];
+    const isStatusError = !(statusFirstNum == 2 || statusFirstNum == 3);
+
+    // @ts-ignore
+    if (isStatusError && typeof this._config.body === "object" && this._config.body.message) {
+      // @ts-ignore
+      this._error = new Error(this._config.body.message);
+    }
+
+    this._isOkComputed = !isStatusError || (this._error == null);
   }
 
   public getHeaders(): Headers {
-    return this._headers;
-  }
-
-  public hasBody(): this is HttpResponseBodySafe {
-    return this._body != null;
-  }
-
-  public getBody<T extends unknown>(): T | undefined {
-    return this._body as T;
-  }
-
-  public setBody(body: unknown): void {
-    this._body = body;
-  }
-
-  public getStatus(): number {
-    return this._status;
-  }
-
-  public addDataToTransfer(name: string, value: unknown): void {
-    this._dataTransfer[name] = value;
-  }
-
-  public getDataFromTransfer<T>(name: string, defaultValue: T = null as T): T {
-    return this._dataTransfer[name] ?? defaultValue as any;
-  }
-
-  public getAllDataFromTransfer() {
-    return this._dataTransfer;
-  }
-
-  public setError(error: Error) {
-    this._isOkComputed = false;
-    this._error = error;
-  }
-
-  public getError(): Error | undefined {
-    return this._error ?? new Error(this._body as any);
-  }
-
-  public hasError(): this is HttpResponseErrorSafe {
-    return this._error != null;
+    return this._config.headers;
   }
 
   public isOk(): boolean {
-    return this._isOk == true && this._isOkComputed == true;
+    return this._isOkComputed;
+  }
+
+  public isNotOk(): this is HttpResponseBodyError {
+    return !this.isOk();
+  }
+
+  public hasData(): this is HttpResponseBodySafe {
+    return this._config.body != null;
+  }
+
+  public getData<T = unknown>(): T | undefined {
+    return this._error as any || this._config.body;
+  }
+
+  public getStatus(): number {
+    return this._config.status;
+  }
+
+  public getValueFromTransfer<T = unknown>(name: string, defaultValue: T): T {
+    return (this._config.dataTransfer?.[name] as T) ?? defaultValue;
+  }
+
+  public extend(value: Partial<HttpResponseConfig> | ((oldValue: HttpResponseConfig) => HttpResponseConfig)) {
+    const duplicateConfig: HttpResponseConfig = {
+      body: this._config.body,
+      dataTransfer: { ...this._config.dataTransfer },
+      headers: new Headers(this._config.headers),
+      status: this._config.status
+    };
+
+    if (typeof value === "function") {
+      return new HttpResponse(value(duplicateConfig));
+    }
+
+    return new HttpResponse({
+      ...duplicateConfig,
+      ...value
+    });
   }
 };

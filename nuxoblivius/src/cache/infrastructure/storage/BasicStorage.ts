@@ -24,4 +24,8 @@ export class BasicStorage implements IStorage {
   public delete(name: string) {
     this.storage.delete(name);
   }
+
+  public clear(): void {
+    this.storage.clear();
+  }
 };

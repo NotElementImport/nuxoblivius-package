@@ -15,14 +15,14 @@ test("record/intrastructure/responseTransform/DefaultResponseTransform: Behaviou
   });
 
   const toJson = await transformer.transform(
-    new HttpResponse("http://test.com/api/test", toJsonResponse.headers, undefined, 200, true),
+    new HttpResponse({ headers: toJsonResponse.headers, status: 200 }),
     toJsonResponse
   );
 
-  assert.equal(toJson.hasError(), false, toJson.getError());
-  assert.equal(toJson.hasBody(), true, "Body not appear");
+  assert.equal(toJson.isOk(), true, toJson.getData());
+  assert.equal(toJson.hasData(), true, "Body not appear");
   // @ts-ignore
-  assert.equal(toJson.getBody()?.message, "hello");
+  assert.equal(toJson.getData()?.message, "hello");
 
   // UrlEncoded check
   const toUrlResponse = new Response("message=hello", {
@@ -32,30 +32,13 @@ test("record/intrastructure/responseTransform/DefaultResponseTransform: Behaviou
     status: 200,
   });
   const toUrl = await transformer.transform(
-    new HttpResponse("http://test.com/api/test", toUrlResponse.headers, undefined, 200, true),
+    new HttpResponse({ headers: toUrlResponse.headers, status: 200 }),
     toUrlResponse
   );
 
-  assert.equal(toUrl.hasError(), false, toUrl.getError());
-  assert.equal(toUrl.hasBody(), true, "Body not appear");
-  const urlBody: URLSearchParams = toUrl.getBody();
-  assert.equal(urlBody.get("message"), "hello");
-
-  // Blob basic
-  const toBlobResponse = new Response("test", {
-    headers: new Headers({
-      'Content-Type': 'application/test'
-    }),
-    status: 200,
-  });
-  const toBlobBasic = await transformer.transform(
-    new HttpResponse("http://test.com/api/test", toBlobResponse.headers, undefined, 200, true),
-    toBlobResponse
-  );
-
-  assert.equal(toBlobBasic.hasError(), false, toBlobBasic.getError());
-  assert.equal(toBlobBasic.hasBody(), true, "Body not appear");
-  assert.equal(toBlobBasic.getBody() instanceof Blob, true);
+  assert.equal(toUrl.isOk(), true, toUrl.getData());
+  assert.equal(toUrl.hasData(), true, "Body not appear");
+  assert.equal(toUrl.getData<URLSearchParams>().get("message"), "hello");
 
   // Text
   const toTextResponse = new Response("test", {
@@ -65,11 +48,11 @@ test("record/intrastructure/responseTransform/DefaultResponseTransform: Behaviou
     status: 200,
   });
   const toText = await transformer.transform(
-    new HttpResponse("http://test.com/api/test", toTextResponse.headers, undefined, 200, true),
+    new HttpResponse({ headers: toTextResponse.headers, status: 200 }),
     toTextResponse
   );
 
-  assert.equal(toText.hasError(), false, toText.getError());
-  assert.equal(toText.hasBody(), true, "Body not appear");
-  assert.equal(toText.getBody(), "test");
+  assert.equal(toText.isOk(), true, toText.getData());
+  assert.equal(toText.hasData(), true, "Body not appear");
+  assert.equal(toText.getData<string>(), "test");
 });

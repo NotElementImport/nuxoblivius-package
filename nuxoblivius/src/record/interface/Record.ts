@@ -1,89 +1,110 @@
+import { RecordModuleTransformers } from "../application/transformers/RecordModuleTransformers.js";
 import { RequestTransformers } from "../application/transformers/RequestTransformers.js";
 import { ResponseTransformers } from "../application/transformers/ResponseTransformers.js";
 import { UrlTransformers } from "../application/transformers/UrlTransformers.js";
 import { FetchUseCase } from "../application/useCase/FetchUseCase.js";
 import { IHttpRequest } from "../domain/interface/IHttpClient.js";
+import { HttpResponse } from "../domain/valueObject/HttpResponse.js";
 import { PathParams } from "../domain/valueObject/PathParams.js";
+import { QueryParams } from "../domain/valueObject/QueryParams.js";
 import { FetchAPIClient } from "../infrastructure/httpClient/FetchAPIClient.js";
 import { DefaultRequestTransform } from "../infrastructure/requestTransform/DefaultRequestTransform.js";
 import { DefaultResponseTransform } from "../infrastructure/responseTransform/DefaultResponseTransform.js";
 import { DefaultUrlTransform } from "../infrastructure/urlTransform/DefaultUrlTransform.js";
 
 export interface IRecordConfig {
-  requestTransformer?: RequestTransformers,
-  responseTransformer?: ResponseTransformers,
-  urlTransformers?: UrlTransformers,
+  requestTransformer?: RequestTransformers;
+  responseTransformer?: ResponseTransformers;
+  modules: RecordModuleTransformers;
+  urlTransformers?: UrlTransformers;
+  queryParams?: QueryParams;
+  pathParams?: PathParams;
 };
 
 export class Record {
-  private fetchUseCase: FetchUseCase;
-  private readonly requestTransformers: RequestTransformers;
-  private readonly responseTransformers: ResponseTransformers;
-  private readonly urlTransformers: UrlTransformers;
+  private _fetchUseCase: FetchUseCase;
+  private readonly _urlTransformers: UrlTransformers;
+  private readonly _queryParams: QueryParams;
+  private readonly _pathParams: PathParams;
 
-  public constructor(private url: string, config?: IRecordConfig) {
-    this.requestTransformers = config?.requestTransformer ?? new RequestTransformers([]);
-    this.responseTransformers = config?.responseTransformer ?? new ResponseTransformers([]);
-    this.urlTransformers = config?.urlTransformers ?? new UrlTransformers([]);
+  public constructor(private _url: string, config?: IRecordConfig) {
+    const requestTransformers = config?.requestTransformer ?? new RequestTransformers([]);
+    const responseTransformers = config?.responseTransformer ?? new ResponseTransformers([]);
+    const recordModuleTransformers = config?.modules ?? new RecordModuleTransformers([]);
 
-    this.requestTransformers.getList().unshift(
+    this._urlTransformers = config?.urlTransformers ?? new UrlTransformers([]);
+    this._queryParams = config?.queryParams ?? new QueryParams({});
+    this._pathParams = config?.pathParams ?? new PathParams({});
+
+    requestTransformers.getList().unshift(
       new DefaultRequestTransform()
     );
 
-    this.responseTransformers.getList().unshift(
+    responseTransformers.getList().unshift(
       new DefaultResponseTransform()
     );
 
-    this.urlTransformers.getList().push(
+    this._urlTransformers.getList().push(
       new DefaultUrlTransform()
     );
 
-    this.fetchUseCase = new FetchUseCase(
+    this._fetchUseCase = new FetchUseCase(
       new FetchAPIClient(),
-      this.requestTransformers,
-      this.responseTransformers
+      recordModuleTransformers,
+      requestTransformers,
+      responseTransformers
     );
   }
 
-  private createRequestInit(): IHttpRequest {
+  private createRequestInit() {
     return {
-      url: this.urlTransformers.transform(this.url, new PathParams({})),
-      method: "GET"
-    };
+      url: this._urlTransformers.transform(
+        this._url,
+        this._pathParams,
+        this._queryParams
+      ),
+    } as IHttpRequest;
+  }
+
+  private generateContext() {
+    return {
+      pathParams: this._pathParams,
+      queryParams: this._queryParams
+    }
   }
 
   public async get() {
-    return this.fetchUseCase.send({
+    return this._fetchUseCase.send({
       ...this.createRequestInit(),
       method: "GET"
-    });
+    }, this.generateContext());
   }
 
   public post() {
-    return this.fetchUseCase.send({
+    return this._fetchUseCase.send({
       ...this.createRequestInit(),
       method: "POST"
-    });
+    }, this.generateContext());
   }
 
   public put() {
-    return this.fetchUseCase.send({
+    return this._fetchUseCase.send({
       ...this.createRequestInit(),
       method: "PUT"
-    });
+    }, this.generateContext());
   }
 
   public patch() {
-    return this.fetchUseCase.send({
+    return this._fetchUseCase.send({
       ...this.createRequestInit(),
       method: "PATCH"
-    });
+    }, this.generateContext());
   }
 
   public delete() {
-    return this.fetchUseCase.send({
+    return this._fetchUseCase.send({
       ...this.createRequestInit(),
       method: "DELETE"
-    });
+    }, this.generateContext());
   }
 };
