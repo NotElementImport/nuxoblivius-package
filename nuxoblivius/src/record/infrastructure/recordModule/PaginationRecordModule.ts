@@ -1,6 +1,5 @@
-import type { IPaginationType } from "../../../pagination/domain/interface/IPagination";
-import type { IBeforeRequestType, IRecordModule, IRecordModuleRequestContext, IRecordModuleResponseContext } from "../../domain/interface/IRecordModule";
-import type { HttpResponse } from "../../domain/valueObject/HttpResponse";
+import type { IPaginationType } from "../../../pagination/domain/interface/IPagination.js";
+import type { IBeforeRequestType, IRecordModule, IRecordModuleRequestContext, IRecordModuleResponseContext } from "../../domain/interface/IRecordModule.js";
 
 interface IPaginationRecordModuleConfig<T> {
   readonly paginator: IPaginationType<T>;
@@ -20,7 +19,9 @@ export class PaginationRecordModule<T> implements IRecordModule {
     private readonly _config: IPaginationRecordModuleConfig<T> & IPartialPaginationRecordModuleConfig
   ) { }
 
-  public onSetup(): void { }
+  public onSetup(): void {
+    this._config.paginator.toFirst({ noEmit: true });
+  }
 
   public beforeRequest(context: IRecordModuleRequestContext): IBeforeRequestType {
     // Reset pagination when request:
@@ -28,12 +29,15 @@ export class PaginationRecordModule<T> implements IRecordModule {
       this._config.paginator.toFirst({ noEmit: true });
     }
 
+    // Getting query names:
     const queryPageName = this._config.pageName ?? "page";
     const queryPerPageName = this._config.perPageName ?? "per-page";
 
+    // Check is pagination enabled
     const isEnabled = this._config.enableWhen?.(context) ?? true;
 
     if (isEnabled) {
+      // Push to query
       context.queryParams.set(
         queryPageName,
         this._config.paginator.getCurrent()
@@ -49,6 +53,7 @@ export class PaginationRecordModule<T> implements IRecordModule {
       }
     }
     else {
+      // Remove if pagination disabled
       context.queryParams.delete(queryPageName);
       context.queryParams.delete(queryPerPageName);
     }

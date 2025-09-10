@@ -5,6 +5,7 @@ import { CacheQuery } from "../../../cache/domain/valueObject/CacheQuery.js"
 import { QueryParams } from "../../domain/valueObject/QueryParams.js";
 import { PathParams } from "../../domain/valueObject/PathParams.js";
 import { CacheRecord } from "../../../cache/domain/valueObject/CacheRecord.js";
+import { BasicStorage } from "../../../cache/infrastructure/storage/BasicStorage.js";
 
 interface ICacheRecordModuleConfig {
   builderCacheQuery?: (context: IRecordModuleRequestContext) => CacheQuery;
@@ -18,10 +19,19 @@ export class CacheRecordModule implements IRecordModule {
   ) { }
 
   public onSetup(): void {
-    this._cacheController = new CacheController();
+    // Setup cache
+    this._cacheController = new CacheController({
+      storage: BasicStorage,
+    });
   }
 
   public beforeRequest(context: IRecordModuleRequestContext): IBeforeRequestType {
+    // Search only GET requests:
+    if (context.options.method !== "GET") {
+      return;
+    }
+
+    // Generate cache query:
     const cacheQuery = this._config.builderCacheQuery
       ? this._config.builderCacheQuery(context)
       : new CacheQuery({
@@ -34,10 +44,12 @@ export class CacheRecordModule implements IRecordModule {
         )
       });
 
+    // Check query in Storage
     const existInCache = this._cacheController.read(
       cacheQuery
     );
 
+    // If found return it
     if (existInCache) {
       return new HttpResponse({
         headers: existInCache.getHeaders(),
@@ -49,6 +61,7 @@ export class CacheRecordModule implements IRecordModule {
 
   public afterRequest(context: IRecordModuleResponseContext): void | IRecordModuleResponseContext {
     if (context.response.isOk()) {
+      // If request is OK, save the response.
       this._cacheController.write(new CacheRecord({
         url: context.url,
         body: context.response.getData(),

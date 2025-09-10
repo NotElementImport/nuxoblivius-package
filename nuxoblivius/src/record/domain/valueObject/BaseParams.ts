@@ -121,4 +121,9 @@ export class BaseParams<T extends BaseParams<any> = BaseParams<any>> {
 
     return true;
   }
+
+  public clone(): T {
+    const clonedList = this.toObject();
+    return new (this.constructor as new (list: any) => T)(clonedList);
+  }
 };
