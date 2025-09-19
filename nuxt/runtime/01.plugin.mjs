@@ -80,32 +80,41 @@ const useTrackFetch = async (isHydrate, key, url, options, isBlob) => {
     };
 
     if (!isServer) {
-        const statusType = `${response._meta.code}`[0];
+        var tempResponse = response;
 
-        console.groupCollapsed(`%c ⟡ - Nuxoblivius %c Request %c ${statusSymbol[statusType]} ${response._meta.code} %c ${options.method ?? "GET"} ${url}`, `
-        font-weight: bold;
-            background: #78be7e;
-            color: black;
-            border-radius: 3px;
-        `, `
-        font-weight: bold;
-            background: #008f99;
-            color: black;
-            margin-left: 5px;
-            border-radius: 3px;
-        `, `
-        font-weight: bold;
-            background: ${statusColor[statusType]};
-            color: black;
-            margin-left: 5px;
-            border-radius: 3px;
-        `);
-        console.table({
-            url: url,
-            options: JSON.stringify(options),
-        })
-        console.log(` ⟡ - Response:`, response);
-        console.groupEnd();
+        if (typeof response === "string") {
+            tempResponse = JSON.parse(response);
+        }
+
+        if (tempResponse._meta) {
+            const statusType = `${tempResponse._meta.code}`[0];
+            const status = tempResponse._meta.code;
+
+            console.groupCollapsed(`%c ⟡ - Nuxoblivius %c Request %c ${statusSymbol[statusType]} ${status} %c ${options.method ?? "GET"} ${url}`, `
+            font-weight: bold;
+                background: #78be7e;
+                color: black;
+                border-radius: 3px;
+            `, `
+            font-weight: bold;
+                background: #008f99;
+                color: black;
+                margin-left: 5px;
+                border-radius: 3px;
+            `, `
+            font-weight: bold;
+                background: ${statusColor[statusType]};
+                color: black;
+                margin-left: 5px;
+                border-radius: 3px;
+            `);
+            console.table({
+                url: url,
+                options: JSON.stringify(options),
+            })
+            console.log(` ⟡ - Response:`, response);
+            console.groupEnd();
+        }
     }
 
     return response;
