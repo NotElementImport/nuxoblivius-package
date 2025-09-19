@@ -17,7 +17,7 @@ interface StoreRef<T> {
     clearWatching(startWith?: string)
 }
 
-type ExtractFrom<T, K extends PropertyKey> = T[K] 
+type ExtractFrom<T, K extends PropertyKey> = T[K]
 
 type Parametr<T extends any> = (() => T) | T
 type BodyParametr<T extends any> = Parametr<T> & FormData
@@ -40,7 +40,7 @@ type TemplateHandler<T extends any, R extends any> = (raw: T) => TemplateStruct<
 // Tags Interfaces:
 type RuleCallback<P, Q> = (method: { path: Dict<P, any>, query: Q }) => boolean
 
-type TagsCondition<Tags, Value extends any> = Dict<keyof Tags, '*'|'<>'|null|Value>
+type TagsCondition<Tags, Value extends any> = Dict<keyof Tags, '*' | '<>' | null | Value>
 
 /** JS Class Definition Store */
 export declare function defineStore<T>(store: { new(): T }): CompiledStore<T>
@@ -51,52 +51,62 @@ export declare function defineStore<T>(store: { new(): T }): CompiledStore<T>
 export declare function defineStore<T>(store: () => T): CompiledStore<T>
 
 /** JS Class Definition Store */
-export declare function subStore<T>(store: { new(): T }): CompiledStore<T>
+export declare function subStore<T, K extends any[]>(store: { new(...args: K): T }, ...args: K): CompiledStore<T>
 /** 
  * JS Object 
  * @deprecated 
 */
 export declare function subStore<T>(store: () => T): CompiledStore<T>
 
-export declare abstract class IStore<T> { 
-    public get ref(): StoreMeta<T> 
-    protected onMounted(): void 
-    protected onUnmounted(): void 
+/**
+ * Define factory to store
+ */
+export declare function defineFactory<T, K extends any[]>(store: new (...args: K) => T): (...args: K) => CompiledStore<T>;
+
+/**
+ * Define singleton store
+ */
+export declare function defineSingleton<T>(store: new () => T): CompiledStore<T>;
+
+export declare abstract class IStore<T> {
+    public get ref(): StoreMeta<T>
+    protected onMounted(): void
+    protected onUnmounted(): void
 }
 
 export declare function later(callback: () => any): Promise<any>
 
 type PathParam<PParams> = `path:${PParams}`
 type QueryParam<QParams> = `query:${QParams}`
-type StoreParams<PathParams, QueryParams> = PathParam<PathParams>|QueryParam<QueryParams>
+type StoreParams<PathParams, QueryParams> = PathParam<PathParams> | QueryParam<QueryParams>
 type FakeReactiveFunc<T extends any> = () => T
 type Dict<T extends PropertyKey, V extends any> = { [P in T]?: V; }
-type PipelineValues = (PropertyKey)|number|boolean|null|keyof {'*': string}
+type PipelineValues = (PropertyKey) | number | boolean | null | keyof { '*': string }
 
 type ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
-    =   Record<ReturnType, PathParams, QueryParams, KeepByInfo, {}, Protocol>
-        & {
-            url(path: string): ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
-            enableBorrow(value: boolean): ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
-            prepare(rule: Dict<keyof KeepByInfo, '*'|null>, behaviour?: () => boolean): ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
-        }
+    = Record<ReturnType, PathParams, QueryParams, KeepByInfo, {}, Protocol>
+    & {
+        url(path: string): ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
+        enableBorrow(value: boolean): ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
+        prepare(rule: Dict<keyof KeepByInfo, '*' | null>, behaviour?: () => boolean): ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
+    }
 
 export interface ISetupConfig {
-    headers?:     {[name: string]: any}
-    body?:        any
-    pathParams?:  {[name: string]: any}
-    query?:       any
-    borrow?:      [ParamsTags, () => any, (iter: any) => any][]
-    rule?:        [ParamsTags, (record: Record) => void][]
+    headers?: { [name: string]: any }
+    body?: any
+    pathParams?: { [name: string]: any }
+    query?: any
+    borrow?: [ParamsTags, () => any, (iter: any) => any][]
+    rule?: [ParamsTags, (record: Record) => void][]
     defaultRule?: (record: Record) => void
-    swapMethod?:  'hot'|'lazy'|'greedy'
-    pagination?:       [string, boolean, boolean]
+    swapMethod?: 'hot' | 'lazy' | 'greedy'
+    pagination?: [string, boolean, boolean]
     oneRequestAtTime?: boolean
-    onlyOnEmpty?:      boolean
-    appendsResponse?:  boolean
+    onlyOnEmpty?: boolean
+    appendsResponse?: boolean
 }
 
-type SetupObject = ISetupConfig|((item: Record<{}, {}, {}, {}, {}, {}>) => void)
+type SetupObject = ISetupConfig | ((item: Record<{}, {}, {}, {}, {}, {}>) => void)
 
 /**
  * `⚡ Fetch Client`
@@ -111,7 +121,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * @param url Path to api
      * @param defaultValue Init response value
      */
-    public static new<T>(url: string, defaultValue?: T): Record<T, 'id', {}, {'id': 'path'}, {}, ''>
+    public static new<T>(url: string, defaultValue?: T): Record<T, 'id', {}, { 'id': 'path' }, {}, ''>
 
     /**
      * `⚙️ Creating new Record object`
@@ -122,7 +132,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * @param conf Path to api and config
      * @param defaultValue Init response value
      */
-    public static ff<T>(url: string, defaultValue?: T): Record<T, 'id', {}, {'id': 'path'}, {}, ''>
+    public static ff<T>(url: string, defaultValue?: T): Record<T, 'id', {}, { 'id': 'path' }, {}, ''>
 
     /**
      * `🧰 Utils`\
@@ -150,8 +160,8 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * ```
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#path-params See more about Path Params in docs}
      */
-    public pathParam<E extends PropertyKey>(name: E|PathParams, value: Parametr<any>): Record<ReturnType, PathParams | E, QueryParams, KeepByInfo, Extends, Protocol>
-    
+    public pathParam<E extends PropertyKey>(name: E | PathParams, value: Parametr<any>): Record<ReturnType, PathParams | E, QueryParams, KeepByInfo, Extends, Protocol>
+
     /**
      * `⚙️ Configuration`
      * 
@@ -196,8 +206,8 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * ```
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#query See more about Query in docs}
      */
-    public query<E extends Dict<PropertyKey, any>|QueryParams>(query: Parametr<E>, baked?:boolean): Record<ReturnType, PathParams, QueryParams & UnpackParametr<E>, KeepByInfo, Extends, Protocol>
-    
+    public query<E extends Dict<PropertyKey, any> | QueryParams>(query: Parametr<E>, baked?: boolean): Record<ReturnType, PathParams, QueryParams & UnpackParametr<E>, KeepByInfo, Extends, Protocol>
+
     /**
      * `⚙️ Configuration`
      * 
@@ -218,7 +228,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * ```
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#headers See more about Headers in docs}
      */
-    public header<K extends PropertyKey>(name: keyof IHeaderAttribute|K, value: Parametr<any>): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public header<K extends PropertyKey>(name: keyof IHeaderAttribute | K, value: Parametr<any>): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`
@@ -248,7 +258,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * 
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#authorization See more about Authorization in docs}
      */
-    public auth(data: string|FakeReactiveFunc): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public auth(data: string | FakeReactiveFunc): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`\
@@ -256,7 +266,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * 
      * Reloading request if object change
      */
-    public reloadBy(object: FakeReactiveFunc|object): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public reloadBy(object: FakeReactiveFunc | object): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`
@@ -302,10 +312,10 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * })
      * ```
      */
-    public createTag<K extends PropertyKey, Q extends 'path'>(field: `${Q}:${PathParams|K}`, method?: 'simply'|'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
-    public createTag<K extends PropertyKey, Q extends 'query'>(field: `${Q}:${keyof QueryParams|K}`, method?: 'simply'|'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
-    public createTag(field: `path:`|`query:`, method?: 'simply'|'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
-    
+    public createTag<K extends PropertyKey, Q extends 'path'>(field: `${Q}:${PathParams | K}`, method?: 'simply' | 'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
+    public createTag<K extends PropertyKey, Q extends 'query'>(field: `${Q}:${keyof QueryParams | K}`, method?: 'simply' | 'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
+    public createTag(field: `path:` | `query:`, method?: 'simply' | 'full'): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
+
     /**
      * `🧰 Utils`
      * 
@@ -336,7 +346,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * `🧰 Utils`
      * 
      * Remove all cached data from memory
-     */ 
+     */
     public deleteAllCache(): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<K, Q>, Extends, Protocol>
 
     /**
@@ -365,7 +375,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * ```
      */
     public then(handle: () => void): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
-    
+
     /**
      * `⚙️ Configuration`\
      * `⚡ SPA frendly`\
@@ -394,10 +404,10 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * ```
      */
     public borrowFrom<T extends Dict<string, any>>(
-            logic: Dict<keyof KeepByInfo, PipelineValues>|RuleCallback<PathParam, QueryParam>, 
-            another: (() => T),
-            as: (value: T[number]) => ReturnType
-        ): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+        logic: Dict<keyof KeepByInfo, PipelineValues> | RuleCallback<PathParam, QueryParam>,
+        another: (() => T),
+        as: (value: T[number]) => ReturnType
+    ): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     // /**
     //  * `⚙️ Configuration`\
@@ -437,8 +447,8 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * ```
      */
     public rule<Value>(
-        rule: TagsCondition<KeepByInfo, Value>|RuleCallback<PathParam, QueryParam>,
-        behaviour: (record: 
+        rule: TagsCondition<KeepByInfo, Value> | RuleCallback<PathParam, QueryParam>,
+        behaviour: (record:
             ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
         ) => void
     ): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
@@ -465,7 +475,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * ```
      */
     public defaultRule(
-        behaviour: (record: 
+        behaviour: (record:
             ExpandedRecord<ReturnType, PathParams, QueryParams, KeepByInfo, Protocol>
         ) => void
     ): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
@@ -487,7 +497,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * 
      * @param enabled `default: true` — Enable checking, or disable
      */
-    public onlyOnEmpty(enabled?:boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public onlyOnEmpty(enabled?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`\
@@ -500,7 +510,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * * `lazy`     - Clear if borrow not Return data
      * * `hot`       - Swap only at end
      */
-    public swapMethod(options: "lazy"|"greedy"|"hot"): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public swapMethod(options: "lazy" | "greedy" | "hot"): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`\
@@ -528,7 +538,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * ```
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/template.html See more about Record Template in docs}
      */
-    public template(template: string|TemplateFunction): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public template(template: string | TemplateFunction): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `🧰 Utils`
@@ -557,14 +567,14 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      *
      * Reset some settings `without affect`
      */
-    public reset(config: { pagination: boolean, response: boolean|object, query: boolean }): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public reset(config: { pagination: boolean, response: boolean | object, query: boolean }): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`
      * 
      * Hook on fail
      */
-    public onFailure(method: (reason: {text: string, code: number, response: any}, retry: () => Promise<any>) => any): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public onFailure(method: (reason: { text: string, code: number, response: any }, retry: () => Promise<any>) => any): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`
@@ -617,7 +627,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * 
      * @param body analog .body(some_value)
      */
-    public async post(body?: FormData|{[key: string]: any}|FakeReactiveFunc|null): Promise<ReturnType>
+    public async post(body?: FormData | { [key: string]: any } | FakeReactiveFunc | null): Promise<ReturnType>
 
     /**
      * `📤 Call Request`\
@@ -627,7 +637,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * 
      * @param body analog .body(some_value)
      */
-    public async put(body?: FormData|{[key: string]: any}|FakeReactiveFunc|null): Promise<ReturnType>
+    public async put(body?: FormData | { [key: string]: any } | FakeReactiveFunc | null): Promise<ReturnType>
 
     /**
      * `📤 Call Request`\
@@ -677,10 +687,10 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
          * Init pagination in query
          * @param how setting in query or in path. Example path: 'path:id', and paste in pathParam `id` paginate value
          */
-        setup<P extends PropertyKey, Q extends 'path'>(how: `${Q}:${PathParams|P}`, enabledByDefault?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
-        setup<P extends PropertyKey, Q extends 'query'>(how: `${Q}:${keyof QueryParams|P}`, enabledByDefault?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
-        setup(how: `path:`|`query:`, enabledByDefault?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
-        
+        setup<P extends PropertyKey, Q extends 'path'>(how: `${Q}:${PathParams | P}`, enabledByDefault?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+        setup<P extends PropertyKey, Q extends 'query'>(how: `${Q}:${keyof QueryParams | P}`, enabledByDefault?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+        setup(how: `path:` | `query:`, enabledByDefault?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+
         /**
          * `🔧 Property`
          * 
@@ -723,14 +733,14 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
          * Move pagintaion next
          */
         next(): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
-        
+
         /**
          * `⬅️ Move to prev page`
          * 
          * Move pagintaion prev
          */
         prev(): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
-        
+
         /**
          * `⚡ Reactive`
          * 
@@ -872,21 +882,21 @@ export declare function CallPattern<I, E>(name: string, data: I): TemplateStruct
  * 
  * Set header for all Requests
  */
-export declare function SetDefaultHeader(name: keyof IHeaderAttribute, value: (() => any)|string|Ref<any>): void
+export declare function SetDefaultHeader(name: keyof IHeaderAttribute, value: (() => any) | string | Ref<any>): void
 /**
  * `⚙️ Configuration`\
  * `🌐 Globaly affect`
  * 
  * Set default auth for all Requests
  */
-export declare function SetDefaultAuth(string: (() => any)|string|Ref<any>): void
+export declare function SetDefaultAuth(string: (() => any) | string | Ref<any>): void
 /**
  * `⚙️ Configuration`\
  * `🌐 Globaly affect`
  * 
  * Default onFailure settings for all Requests
  */
-export declare function SetRequestFailure(handle: (reason: {text: string, code: number, response: any}, retry: () => Promise<any>|undefined) => void): void
+export declare function SetRequestFailure(handle: (reason: { text: string, code: number, response: any }, retry: () => Promise<any> | undefined) => void): void
 
 /** 
  * `🧩 Vue Helper`\
@@ -894,8 +904,8 @@ export declare function SetRequestFailure(handle: (reason: {text: string, code: 
 */
 export declare function toRefRaw<T>(object: Ref<T>): T & { raw(): Ref<T> }
 
-type ISpreadObject = {[name: string]: Function}
-type ISpreadObjectOut<T extends ISpread> = {[K in keyof T]: ReturnType<T[K]> extends Promise<any> ? Awaited<ReturnType<T[K]>> : ReturnType<T[K]>} 
+type ISpreadObject = { [name: string]: Function }
+type ISpreadObjectOut<T extends ISpread> = { [K in keyof T]: ReturnType<T[K]> extends Promise<any> ? Awaited<ReturnType<T[K]>> : ReturnType<T[K]> }
 
 /** 
  * `🧩 Record Helper`\

@@ -13,13 +13,13 @@ export function forgetAllStores() {
 
 export function deleteDump() {
     const recursiveDeleteDump = (_value: any) => {
-        if(_value._variables) {
+        if (_value._variables) {
             for (const [key, _] of Object.entries(_value._variables)) {
                 _value._variables[key] = _value._defaults[key]
             }
         }
 
-        if(_value._stores) {
+        if (_value._stores) {
             for (const [_, value] of Object.entries(_value._stores)) {
                 recursiveDeleteDump(value)
             }
@@ -27,7 +27,7 @@ export function deleteDump() {
 
         for (const name of Object.getOwnPropertyNames(_value)) {
             const value = _value[name]
-            if(typeof value == 'object' && value != null && '_variables' in value && value._variables && typeof value._variables == 'object' && 'response' in value._variables) {
+            if (typeof value == 'object' && value != null && '_variables' in value && value._variables && typeof value._variables == 'object' && 'response' in value._variables) {
                 value._variables.response = null
                 value._query = {}
             }
@@ -49,22 +49,23 @@ function create_proxy(target: object, get: Function, has: Function = (t: any, p:
         },
         has(target, p) {
             return has(target, p)
-        },})
+        },
+    })
 }
 
 /**
  * Defining all properties and functions for store object
  */
-function raise(store: any) {
-    store.prototype.ref = create_proxy({}, 
-        (t: any, p: any,) => create_proxy({} , 
+function raise(store: any, ...args: any[]) {
+    store.prototype.ref = create_proxy({},
+        (t: any, p: any,) => create_proxy({},
             (subT: any, subP: any) => {
                 return instance.ref[p][subP]
-            }, 
-            () => true), 
+            },
+            () => true),
         () => true)
-    
-    const instance = new store()
+
+    const instance = new store(...args);
 
     const variables = reactive({})
 
@@ -74,7 +75,7 @@ function raise(store: any) {
         configurable: false
     })
     Object.defineProperty(instance, '_variables', { // '_variables' property
-        get() {return variables},
+        get() { return variables },
         configurable: false
     })
     Object.defineProperty(instance, '_stores', { // '_stores' property
@@ -89,7 +90,7 @@ function raise(store: any) {
         get() { // with getter
             const proxy = create_proxy(store, // where we create proxy-object for store
                 (target: any, p: any, receiver: any) => {
-                    if(p in instance) {
+                    if (p in instance) {
                         return {
                             _module_: 'EX-REF',
                             get value() {
@@ -104,12 +105,12 @@ function raise(store: any) {
                                 return (p as string)[0] == '$'
                             },
                             watch(func: Function, customKey?: string) {
-                                if(!isClient)
+                                if (!isClient)
                                     return
 
                                 const uid = customKey ?? uniqId()
 
-                                if(!(p in instance._watcher)) {
+                                if (!(p in instance._watcher)) {
                                     later(() => instance._watcher[p].set(uid, func))
                                 }
                                 else {
@@ -122,18 +123,18 @@ function raise(store: any) {
                                 return instance._watcher[p].delete(key)
                             },
                             clearWatching(startWith?: string) {
-                                if(!startWith) return instance._watcher[p].clear()
-                                
-                                if(startWith) {
+                                if (!startWith) return instance._watcher[p].clear()
+
+                                if (startWith) {
                                     instance._watcher[p].forEach((_: any, key: string) => {
-                                        if(key.startsWith(startWith))
+                                        if (key.startsWith(startWith))
                                             instance._watcher[p].delete(key)
                                     })
-                                }    
+                                }
                             }
                         }
                     }
-                    
+
                     throw `Object ${p as string} not founed`
                 })
             return proxy // its returning value - proxy-object
@@ -141,7 +142,7 @@ function raise(store: any) {
     })
 
     const triggerToChanges = (nameObject: string) => {
-        if(instance._watcher[nameObject]) { // get functions that should be called after watcher triggering
+        if (instance._watcher[nameObject]) { // get functions that should be called after watcher triggering
             instance._watcher[nameObject].forEach((callback: any) => {
                 callback()
             })
@@ -176,34 +177,34 @@ function raise(store: any) {
 
     // Define property to reactive
     for (const propertyName of Object.getOwnPropertyNames(instance)) {
-        if(isDefaultVar(propertyName)) // if it has default name
+        if (isDefaultVar(propertyName)) // if it has default name
             continue;
 
         const valueOfProperty = instance[propertyName] // value for property at this moment
-        
+
         const isNotClassObject = (v: any = valueOfProperty) =>
             (typeof v != 'undefined' && v != null)
             && (typeof v != 'object' || (typeof v == 'object' && Object.getPrototypeOf(v).__proto__ == null || Array.isArray(v)))
 
         // If Undefined
-        if(typeof valueOfProperty == 'undefined') {
-            if('_'+propertyName in instance) {
-                if(isNotClassObject(instance['_'+propertyName])) {
-                    instance._variables[propertyName] = instance['_'+propertyName]
-                    instance._defaults[propertyName] = instance['_'+propertyName]
+        if (typeof valueOfProperty == 'undefined') {
+            if ('_' + propertyName in instance) {
+                if (isNotClassObject(instance['_' + propertyName])) {
+                    instance._variables[propertyName] = instance['_' + propertyName]
+                    instance._defaults[propertyName] = instance['_' + propertyName]
 
                     objectDefineReadOnly(propertyName, propertyName)
-                    objectDefine('_'+propertyName, propertyName)
+                    objectDefine('_' + propertyName, propertyName)
                 }
                 else {
-                    instance._stores[propertyName] = instance['_'+propertyName]
+                    instance._stores[propertyName] = instance['_' + propertyName]
                     objectDefineReadOnly(propertyName, propertyName, '_stores')
-                    objectDefine('_'+propertyName, propertyName, '_stores')
+                    objectDefine('_' + propertyName, propertyName, '_stores')
                 }
             }
         }
         // Is Reactive value
-        else if((isNotClassObject() || valueOfProperty == null) && propertyName[0] != '_') {
+        else if ((isNotClassObject() || valueOfProperty == null) && propertyName[0] != '_') {
             instance._variables[propertyName] = valueOfProperty
             instance._defaults[propertyName] = valueOfProperty
 
@@ -212,13 +213,13 @@ function raise(store: any) {
     }
 
     for (const [name, value] of Object.entries(Object.getOwnPropertyDescriptors(Object.getPrototypeOf(instance)))) {
-        if(isDefaultVar(name))
+        if (isDefaultVar(name))
             continue;
 
-        if(typeof value.value == 'undefined' && typeof value.get == 'undefined') {
-            if('_'+name in instance) {
-                instance._variables[name] = instance['_'+name]
-                instance._defaults[name] = instance['_'+name]
+        if (typeof value.value == 'undefined' && typeof value.get == 'undefined') {
+            if ('_' + name in instance) {
+                instance._variables[name] = instance['_' + name]
+                instance._defaults[name] = instance['_' + name]
 
                 Object.defineProperty(instance, name, {
                     get() {
@@ -228,7 +229,7 @@ function raise(store: any) {
                         value.set.call(instance, v)
                     }
                 })
-                Object.defineProperty(instance, '_'+name, {
+                Object.defineProperty(instance, '_' + name, {
                     get() {
                         return instance._variables[name]
                     },
@@ -242,7 +243,7 @@ function raise(store: any) {
         }
     }
 
-    if('mounted' in instance) {
+    if ('mounted' in instance) {
         instance.mounted()
     }
 
@@ -255,7 +256,7 @@ function raise(store: any) {
 export function defineStore<T>(store: any): T {
     const objectStore = storageOfStores.get(store) // store may already exist
 
-    if(typeof objectStore == 'undefined') {
+    if (typeof objectStore == 'undefined') {
         let object = raise(store) // if it isn't exists --> raise
 
         storageOfStores.set(store, object as any) // and save to storageOfStores array
@@ -268,15 +269,29 @@ export function defineStore<T>(store: any): T {
 /**
  * subStore creating
  */
-export function subStore<T>(object: any): T {
-    return raise(object) as T
+export function subStore<T>(object: any, ...args: any[]): T {
+    return raise(object, ...args) as T
+}
+
+/**
+ * define factory of store
+ */
+export function defineFactory<T>(object: any): (...args: any) => T {
+    return (...args: any[]) => subStore<T>(object, ...args);
+}
+
+/**
+ * define singleton store
+ */
+export function defineSingleton<T>(object: any): T {
+    return defineStore<T>(object);
 }
 
 /**
  * Add function to laterAwaiter array (for a later call)
  */
 export function later(callback: () => any) {
-    if(typeof localStorage == 'undefined') { // isServer
+    if (typeof localStorage == 'undefined') { // isServer
         return new Promise((resolve, reject) => {
             laterAwaiter.push(() => { // array consists of Promises
                 resolve(callback())
