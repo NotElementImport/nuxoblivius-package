@@ -82,15 +82,16 @@ const useTrackFetch = async (isHydrate, key, url, options, isBlob) => {
     if (!isServer) {
         var tempResponse = response;
 
-        if (typeof response === "string") {
-            tempResponse = JSON.parse(response);
-        }
+        try {
+            if (typeof response === "string") {
+                tempResponse = JSON.parse(response);
+            }
 
-        if (tempResponse._meta) {
-            const statusType = `${tempResponse._meta.code}`[0];
-            const status = tempResponse._meta.code;
+            if (tempResponse._meta) {
+                const statusType = `${tempResponse._meta.code}`[0];
+                const status = tempResponse._meta.code;
 
-            console.groupCollapsed(`%c ⟡ - Nuxoblivius %c Request %c ${statusSymbol[statusType]} ${status} %c ${options.method ?? "GET"} ${url}`, `
+                console.groupCollapsed(`%c ⟡ - Nuxoblivius %c Request %c ${statusSymbol[statusType]} ${status} %c ${options.method ?? "GET"} ${url}`, `
             font-weight: bold;
                 background: #78be7e;
                 color: black;
@@ -108,12 +109,16 @@ const useTrackFetch = async (isHydrate, key, url, options, isBlob) => {
                 margin-left: 5px;
                 border-radius: 3px;
             `);
-            console.table({
-                url: url,
-                options: JSON.stringify(options),
-            })
-            console.log(` ⟡ - Response:`, response);
-            console.groupEnd();
+                console.table({
+                    url: url,
+                    options: JSON.stringify(options),
+                })
+                console.log(` ⟡ - Response:`, response);
+                console.groupEnd();
+            }
+        }
+        catch (e) {
+            console.warn(e);
         }
     }
 
