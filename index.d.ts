@@ -106,6 +106,9 @@ export interface ISetupConfig {
     appendsResponse?: boolean
 }
 
+type FetchFailureInfo = { text: string, code: number, response: unknown, isAbort: boolean, abortCode: number };
+type IFetchFailureHandle = (info: FetchFailureInfo, retry: () => Promise<any>) => any;
+
 type SetupObject = ISetupConfig | ((item: Record<{}, {}, {}, {}, {}, {}>) => void)
 
 /**
@@ -266,7 +269,15 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * 
      * Reloading request if object change
      */
-    public reloadBy(object: FakeReactiveFunc | object): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public reloadBy(object: FakeReactiveFunc | object, options?: { componentScope?: boolean }): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+
+    /**
+     * `⚙️ Configuration`\
+     * `⚠️ Work only in Client`
+     * 
+     * Reloading request if object change
+     */
+    public reloadByControlled(object: FakeReactiveFunc | object): Function
 
     /**
      * `⚙️ Configuration`
@@ -574,14 +585,14 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * 
      * Hook on fail
      */
-    public onFailure(method: (reason: { text: string, code: number, response: any }, retry: () => Promise<any>) => any): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public onFailure(handle: IFetchFailureHandle): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`
      * 
      * Hook on Finish
      */
-    public onFinish(method: (result: ReturnType, meta: { fromCache: boolean, oldResponse: ReturnType }) => void): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public onFinish(handle: (result: ReturnType, meta: { fromCache: boolean, oldResponse: ReturnType }) => void): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`\
@@ -606,6 +617,11 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * Create and use config presets to Record
      */
     public preset(setupObject: SetupObject): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+
+    /**
+     * Abort all requests by this Record
+     */
+    public abortRequests(abortCode: number = 0): void
 
     /**
      * `📤 Call Request`\
@@ -896,7 +912,7 @@ export declare function SetDefaultAuth(string: (() => any) | string | Ref<any>):
  * 
  * Default onFailure settings for all Requests
  */
-export declare function SetRequestFailure(handle: (reason: { text: string, code: number, response: any }, retry: () => Promise<any> | undefined) => void): void
+export declare function SetRequestFailure(handle: IFetchFailureHandle): void
 
 /** 
  * `🧩 Vue Helper`\
@@ -922,3 +938,10 @@ export declare function useSpread<T extends any>(object: [...T]): Promise<ISprea
 */
 export declare function useLazySpread<T extends ISpreadObject>(object: T): Promise<ISpreadObjectOut<T>>
 export declare function useLazySpread<T extends any>(object: [...T]): Promise<ISpreadObjectOut<T>>
+
+/** 
+ * `🧩 Record Helper`\
+ * 
+ * Using for abort all current Requests
+*/
+export declare function tryAbortAllRequest(abortCode: number): void;

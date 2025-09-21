@@ -1,6 +1,6 @@
 {
-  "name": "nuxoblivius",
-  "version": "1.7.16",
+  "name": "nuxoblivius-builds",
+  "version": "1.7.17",
   "type": "module",
   "description": "",
   "main": "index.js",

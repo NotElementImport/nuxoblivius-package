@@ -1,6 +1,6 @@
 import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery, urlPathParams } from "./Utils.js"
 import { defaultHeaders, storeFetch, defaultFetchFailure, routerInterpolation } from "./config.js"
-import { isReactive, reactive, watch } from "vue"
+import { isReactive, onUnmounted, reactive, watch } from "vue"
 
 type DynamicResponse = { [key: string]: any }
 
@@ -52,14 +52,52 @@ const isClient = typeof document !== 'undefined'
 /**
  * Mark Object as setup object
  */
-export const MarkSetup = Symbol('Record Setup')
-const isSetup = (value: any) => (value && typeof value === 'object' && value[MarkSetup])
+export const MarkSetup = Symbol('Record Setup');
+const isSetup = (value: any) => (value && typeof value === 'object' && value[MarkSetup]);
+
+const currentActiveRecords = new Set<Record>();
+
+export const tryAbortAllRequest = (code: number = 1) => {
+    currentActiveRecords.forEach((record) => {
+        record.abortRequests(code);
+    });
+};
 
 const createRequest = () => {
     let [resolve, reject] = [(data: any) => { }, () => { }]
     const request: RequestObject<any> = new Promise((res, rej) => { resolve = res as any; reject = rej as any; })
     return { request, resolve, reject }
 };
+
+export class AbortRecordController {
+    private _abortCode?: number;
+    private _controller!: AbortController;
+
+    public newSignal(): void {
+        this._abortCode = undefined;
+        this._controller = new AbortController();
+    }
+
+    public getSignal(): AbortSignal {
+        return this._controller.signal;
+    }
+
+    public abort(code: number): void {
+        if (this._controller) {
+            this._abortCode = code;
+            this._controller.abort();
+            this._controller = undefined;
+        }
+    }
+
+    public getAbortCode(): number {
+        return this._abortCode ?? -1;
+    }
+
+    public isAborted(): boolean {
+        return this._abortCode != null;
+    }
+}
 
 export default class Record {
 
@@ -100,6 +138,9 @@ export default class Record {
     private _isBlob: boolean = false
     /** Current `pattern response reader` */
     private _template: string | Function = ''
+
+    // Abort signal
+    private _abortController = new AbortRecordController();
 
     // Cachin / Tags
 
@@ -877,14 +918,27 @@ export default class Record {
         return this
     }
 
-    /**
-     * [Configuration]
-     * Watch Refs and call reload data after changing Refs
-     */
-    public reloadBy(object: any) {
-        // Disable feature in Server (leak fix)
-        if (!isClient)
-            return this
+    public reloadByControlled(object: any): Function {
+        if (!isClient) {
+            return () => { };
+        }
+
+        var unWatchHandle: Function;
+
+        const tryRunLatestRequest = () => {
+            const oldValueOnNullCheck = pThis._onNullCheck;
+            const oldValueExpandCheck = pThis._variables.expandResponse;
+
+            pThis._onNullCheck = false;
+            pThis._variables.expandResponse = false;
+
+            pThis._variables.currentPage = 1;
+
+            pThis._lastStep().then(() => {
+                pThis._onNullCheck = oldValueOnNullCheck;
+                pThis._variables.expandResponse = oldValueExpandCheck
+            });
+        };
 
         // Extract context
         const pThis = this
@@ -892,34 +946,45 @@ export default class Record {
         resolveOrLater(object, (result: any) => {
             // Vue Ref
             if (isReactive(result) || isRef(result) || result?.__v_isRef) {
-                watch(result, () => {
-                    const oldValueOnNullCheck = pThis._onNullCheck;
-                    const oldValueExpandCheck = pThis._variables.expandResponse;
-                    pThis._onNullCheck = false;
-                    pThis._variables.expandResponse = false;
-                    pThis._variables.currentPage = 1;
-                    pThis._lastStep()
-                        .then(() => { pThis._onNullCheck = oldValueOnNullCheck; pThis._variables.expandResponse = oldValueExpandCheck })
-                })
-                return
+                unWatchHandle = watch(result, () => {
+                    tryRunLatestRequest();
+                });
             }
             else {
                 // State Manager Ref
                 if (!('_module_' in result))
                     throw `reloadBy: only ref support`
 
-                result.watch(() => {
-                    const oldValueOnNullCheck = pThis._onNullCheck;
-                    const oldValueExpandCheck = pThis._variables.expandResponse;
-                    pThis._onNullCheck = false;
-                    pThis._variables.expandResponse = false;
-                    pThis._variables.currentPage = 1;
-                    pThis._lastStep()
-                        .then(() => { pThis._onNullCheck = oldValueOnNullCheck; pThis._variables.expandResponse = oldValueExpandCheck })
-                })
+                unWatchHandle = result.watch(() => {
+                    tryRunLatestRequest();
+                });
             }
-        })
-        return this
+        });
+
+        return () => {
+            unWatchHandle?.();
+        };
+    }
+
+    /**
+     * [Configuration]
+     * Watch Refs and call reload data after changing Refs
+     */
+    public reloadBy(object: any, options: { componentScope?: boolean } = {}) {
+        // Disable feature in Server (leak fix)
+        if (!isClient)
+            return this;
+
+        const inComponentScope = options.componentScope ?? true;
+        const unWatchReloadBy = this.reloadByControlled(object);
+
+        if (inComponentScope) {
+            onUnmounted(() => {
+                unWatchReloadBy();
+            });
+        }
+
+        return this;
     }
 
     /**
@@ -1130,6 +1195,13 @@ export default class Record {
         return this.doFetch('patch')
     }
 
+    /**
+     * Abort current request
+     */
+    public abortRequests(code: number = 1): void {
+        this._abortController.abort(code);
+    }
+
     // Private Methods :
 
     /**
@@ -1274,15 +1346,21 @@ export default class Record {
      */
     private async doFetch(method: string = 'get') {
         if (this._oneRequestAtTime && this._currentRequest != null) {
-            return this._currentRequest
-        }
-        const { request, resolve } = createRequest()
-        this._currentRequest = request
-        const endRequest = (value: any) => {
-            this._currentRequest = null
-            resolve(value)
+            return this._currentRequest;
         }
 
+        const { request, resolve } = createRequest()
+        this._currentRequest = request;
+
+        currentActiveRecords.add(this);
+
+        const endRequest = (value: any) => {
+            this._currentRequest = null;
+            currentActiveRecords.delete(this);
+            resolve(value);
+        };
+
+        this._abortController.newSignal();
         this._variables.isLoading = true
 
         const pageChange = this._pagination.change
@@ -1385,19 +1463,28 @@ export default class Record {
             url,
             options,
             this._isBlob,
-            this._template as any
+            this._template as any,
+            this._abortController.getSignal()
         )
 
         /**
          * If request had error, call onError handler
         */
         if (fetchResult.error) {
-            const answer = await (this._onError || defaultFetchFailure)({ text: fetchResult.errorText, code: fetchResult.code, response: fetchResult.data }, () => this.doFetch(method));
+            const answer = await (this._onError || defaultFetchFailure)({
+                text: fetchResult.errorText,
+                code: fetchResult.code,
+                response: fetchResult.data,
+                isAbort: this._abortController.isAborted(),
+                abortCode: this._abortController.getAbortCode(),
+            }, () => this.doFetch(method));
 
             // If answer had object data replace
             if (typeof answer == 'object') {
                 fetchResult.data = answer
                 fetchResult.error = false
+
+                return answer;
             }
         }
 

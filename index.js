@@ -1,16 +1,26 @@
-import Record1 from './dist/Record.js'
-import { settings, callPattern, extendsPattern, setDefaultHeader, setDefaultAuth, setRequestFailure } from './dist/config.js'
-import { spread, lazySpread } from './dist/Utils.js'
+import Record1, { tryAbortAllRequest as tAAR } from './dist/Record.js'
+import { settings } from './dist/config.js'
 
-export const SetDefaultHeader = setDefaultHeader
-export const SetDefaultAuth = setDefaultAuth
-export const SetRequestFailure = setRequestFailure
-export const ExtendsPattern = extendsPattern
-export const CallPattern = callPattern
+export {
+  callPattern as CallPattern,
+  extendsPattern as ExtendsPattern,
+  setDefaultHeader as SetDefaultHeader,
+  setDefaultAuth as SetDefaultAuth,
+  setRequestFailure as SetRequestFailure
+} from './dist/config.js'
+
+export {
+  spread as useSpread,
+  lazySpread as useLazySpread
+} from './dist/Utils.js'
+export const tryAbortAllRequest = tAAR
+
 export const RegisterTemplate = settings.template
-export const useSpread = spread
-export const useLazySpread = lazySpread
+
 export const Record = Record1
+
 export * from './dist/index.js'
-export class IStore {}
+
+export class IStore { }
+
 export { toRefRaw } from './dist/Utils.js'

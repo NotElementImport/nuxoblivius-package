@@ -37,13 +37,13 @@ const module = defineNuxtModule({
     const resolver = createResolver(import.meta.url);
 
     if (!_nuxt.options.vite)
-      _nuxt.options.vite = { optimizeDeps: { exclude: ['nuxoblivius'] } }
+      _nuxt.options.vite = { optimizeDeps: { exclude: ['nuxoblivius', 'nuxoblivius-builds'] } }
     else if (!_nuxt.options.vite.optimizeDeps)
-      _nuxt.options.vite.optimizeDeps = { exclude: ['nuxoblivius'] }
+      _nuxt.options.vite.optimizeDeps = { exclude: ['nuxoblivius', 'nuxoblivius-builds'] }
     else if (!_nuxt.options.vite.optimizeDeps.exclude)
-      _nuxt.options.vite.optimizeDeps.exclude = ['nuxoblivius']
+      _nuxt.options.vite.optimizeDeps.exclude = ['nuxoblivius', 'nuxoblivius-builds']
     else
-      _nuxt.options.vite.optimizeDeps.exclude.push('nuxoblivius')
+      _nuxt.options.vite.optimizeDeps.exclude.push('nuxoblivius', 'nuxoblivius-builds')
 
     if (!_nuxt.options.routeRules)
       _nuxt.options.routeRules = {}

@@ -1,6 +1,6 @@
 import { defineNuxtPlugin, useAppConfig, useAsyncData } from "#app";
-import { settings, options as ConfigOptions } from "nuxoblivius/dist/config.js";
-import { forgetAllStores } from "nuxoblivius/dist/index.js";
+import { settings, options as ConfigOptions } from "../../dist/config.js";
+import { forgetAllStores } from "../../dist/index.js";
 import { version } from 'nuxt/package.json'
 
 const isServer = typeof document === "undefined";
@@ -13,10 +13,12 @@ const isNuxt3_17_4 = () => {
     if (nuxtIs3_17_4) {
         return nuxtIs3_17_4;
     }
-    if (+nuxtMajorVersion >= 3 && +nuxtMinorVersion >= 17 && +nuxtAtomVersion >= 4) {
-        nuxtIs3_17_4 = true;
-    }
-    nuxtIs3_17_4 = false;
+
+    const nuxt3_17_4 = 3 * 17 * 4;
+    const currentNuxt = (+nuxtMajorVersion) * (+nuxtMinorVersion) * (+nuxtAtomVersion);
+
+    nuxtIs3_17_4 = nuxt3_17_4 >= currentNuxt;
+
     return nuxtIs3_17_4;
 };
 
@@ -27,41 +29,39 @@ const printOnServer = (...args) => {
     console.log(...args);
 };
 
-const isUseAsyncDataFetch = (url, isHydrate) => {
+const isUseAsyncDataFetch = (isHydrate) => {
     return isServer || isHydrate;
 };
 
-const useDefaultFetch = async (url, options, isBlob) => {
-    const result = await nxDefaultFetch(url, options, isBlob);
+const useDefaultFetch = async (url, options, isBlob, abort) => {
+    const result = await nxDefaultFetch(url, options, isBlob, abort);
     result.header = Object.fromEntries(result.header.entries());
     return JSON.stringify(result);
 };
 
-const useFetch = async (isHydrate, key, url, options, isBlob) => {
+const useFetch = async (isHydrate, key, url, options, isBlob, abort) => {
     if (isNuxt3_17_4()) {
-        if (isUseAsyncDataFetch(key, isHydrate)) {
+        if (isUseAsyncDataFetch(isHydrate)) {
             var { data } = await useAsyncData(key, async () => {
-                return await useDefaultFetch(url, options, isBlob);
+                return await useDefaultFetch(url, options, isBlob, abort);
             });
             return data.value;
         }
 
-        var response = await useDefaultFetch(url, options, isBlob);
+        var response = await useDefaultFetch(url, options, isBlob, abort);
         return response;
     }
     else {
         var { data } = await useAsyncData(key, async () => {
-            return await useDefaultFetch(url, options, isBlob);
+            return await useDefaultFetch(url, options, isBlob, abort);
         });
 
         return data.value;
     }
 };
 
-const useTrackFetch = async (isHydrate, key, url, options, isBlob) => {
-    var isAsyncBehaviour = isUseAsyncDataFetch(key, isHydrate);
-
-    var response = await useFetch(isHydrate, key, url, options, isBlob);
+const useTrackFetch = async (isHydrate, key, url, options, isBlob, abort) => {
+    var response = await useFetch(isHydrate, key, url, options, isBlob, abort);
 
     const statusColor = {
         '1': "#f8f8f8",
@@ -177,7 +177,7 @@ export default defineNuxtPlugin({
                 printOnServer(` |_//`)
             }
 
-            settings.httpClient(async (url, options, isBlob) => {
+            settings.httpClient(async (url, options, isBlob, abort) => {
                 const startStamp = performance.now();
                 const rules = useAppConfig().nuxoblivius.rules;
                 let fetchUrl = url;
@@ -194,8 +194,8 @@ export default defineNuxtPlugin({
                 }
                 const response = JSON.parse(
                     await (isUseClientLogs
-                        ? useTrackFetch(_nuxtApp.isHydrating, url, fetchUrl, options, isBlob)
-                        : useFetch(_nuxtApp.isHydrating, url, fetchUrl, options, isBlob))
+                        ? useTrackFetch(_nuxtApp.isHydrating, url, fetchUrl, options, isBlob, abort)
+                        : useFetch(_nuxtApp.isHydrating, url, fetchUrl, options, isBlob, abort))
                 );
 
                 response.header = new Headers(response.header);
@@ -223,6 +223,9 @@ export default defineNuxtPlugin({
                     const method = (options.method ?? 'get').toLocaleUpperCase();
 
                     printOnServer(`  _`)
+                    if (abort.aborted) {
+                        printOnServer(` | [! ABORTED]`)
+                    }
                     printOnServer(` | Nuxoblisius: SSR Info`)
                     printOnServer(` | `)
                     printOnServer(` ⟡ Uniq ID      : ${uid}`)

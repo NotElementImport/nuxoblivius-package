@@ -1,6 +1,6 @@
-type TemplateFunction = (raw: any) => {data?: any, countPages?: number}
-type TemplateLogic = {[key: string]: TemplateFunction}
-type FetchResult = {data: object|Blob|null, error: boolean, errorText: string, code: number, pageCount: number, protocol?: object, header: object}
+type TemplateFunction = (raw: any) => { data?: any, countPages?: number }
+type TemplateLogic = { [key: string]: TemplateFunction }
+type FetchResult = { data: object | Blob | null, error: boolean, errorText: string, code: number, pageCount: number, protocol?: object, header: object }
 
 export const defaultHeaders = {} as any
 export let defaultFetchFailure: Function = () => undefined as object
@@ -9,16 +9,39 @@ export const options = {
     /**
      * HTTP request configuration
      */
-    http: async (url: string, options: any, isblob: boolean) => {
-        let response = await fetch(url, options) // standart fetch
-        
+    http: async (url: string, options: any, isblob: boolean, abort: AbortSignal) => {
+        let response: Response;
+
+        try {
+            response = await fetch(url, {
+                ...options,
+                signal: abort,
+            });
+        }
+        catch (err) {
+            // @ts-ignore
+            if (err.name !== "AbortError") throw err;
+        }
+
+        if (abort.aborted) {
+            return {
+                _meta: { ok: false, code: 400, text: "Aborted" },
+                header: new Headers(),
+                body: {
+                    _errorCode: 400,
+                    _errorText: "Aborted",
+                    _errorBody: "Aborted",
+                }
+            }
+        }
+
         let _meta = { // object for meta data
             ok: response.ok,
             code: response.status,
             text: response.statusText,
-        }
+        };
 
-        if(!response.ok) {
+        if (!response.ok) {
             return {
                 _meta,
                 header: response.headers,
@@ -30,16 +53,16 @@ export const options = {
             }
         }
 
-        if(isblob) // for blob data
+        if (isblob) // for blob data
             return { header: response.headers, body: response.blob(), _meta }
         const raw = await response.text()
-        
-        if(raw.length > 0 && (raw[0] == '{' || raw[0] == '[')) {
+
+        if (raw.length > 0 && (raw[0] == '{' || raw[0] == '[')) {
             return { header: response.headers, body: JSON.parse(raw), _meta }
         }
-        return {header: response.headers, body: raw, _meta} // this function returns RAW DATA (before template using)
+        return { header: response.headers, body: raw, _meta } // this function returns RAW DATA (before template using)
     },
-    cookie: { get: (name: string) => '', set: (name: string, value: any) => null as any} as any as { get(name: string): any, set(name: string, value: any): void },
+    cookie: { get: (name: string) => '', set: (name: string, value: any) => null as any } as any as { get(name: string): any, set(name: string, value: any): void },
     router: {} as any as { path: '', params: Record<string, any>, query: Record<string, any> },
     _templates: {} as TemplateLogic, // incapsulated templates
     get templates() { return this._templates }
@@ -66,25 +89,25 @@ export function setDefaultAuth(string: any) {
 /**
  * Returns converted data by template
  */
-export function callPattern(name: string|Function, data: object) {
-    if(typeof name == 'string' && name in options.templates) { //find template by name
+export function callPattern(name: string | Function, data: object) {
+    if (typeof name == 'string' && name in options.templates) { //find template by name
         return options.templates[name](data)
     }
-    else if(typeof name == "function") { // try use template if function is correct
+    else if (typeof name == "function") { // try use template if function is correct
         return name(data)
     }
-    
+
     return { data } // if there isn't correct template
 }
 
 export function extendsPattern(parent: any, child: any) {
-    if('data' in child) {
-        parent.data = child.data    
+    if ('data' in child) {
+        parent.data = child.data
     }
-    if('pageCount' in child) {
+    if ('pageCount' in child) {
         parent.pageCount = child.pageCount
     }
-    if('protocol' in child) {
+    if ('protocol' in child) {
         parent.protocol = child.protocol
     }
 
@@ -94,24 +117,24 @@ export function extendsPattern(parent: any, child: any) {
 /**
  * Check for pattern (template) for Record
  */
-function isValidPattern(pattern: string|Function) {
-    if(typeof pattern === "string" && pattern.length > 0)
+function isValidPattern(pattern: string | Function) {
+    if (typeof pattern === "string" && pattern.length > 0)
         return true
-    else if(typeof pattern === "function")
+    else if (typeof pattern === "function")
         return true
     else // if pattern were not set or incorrect
         return false
 }
 
-export function routerInterpolation(data: string, where: 'path'|'query') {
+export function routerInterpolation(data: string, where: 'path' | 'query') {
     const fromPath = (name: string) => {
         let index = +(name);
         const isNumber = !Number.isNaN(index);
 
-        if(isNumber) {
+        if (isNumber) {
             return [name, () => {
                 const splitedPath = options.router.path.split('/')
-                if(index < 0) return splitedPath[splitedPath.length - index] ?? null
+                if (index < 0) return splitedPath[splitedPath.length - index] ?? null
                 return splitedPath[index]
             }]
         }
@@ -122,21 +145,21 @@ export function routerInterpolation(data: string, where: 'path'|'query') {
         return [name, () => options.router.query[name] ?? null];
     }
 
-    if(data.startsWith('path.')) {
+    if (data.startsWith('path.')) {
         return fromPath(data.replace('path.', ''));
     }
-    else if(data.startsWith('query.')) {
+    else if (data.startsWith('query.')) {
         return fromQuery(data.replace('query.', ''));
     }
 
     return where == 'path' ? fromPath(data) : fromQuery(data);
-} 
+}
 
 /**
  * Fetching data for store
  */
-export async function storeFetch(url: string, requestInit: any, isblob: boolean, pattern: string|TemplateFunction): Promise<FetchResult> {
-    const response = await options.http(url, requestInit, isblob) // raw response
+export async function storeFetch(url: string, requestInit: any, isblob: boolean, pattern: string | TemplateFunction, abort: AbortSignal): Promise<FetchResult> {
+    const response = await options.http(url, requestInit, isblob, abort) // raw response
 
     if (response instanceof Blob) { // return value for Blob data
         return {
@@ -151,18 +174,18 @@ export async function storeFetch(url: string, requestInit: any, isblob: boolean,
     }
 
     if (typeof response.body == 'object' && !Array.isArray(response.body) && '_errorCode' in response.body) { // case for error
-        if(response.body._errorBody.length > 0 && response.body._errorBody[0] == '{') {
+        if (response.body._errorBody.length > 0 && response.body._errorBody[0] == '{') {
             response.body._errorBody = JSON.parse(response.body._errorBody) // forming errorBody
         }
 
         return { // and return value with info about error IN DATA (that's very helpful)
             header: response.header,
-            data: response.body._errorBody       || null,
+            data: response.body._errorBody || null,
             error: true,
-            code: response.body._errorCode       || 500,
-            errorText: response.body._errorText  || 'Unknow',
+            code: response.body._errorCode || 500,
+            errorText: response.body._errorText || 'Unknow',
             pageCount: 0,
-            protocol: null  as any
+            protocol: null as any
         }
     }
 
@@ -170,12 +193,12 @@ export async function storeFetch(url: string, requestInit: any, isblob: boolean,
     let pageCount = 0
     let protocol = null
 
-    if (isValidPattern(pattern)) { // check template
+    if (!abort.aborted && isValidPattern(pattern)) { // check template
         const result = callPattern(pattern, response.body) || {} // use template for response.body if it's correct
 
-        data      = result.data      ?? data
+        data = result.data ?? data
         pageCount = result.pageCount ?? pageCount // return data, pageCount variable and protocol data
-        protocol  = result.protocol  ?? protocol
+        protocol = result.protocol ?? protocol
     }
 
     return { // return final correct value
@@ -190,7 +213,7 @@ export async function storeFetch(url: string, requestInit: any, isblob: boolean,
 }
 
 export const settings = {
-    template(name: string, logic: () => {data: any, countPages?: number}) {
+    template(name: string, logic: () => { data: any, countPages?: number }) {
         options.templates[name] = logic
         return this
     },
