@@ -1488,32 +1488,34 @@ export default class Record {
             }
         }
 
-        const oldResponse = this._variables.response;
-        this.setResponse(fetchResult.data);
+        if (!this._abortController.isAborted()) {
+            const oldResponse = this._variables.response;
+            this.setResponse(fetchResult.data);
 
-        // Set Meta
-        this._variables.error = fetchResult.errorText
-        this._variables.maxPages = fetchResult.pageCount
-        this._variables.isError = fetchResult.error
-        this._variables.errorCode = fetchResult.code
-        this._variables.isLoading = false
-        this._variables.headers = fetchResult.header
+            // Set Meta
+            this._variables.error = fetchResult.errorText
+            this._variables.maxPages = fetchResult.pageCount
+            this._variables.isError = fetchResult.error
+            this._variables.errorCode = fetchResult.code
+            this._variables.isLoading = false
+            this._variables.headers = fetchResult.header
 
-        if (fetchResult.protocol != null) {
-            this._protocol = fetchResult.protocol
-        }
+            if (fetchResult.protocol != null) {
+                this._protocol = fetchResult.protocol
+            }
 
-        // Cache data
-        if (method.toLowerCase() == "get" && fetchResult.code == 200) {
-            this._variables.isLastPage = this._variables.maxPages == this._variables.currentPage
-            this.keep(fetchResult.data, recordTag)
+            // Cache data
+            if (method.toLowerCase() == "get" && fetchResult.code == 200) {
+                this._variables.isLastPage = this._variables.maxPages == this._variables.currentPage
+                this.keep(fetchResult.data, recordTag)
+            }
+
+            // Call finsih handler
+            if (this._onEnd)
+                await this._onEnd(fetchResult.data, { fromCache: false, oldResponse });
         }
 
         endRequest(fetchResult.data)
-
-        // Call finsih handler
-        if (this._onEnd)
-            await this._onEnd(fetchResult.data, { fromCache: false, oldResponse })
 
         return fetchResult.data
     }
