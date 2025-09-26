@@ -889,7 +889,7 @@ export declare function RegisterTemplate<T, E>(name: string, template: TemplateH
  * const data = CallPattern('unpack-items', rawData) // { items: [...data] } => { data: [...data], pageCount: undefined, protocol: undefined }
  * ```
  */
-export declare function CallPattern<I>(name: string, data: I): TemplateStruct<I>
+export declare function CallPattern<T>(name: string, data: T): TemplateStruct<T>
 // export declare function ExtendsPattern<I, E>(parent: TemplateStruct<I>, child: TemplateStruct<E>): TemplateStruct<I & E>
 
 /**
