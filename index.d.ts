@@ -684,7 +684,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
         /**
          * Path params values
          */
-        path: Dict<PathParams | 'id' | 'slug', any>
+        path: Dict<PathParams | 'id', any>
         /**
          * Queries values
          */
@@ -889,7 +889,7 @@ export declare function RegisterTemplate<T, E>(name: string, template: TemplateH
  * const data = CallPattern('unpack-items', rawData) // { items: [...data] } => { data: [...data], pageCount: undefined, protocol: undefined }
  * ```
  */
-export declare function CallPattern<I>(name: string, data): TemplateStruct<I>
+export declare function CallPattern<I>(name: string, data: I): TemplateStruct<I>
 // export declare function ExtendsPattern<I, E>(parent: TemplateStruct<I>, child: TemplateStruct<E>): TemplateStruct<I & E>
 
 /**
