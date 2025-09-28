@@ -124,7 +124,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * @param url Path to api
      * @param defaultValue Init response value
      */
-    public static new<T>(url: string, defaultValue?: T): Record<T, 'id', {}, { 'id': 'path' }, {}, ''>
+    public static new<T>(url: string, defaultValue?: Partial<T>): Record<T, 'id', {}, { 'id': 'path' }, {}, ''>
 
     /**
      * `⚙️ Creating new Record object`
@@ -209,7 +209,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * ```
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#query See more about Query in docs}
      */
-    public query<E extends Dict<PropertyKey, any> | QueryParams>(query: Parametr<E>, baked?: boolean): Record<ReturnType, PathParams, QueryParams & UnpackParametr<E>, KeepByInfo, Extends, Protocol>
+    public query<E extends Dict<PropertyKey, any> | QueryParams>(query: Parametr<E>, baked?: boolean): Record<ReturnType, PathParams, QueryParams & UnpackParametr<E>, KeepByInfo & UnpackParametr<E>, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`
@@ -549,7 +549,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * ```
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/template.html See more about Record Template in docs}
      */
-    public template(template: string | TemplateFunction): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+    public template<T>(template: string | TemplateHandler<T, ReturnType>): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `🧰 Utils`
@@ -684,7 +684,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
         /**
          * Path params values
          */
-        path: Dict<PathParams, any>
+        path: Dict<PathParams | 'id', any>
         /**
          * Queries values
          */
@@ -703,8 +703,8 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
          * Init pagination in query
          * @param how setting in query or in path. Example path: 'path:id', and paste in pathParam `id` paginate value
          */
-        setup<P extends PropertyKey, Q extends 'path'>(how: `${Q}:${PathParams | P}`, enabledByDefault?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
-        setup<P extends PropertyKey, Q extends 'query'>(how: `${Q}:${keyof QueryParams | P}`, enabledByDefault?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+        setup<P extends PropertyKey, Q extends 'path'>(how: `${Q}:${PathParams | P}`, enabledByDefault?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<P, any>, Extends, Protocol>
+        setup<P extends PropertyKey, Q extends 'query'>(how: `${Q}:${keyof QueryParams | P}`, enabledByDefault?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo & Dict<P, any>, Extends, Protocol>
         setup(how: `path:` | `query:`, enabledByDefault?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
         /**
@@ -889,7 +889,7 @@ export declare function RegisterTemplate<T, E>(name: string, template: TemplateH
  * const data = CallPattern('unpack-items', rawData) // { items: [...data] } => { data: [...data], pageCount: undefined, protocol: undefined }
  * ```
  */
-export declare function CallPattern<I, E>(name: string, data: I): TemplateStruct<E>
+export declare function CallPattern<T>(name: string, data: T): TemplateStruct<T>
 // export declare function ExtendsPattern<I, E>(parent: TemplateStruct<I>, child: TemplateStruct<E>): TemplateStruct<I & E>
 
 /**
