@@ -517,6 +517,17 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
 
     /**
      * `⚙️ Configuration`\
+     * `⚡ SPA frendly`\
+     * `⚠️ Work only in Client`
+     * 
+     * Enable auto caching, prevent request if data exist
+     * 
+     * @param enabled `default: true` — Enable checking, or disable
+     */
+    public withAutoCache(enabled?: boolean): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
+
+    /**
+     * `⚙️ Configuration`\
      * `🪛 For fine-tuning`
      * 
      * Swap Method controls when Actual Response, must be erase

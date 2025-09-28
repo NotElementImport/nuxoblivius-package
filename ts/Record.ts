@@ -147,6 +147,7 @@ export default class Record {
     private _tags: DefinitionTags = { 'id': ETagPlace.PATH }
     private _tagsType: ParamsTagsType = { 'id': EParamsTagsType.SIMPLE }
     private _lastRequestTags: ParamsTags = {}
+    private _isAbsoluteCaching: boolean = false
 
     // Pre Fetch config
 
@@ -456,33 +457,6 @@ export default class Record {
         return instance
     }
 
-    public static ff(code: string = '', defaultValue?: any) {
-        const instruction = code.split(';')
-        const record = Record.new(instruction.pop().trim(), defaultValue)
-
-        for (let tag of instruction) {
-            tag = tag.trim()
-
-            switch (tag) {
-                case 'swap-lazy': record.swapMethod('lazy'); continue;
-                case 'swap-greedy': record.swapMethod('greedy'); continue;
-                case 'swap-hot': record.swapMethod('hot'); continue;
-                case 'on-empty': record.onlyOnEmpty(); continue;
-                case 'one-at-time': record.oneRequestAtTime(); continue;
-            }
-
-            if (tag.startsWith("template ")) {
-                record.template(tag.replace('template ', ''))
-            }
-            else if (tag.startsWith("page ")) {
-                record.pagination.setup(tag.replace('page ', '').trim())
-                record.pagination.autoReload()
-            }
-        }
-
-        return record
-    }
-
     // Sugar
 
     /**
@@ -643,6 +617,15 @@ export default class Record {
 
     /**
      * [Configuration]
+     * Enable auto caching
+     */
+    public withAutoCache(enabled: boolean = true) {
+        this._isAbsoluteCaching = enabled;
+        return this;
+    }
+
+    /**
+     * [Configuration]
      * Create rule on specific behaviour
      * 
      * Example:\
@@ -776,7 +759,7 @@ export default class Record {
             }
 
             for (const part of object) { // Search, what you need
-                const result = as(part, this.params);
+                const result = as(part, this.params)
 
                 if (typeof result != 'undefined' && result != null) {
                     return result
@@ -1256,6 +1239,13 @@ export default class Record {
             }
         }
 
+        /**
+         * Auto caching
+         */
+        if (this._isAbsoluteCaching) {
+            return this.cached(condition);
+        }
+
         return null
     }
 
@@ -1322,6 +1312,18 @@ export default class Record {
      */
     private recordDataTag(compiledQuery: Dict<string, unknown>) {
         const tag = {} as ParamsTags;
+
+        if (this._isAbsoluteCaching) {
+            for (const [name, value] of Object.entries(this._pathParams)) {
+                tag[name] = refOrVar(value);
+            }
+
+            for (const [name, value] of Object.entries(compiledQuery)) {
+                tag[name] = refOrVar(value);
+            }
+
+            return tag;
+        }
 
         // Get all registered Tags
         for (const [paramName, type] of Object.entries(this._tags)) {
@@ -1450,12 +1452,16 @@ export default class Record {
             options.body = refOrVar(this._body);
 
             // Form Data:
-            if (options.body instanceof FormData)
-                delete headers['Content-Type']
+            if (options.body instanceof FormData) {
+                // @ts-ignore
+                delete options.headers['Content-Type']
+            }
             // Json:
-            // Convert object to string
-            else if (typeof options.body == 'object')
+            else {
                 options.body = JSON.stringify(this._body);
+                // @ts-ignore
+                options.headers['Content-Type'] = "application/json";
+            }
         }
 
         // Request data from http > config
@@ -1510,12 +1516,14 @@ export default class Record {
                 this.keep(fetchResult.data, recordTag)
             }
 
+
             // Call finsih handler
-            if (this._onEnd)
+            if (this._onEnd && !this._abortController.isAborted())
                 await this._onEnd(fetchResult.data, { fromCache: false, oldResponse });
         }
 
         endRequest(fetchResult.data)
+
 
         return fetchResult.data
     }
