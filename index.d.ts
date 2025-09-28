@@ -37,8 +37,13 @@ interface TemplateStruct<T> {
 
 type TemplateHandler<T extends any, R extends any> = (raw: T) => TemplateStruct<R>
 
+interface RuleParams<P, Q> {
+    path: Dict<P, any>;
+    query: Q;
+}
+
 // Tags Interfaces:
-type RuleCallback<P, Q> = (method: { path: Dict<P, any>, query: Q }) => boolean
+type RuleCallback<P, Q> = (params: RuleParams<P, Q>) => boolean
 
 type TagsCondition<Tags, Value extends any> = Dict<keyof Tags, '*' | '<>' | null | Value>
 
@@ -163,7 +168,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
      * ```
      * {@link https://notelementimport.github.io/nuxoblivius-docs/release/records.html#path-params See more about Path Params in docs}
      */
-    public pathParam<E extends PropertyKey>(name: E | PathParams, value: Parametr<any>): Record<ReturnType, PathParams | E, QueryParams, KeepByInfo, Extends, Protocol>
+    public pathParam<E extends PropertyKey>(name: E | PathParams, value?: Parametr<any>): Record<ReturnType, PathParams | E, QueryParams, KeepByInfo, Extends, Protocol>
 
     /**
      * `⚙️ Configuration`
@@ -417,7 +422,7 @@ export declare class Record<ReturnType, PathParams, QueryParams, KeepByInfo, Ext
     public borrowFrom<T extends Dict<string, any>>(
         logic: Dict<keyof KeepByInfo, PipelineValues> | RuleCallback<PathParam, QueryParam>,
         another: (() => T),
-        as: (value: T[number]) => ReturnType
+        as: (value: T[number], params: RuleParams<PathParam, QueryParam>) => ReturnType | undefined | null
     ): Record<ReturnType, PathParams, QueryParams, KeepByInfo, Extends, Protocol>
 
     // /**

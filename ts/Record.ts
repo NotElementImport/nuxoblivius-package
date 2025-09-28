@@ -763,7 +763,7 @@ export default class Record {
      * @param another   The object we're going to take from
      * @param as        Logic for finding what you need in an object
      */
-    public borrowFrom(condition: ParamsTags | Function, another: object | Function, as: (value: DynamicResponse) => DynamicResponse) {
+    public borrowFrom(condition: ParamsTags | Function, another: object | Function, as: (value: DynamicResponse, params: any) => DynamicResponse) {
         if (!isClient)
             return this
 
@@ -776,7 +776,7 @@ export default class Record {
             }
 
             for (const part of object) { // Search, what you need
-                const result = as(part)
+                const result = as(part, this.params);
 
                 if (typeof result != 'undefined' && result != null) {
                     return result
