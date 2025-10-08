@@ -160,6 +160,8 @@ export function routerInterpolation(data: string, where: 'path' | 'query') {
  */
 export async function storeFetch(url: string, requestInit: any, isblob: boolean, pattern: string | TemplateFunction, abort: AbortSignal): Promise<FetchResult> {
     const response = await options.http(url, requestInit, isblob, abort) // raw response
+    
+    response.header = new Headers(response.header);
 
     if (response instanceof Blob) { // return value for Blob data
         return {

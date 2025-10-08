@@ -198,8 +198,6 @@ export default defineNuxtPlugin({
                         : useFetch(_nuxtApp.isHydrating, url, fetchUrl, options, isBlob, abort))
                 );
 
-                response.header = new Headers(response.header);
-
                 if (isServer && isUseLogs) {
                     const busyAt = (performance.now() - startStamp) * (1 / 1000);
                     let speedRating = ' ·•—– Best —–•·';
