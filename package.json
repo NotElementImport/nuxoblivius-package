@@ -1,0 +1,29 @@
+{
+  "name": "nuxoblivius",
+  "version": "1.7.18",
+  "type": "module",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build:core": "cd ./main && npx tsc -p ./tsconfig.json && cd ..",
+    "build:backend:react": "cd ./backends/react/ && npx tsc -p ./tsconfig.json && cd ..",
+    "build:backend": "npm run build:backend:react",
+    "core": "npm test && npm run build:core",
+    "backend": "npm test && npm run build:backend",
+    "test": "vitest --run",
+    "start": "npm test && npm run build:core && npm run build:backend",
+    "link": "cd ./main && npm link && cd ../backends/react && npm link && cd .."
+  },
+  "author": "notelementimport",
+  "license": "ISC",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.44.1",
+    "@typescript-eslint/parser": "^8.44.1",
+    "eslint": "^9.36.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-sonarjs": "^3.0.5",
+    "eslint-plugin-unicorn": "^61.0.2",
+    "typescript": "^5.8.2",
+    "vue": "^3.4.21"
+  }
+}

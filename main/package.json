@@ -1,0 +1,65 @@
+{
+  "name": "@nuxoblivius_builds/core",
+  "version": "2.0.0",
+  "type": "module",
+  "description": "A core for Nuxoblivius",
+  "author": "NotElementImport",
+  "license": "ISC",
+  "exports": {
+    ".": {
+      "import": "./dist/Core/index.js",
+      "types": "./dist/Core/index.d.ts"
+    },
+    "./Core/Backend/Basic": {
+      "import": "./dist/Core/backend/BasicBackend.js",
+      "types": "./dist/Core/backend/BasicBackend.d.ts"
+    },
+    "./Core/Backend/Interface": {
+      "import": "./dist/Core/interface/IBackend.js",
+      "types": "./dist/Core/interface/IBackend.d.ts"
+    },
+    "./Core/Container/Basic": {
+      "import": "./dist/Core/containers/BasicContainer.js",
+      "types": "./dist/Core/containers/BasicContainer.d.ts"
+    },
+    "./Core/Container/Interface": {
+      "import": "./dist/Core/interface/IContainer.js",
+      "types": "./dist/Core/interface/IContainer.d.ts"
+    },
+    "./Property": {
+      "import": "./dist/Core/Property.js",
+      "types": "./dist/Core/Property.d.ts"
+    },
+    "./Store": {
+      "import": "./dist/StateManager/index.js",
+      "types": "./dist/StateManager/index.d.ts"
+    },
+    "./Store/Builder/Interface": {
+      "import": "./dist/StateManager/interface/ITemplateBuilder.js",
+      "types": "./dist/StateManager/interface/ITemplateBuilder.d.ts"
+    },
+    "./Store/Builder/Make": {
+      "import": "./dist/StateManager/templateBuilders/MakeBuilder.js",
+      "types": "./dist/StateManager/templateBuilders/MakeBuilder.d.ts"
+    },
+    "./Store/Builder/Dummy": {
+      "import": "./dist/StateManager/templateBuilders/DummyBuilder.js",
+      "types": "./dist/StateManager/templateBuilders/DummyBuilder.d.ts"
+    },
+    "./Store/Builder/Proxy": {
+      "import": "./dist/StateManager/templateBuilders/ProxyBuilder.js",
+      "types": "./dist/StateManager/templateBuilders/ProxyBuilder.d.ts"
+    },
+    "./Store/PropReader/Interface": {
+      "import": "./dist/StateManager/interface/IPropReader.js",
+      "types": "./dist/StateManager/interface/IPropReader.d.ts"
+    },
+    "./Store/PropReader/Basic": {
+      "import": "./dist/StateManager/propReaders/BasicPropReader.js",
+      "types": "./dist/StateManager/propReaders/BasicPropReader.d.ts"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

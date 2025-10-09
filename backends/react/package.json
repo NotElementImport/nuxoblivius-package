@@ -1,0 +1,22 @@
+{
+  "name": "@nuxoblivius_builds/backend_react",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Nuxoblivius a React backend",
+  "author": "NotElementImport",
+  "license": "ISC",
+  "dependencies": {
+    "@types/react": "^19.2.2",
+    "react": "^19.2.0",
+    "@nuxoblivius_builds/core": "^2.0.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/ReactBackend.js",
+      "types": "./dist/ReactBackend.d.ts"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
