@@ -6,8 +6,13 @@ import { MakeBuilder } from "../StateManager/templateBuilders/MakeBuilder.js";
 import { ProxyBuilder } from "../StateManager/templateBuilders/ProxyBuilder.js";
 import { BasicBackend } from "./backend/BasicBackend.js";
 import { BasicContainer } from "./containers/BasicContainer.js";
-import type { BackendComputed, BackendProperty, IBackend } from "./interface/IBackend.js";
+import type {
+  BackendComputed,
+  BackendProperty,
+  IBackend,
+} from "./interface/IBackend.js";
 import type { IContainer } from "./interface/IContainer.js";
+import { IThread } from "./interface/IThread.js";
 
 interface CoreOptions {
   container: IContainer;
@@ -19,9 +24,7 @@ interface DefineOptions {
 }
 
 export class Core {
-  public constructor(
-    private readonly config: CoreOptions
-  ) { }
+  public constructor(private readonly config: CoreOptions) { }
 
   public getDI(): IContainer {
     return this.config.container;
@@ -36,17 +39,21 @@ var nuxobliviusInstance: Core;
 
 export function getNuxoblivius(): Core {
   if (!nuxobliviusInstance) {
-    throw new Error("Nuxoblivius not defined, use method `defineNuxoblivius` for create instance");
+    throw new Error(
+      "Nuxoblivius not defined, use method `defineNuxoblivius` for create instance",
+    );
   }
 
   return nuxobliviusInstance;
 }
 
-// Main entry 
-export default function defineNuxoblivius(params: Partial<CoreOptions & DefineOptions> = {}) {
+// Main entry
+export default function defineNuxoblivius(
+  params: Partial<CoreOptions & DefineOptions> = {},
+) {
   nuxobliviusInstance = new Core({
     container: params.container ?? new BasicContainer(),
-    backend: params.backend ?? new BasicBackend()
+    backend: params.backend ?? new BasicBackend(),
   });
 
   const di = nuxobliviusInstance.getDI();
@@ -54,19 +61,28 @@ export default function defineNuxoblivius(params: Partial<CoreOptions & DefineOp
   di.singleton(StateManagerFactory, () => new StateManagerFactory(di));
   di.singleton(IPropReaderToken, () => new BasicPropReader());
 
-  di.singleton(MakeBuilder, () => new MakeBuilder(
-    di.inject(IPropReaderToken),
-    nuxobliviusInstance.getBackend()
-  ));
+  di.singleton(
+    MakeBuilder,
+    () =>
+      new MakeBuilder(
+        di.inject(IPropReaderToken),
+        nuxobliviusInstance.getBackend(),
+      ),
+  );
 
-  di.singleton(DummyBuilder, () => new DummyBuilder(
-    di.inject(IPropReaderToken),
-    nuxobliviusInstance.getBackend()
-  ));
+  di.singleton(
+    DummyBuilder,
+    () =>
+      new DummyBuilder(
+        di.inject(IPropReaderToken),
+        nuxobliviusInstance.getBackend(),
+      ),
+  );
 
-  di.singleton(ProxyBuilder, () => new ProxyBuilder(
-    nuxobliviusInstance.getBackend()
-  ));
+  di.singleton(
+    ProxyBuilder,
+    () => new ProxyBuilder(nuxobliviusInstance.getBackend()),
+  );
 
   if (params.define) {
     params.define(di);
@@ -93,11 +109,14 @@ export function computed<T>(handle: () => T): BackendComputed<T> {
   }) as any;
 }
 
-export function watch<T>(prop: BackendProperty<T> | BackendComputed<T> | (() => T), handle: (value: T, oldValue: T) => void): Function {
+export function watch<T>(
+  prop: BackendProperty<T> | BackendComputed<T> | (() => T),
+  handle: (value: T, oldValue: T) => void,
+): Function {
   const backend = getNuxoblivius().getBackend();
 
   return backend.storeTransform(() => {
-    return backend.watchBackendValue(prop, handle as any)
+    return backend.watchBackendValue(prop, handle as any);
   }) as any;
 }
 
@@ -117,11 +136,26 @@ export function onUnMounted(handle: () => void): void {
   });
 }
 
-export function whileExistStore(handle: () => Function): void {
+interface IWhileOptions {
+  afterMount?: boolean;
+}
+
+export function onTimespan(
+  handle: () => Function,
+  options: IWhileOptions = {},
+): void {
   const backend = getNuxoblivius().getBackend();
 
   backend.storeTransform(() => {
-    const breakHandle = handle();
+    var breakHandle: Function;
+
+    if (options.afterMount) {
+      backend.onMounted(() => {
+        breakHandle = handle();
+      });
+    } else {
+      breakHandle = handle();
+    }
 
     backend.onUnMounted(() => {
       if (typeof breakHandle === "function") {
@@ -129,4 +163,23 @@ export function whileExistStore(handle: () => Function): void {
       }
     });
   });
+}
+
+export function defineThread(instance: new () => IThread): IThread {
+  return getNuxoblivius().getDI().injectOrCreate(instance);
+}
+
+export function onThread<T, K extends any[]>(
+  channel: IThread,
+  handle: (...args: K) => T,
+): (...args: K) => T {
+  return (...args) => channel.runOnThread(() => handle(...args), {});
+}
+
+export function onThreadSafe<T, K extends any[]>(
+  channel: IThread,
+  handle: (...args: K) => T,
+): (...args: K) => T {
+  return (...args) =>
+    channel.runOnThread(() => handle(...args), { noThrow: true });
 }

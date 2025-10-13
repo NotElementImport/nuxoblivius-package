@@ -25,6 +25,6 @@
     "eslint-plugin-sonarjs": "^3.0.5",
     "eslint-plugin-unicorn": "^61.0.2",
     "typescript": "^5.8.2",
-    "vue": "^3.4.21"
+    "vitest": "^3.2.4"
   }
 }
