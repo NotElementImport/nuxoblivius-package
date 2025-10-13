@@ -1,0 +1,21 @@
+{
+  "name": "@nuxoblivius_builds/backend_vue3",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Nuxoblivius a React backend",
+  "author": "NotElementImport",
+  "license": "ISC",
+  "dependencies": {
+    "vue": "^3.0.0",
+    "@nuxoblivius_builds/core": "^2.0.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/Vue3Backend.js",
+      "types": "./dist/Vue3Backend.d.ts"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

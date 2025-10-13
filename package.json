@@ -6,13 +6,14 @@
   "main": "index.js",
   "scripts": {
     "build:core": "cd ./main && npx tsc -p ./tsconfig.json && cd ..",
-    "build:backend:react": "cd ./backends/react/ && npx tsc -p ./tsconfig.json && cd ..",
-    "build:backend": "npm run build:backend:react",
+    "build:backend:react": "cd ./backends/react/ && npx tsc -p ./tsconfig.json && cd ../..",
+    "build:backend:vue3": "cd ./backends/vue3/ && npx tsc -p ./tsconfig.json && cd ../..",
+    "build:backend": "npm run build:backend:react && npm run build:backend:vue3",
     "core": "npm test && npm run build:core",
     "backend": "npm test && npm run build:backend",
     "test": "vitest --run",
     "start": "npm test && npm run build:core && npm run build:backend",
-    "link": "cd ./main && npm link && cd ../backends/react && npm link && cd .."
+    "link": "cd ./main && npm link && cd ../backends/react && npm link && cd ../vue3 && npm link && cd ../.."
   },
   "author": "notelementimport",
   "license": "ISC",

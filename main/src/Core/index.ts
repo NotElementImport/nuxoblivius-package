@@ -116,3 +116,17 @@ export function onUnMounted(handle: () => void): void {
     backend.onUnMounted(handle);
   });
 }
+
+export function whileExistStore(handle: () => Function): void {
+  const backend = getNuxoblivius().getBackend();
+
+  backend.storeTransform(() => {
+    const breakHandle = handle();
+
+    backend.onUnMounted(() => {
+      if (typeof breakHandle === "function") {
+        breakHandle();
+      }
+    });
+  });
+}

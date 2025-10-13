@@ -66,6 +66,6 @@ export class ProxyBuilder extends ITemplateBuilder {
       });
     }
 
-    return instance;
+    return proxyInstance;
   }
 }

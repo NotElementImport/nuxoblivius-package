@@ -17,9 +17,15 @@ export class DummyBuilder extends ITemplateBuilder {
       propValue = prop.value,
       propName = prop.propName;
 
-    if (!isClassStore && this.backend.isBackendValue(propValue)) {
-      if (propValue instanceof Property) {
-        map.set(propName, propValue);
+    if (typeof propValue === "function") {
+      return {
+        get: () => propValue
+      }
+    }
+
+    if (!isClassStore) {
+      if (this.backend.isBackendValue(propValue)) {
+        map.set(propName, propValue as any);
       }
       else {
         map.set(
