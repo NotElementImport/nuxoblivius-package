@@ -12,7 +12,7 @@ import type {
   IBackend,
 } from "./interface/IBackend.js";
 import type { IContainer } from "./interface/IContainer.js";
-import { IThread } from "./interface/IThread.js";
+import { IThread, ThreadMultiple } from "./interface/IThread.js";
 
 interface CoreOptions {
   container: IContainer;
@@ -101,6 +101,21 @@ export function signal<T>(value: T | (() => T)): BackendProperty<T> {
   }) as any;
 }
 
+export function spanSignal<T>(value: (() => T)): BackendProperty<T> {
+  const backend = getNuxoblivius().getBackend();
+
+  return backend.storeTransform((ctx) => {
+    const signal = backend.createProperty(value(), ctx);
+
+    backend.onStoreInit(() => {
+      // @ts-ignore
+      signal.set(value());
+    }, ctx);
+
+    return signal;
+  }) as any;
+}
+
 export function computed<T>(handle: () => T): BackendComputed<T> {
   const backend = getNuxoblivius().getBackend();
 
@@ -136,37 +151,61 @@ export function onUnMounted(handle: () => void): void {
   });
 }
 
-interface IWhileOptions {
-  afterMount?: boolean;
-}
-
-export function onTimespan(
-  handle: () => Function,
-  options: IWhileOptions = {},
-): void {
+export function onStoreInit(handle: () => void): void {
   const backend = getNuxoblivius().getBackend();
 
-  backend.storeTransform(() => {
-    var breakHandle: Function;
-
-    if (options.afterMount) {
-      backend.onMounted(() => {
-        breakHandle = handle();
-      });
-    } else {
-      breakHandle = handle();
-    }
-
-    backend.onUnMounted(() => {
-      if (typeof breakHandle === "function") {
-        breakHandle();
-      }
-    });
+  backend.storeTransform((ctx) => {
+    backend.onStoreInit(handle, ctx);
   });
 }
 
-export function defineThread(instance: new () => IThread): IThread {
-  return getNuxoblivius().getDI().injectOrCreate(instance);
+export function onStoreDestroy(handle: () => void): void {
+  const backend = getNuxoblivius().getBackend();
+
+  backend.storeTransform((ctx) => {
+    backend.onStoreDestroy(handle, ctx);
+  });
+}
+
+export function onTimespan(
+  handle: () => Function
+): (() => void) {
+  const backend = getNuxoblivius().getBackend();
+
+  return backend.storeTransform((ctx) => {
+    var canBeBrake = true;
+    var breakHandle: Function;
+
+    const safeBreakHandle = () => {
+      if (canBeBrake && breakHandle && typeof breakHandle === "function") {
+        breakHandle();
+        canBeBrake = false;
+      }
+    };
+
+    backend.onStoreInit(() => {
+      canBeBrake = true;
+      breakHandle = handle();
+    }, ctx);
+
+    backend.onStoreDestroy(safeBreakHandle, ctx);
+
+    return safeBreakHandle;
+  }) as any;
+}
+
+export function defineThread(...instances: (new () => IThread)[]): IThread {
+  const di = getNuxoblivius().getDI();
+
+  if (instances.length > 1) {
+    const threads = instances.map(
+      (instance) => di.injectOrCreate(instance)
+    );
+
+    return new ThreadMultiple(threads);
+  }
+
+  return di.injectOrCreate(instances.pop());
 }
 
 export function onThread<T, K extends any[]>(

@@ -17,68 +17,45 @@ const useReactCtx = () => {
 };
 
 const withReactCtx = <T extends unknown>(define: ((ctx: ReactCtx) => T), ctx: ReactCtx) => {
-  const value = useRef<T>(null);
+  try {
+    const value = useRef<T>(null);
 
-  value.current ??= define(ctx);
+    value.current ??= define(ctx);
 
-  useEffect(() => {
-    ctx.mount();
+    useEffect(() => {
+      ctx.storeInit(value.current);
+      ctx.mount();
 
-    return () => {
-      ctx.unMount();
-    };
-  }, []);
+      return () => {
+        ctx.unMount();
+      };
+    }, []);
 
-  return value.current;
+    return value.current;
+  }
+  catch (e) {
+    console.warn(e);
+    return define(ctx);
+  }
 };
 
 class ReactCtx extends StoreBackendContext {
   private _setState!: Function;
-  private _stateIndex: number = 0;
-  private _ctxIndex: number = 0;
-
-  private _onMount: Function[] = [];
-  private _onUnMount: Function[] = [];
-
-  public get index() {
-    return `${this._ctxIndex} / ${this._stateIndex}`;
-  };
 
   public constructor() {
-    super();
-    this._ctxIndex = Math.floor(Math.random() * 10000);
+    super({ isMuted: false });
   }
 
   public useSetTrigger(value: Function): void {
-    this._stateIndex = Math.floor(Math.random() * 10000);
     this._setState = value;
   }
 
   public setTrigger(): void {
+    super.setTrigger();
     try {
       this._setState();
     }
     catch (e) { }
-  }
-
-  public onMount(handle: Function): void {
-    this._onMount.push(handle);
-  }
-
-  public onUnMount(handle: Function): void {
-    this._onUnMount.push(handle);
-  }
-
-  public mount(): void {
-    this._onMount.forEach((callback) => {
-      callback();
-    });
-  }
-
-  public unMount(): void {
-    this._onUnMount.forEach((callback) => {
-      callback();
-    });
   }
 }
 
@@ -100,52 +77,26 @@ class ReactProperty<T> extends BasicProperty<T> {
 }
 
 export class ReactBackend extends BasicBackend {
-  private _activeCtx?: ReactCtx;
-
-  public override onMounted(handle: () => void): void {
-    if (this._activeCtx) {
-      this._activeCtx.onMount(handle);
-    }
-  }
-
-  public override onUnMounted(handle: () => void): void {
-    if (this._activeCtx) {
-      this._activeCtx.onUnMount(handle);
-    }
-  }
-
   public override inContext(): StoreBackendContext {
-    return useReactCtx();
-  }
-
-  public override getActiveContext(): ReactCtx {
-    if (this._activeCtx) {
-      return this._activeCtx;
-    }
-
-    return this.inContext() as any;
+    return this.isMuted
+      ? new StoreBackendContext({ isMuted: true })
+      : useReactCtx();
   }
 
   public override storeTransform(handle: CallStoreHandle): StoreType {
+    const activeCtx = this.getActiveContext();
+
+    if (activeCtx) {
+      return handle(activeCtx);
+    }
+
     if (this.isMuted) {
-      return handle(new StoreBackendContext());
+      return this.scopeContext(this.inContext(), (ctx) => handle(ctx));
     }
 
-    const ctx = this.getActiveContext();
-
-    if (this._activeCtx) {
-      return handle(ctx);
-    }
-
-    return withReactCtx(() => {
-      const oldCtx = this._activeCtx;
-
-      this._activeCtx = ctx;
-      const store = handle(ctx);
-      this._activeCtx = oldCtx;
-
-      return store
-    }, ctx);
+    return withReactCtx((ctx) => {
+      return this.scopeContext(ctx, () => handle((ctx)));
+    }, useReactCtx());
   }
 
   public override createProperty<T>(value: T, ctx: StoreBackendContext): BackendProperty<T> {

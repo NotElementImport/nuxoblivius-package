@@ -1,33 +1,13 @@
 import { expect, test } from "vitest";
-import defineNuxoblivius, { getNuxoblivius } from "../../main/src/Core/index.js";
-import { defineSingleton } from "../../main/src/StateManager/index.js";
-import type { BackendProperty, BackendComputed, WatchBackend } from "../../main/src/Core/interface/IBackend.js";
+import defineNuxoblivius, { computed, onStoreDestroy, onStoreInit, signal } from "../../main/src/Core/index.js";
+import { defineSingleton, destroyStore } from "../../main/src/StateManager/index.js";
 
-interface IMinBackend {
-  state<T>(value: T): BackendProperty<T>;
-  computed<T>(handle: () => T): BackendComputed<T>;
-  watch<T>(prop: WatchBackend, handle: (value: T) => void): Function;
-}
-
-const getOblivius = (): IMinBackend => {
-  defineNuxoblivius();
-
-  const oblivius = getNuxoblivius();
-  const backend = oblivius.getBackend();
-
-  return {
-    state: (value) => backend.createProperty(value),
-    computed: (handle) => backend.createComputed(handle),
-    watch: (prop, handle) => backend.watchBackendValue(prop, handle as any),
-  };
-};
+defineNuxoblivius();
 
 test("Check: Create store as Functionaly", () => {
-  const { state, computed } = getOblivius();
-
   const useCalcStore = defineSingleton(() => {
-    const a = state(4);
-    const b = state(6);
+    const a = signal(4);
+    const b = signal(6);
 
     const result = computed(() => {
       return a.get() + b.get();
@@ -95,4 +75,59 @@ test("Check how functions work", () => {
   const user = useUser();
 
   expect(user.getFullUserInfo()).toBe("User test his age 20 y.o");
+});
+
+test("Check: Lifespan", () => {
+  let spanState = "Not created";
+
+  const useStore = defineSingleton(() => {
+    onStoreInit(() => spanState = "Store created");
+    onStoreDestroy(() => spanState = "Store removed");
+
+    return {};
+  });
+
+  expect(spanState).toBe("Not created");
+
+  const test = useStore();
+
+  expect(spanState).toBe("Store created");
+
+  destroyStore(test);
+
+  expect(spanState).toBe("Store removed");
+});
+
+test("Check: Nested lifespan", () => {
+  let spanState = "Not created";
+  let spanSecondState = "Not created";
+
+  const useNested = defineSingleton(() => {
+    onStoreInit(() => spanSecondState = "Store created");
+    onStoreDestroy(() => spanSecondState = "Store removed");
+
+    return { uid: 2 };
+  });
+
+  const useStore = defineSingleton(() => {
+    const nested = useNested();
+
+    onStoreInit(() => spanState = "Store created");
+    onStoreDestroy(() => spanState = "Store removed");
+
+    return {};
+  });
+
+  expect(spanState).toBe("Not created");
+  expect(spanSecondState).toBe("Not created");
+
+  const test = useStore();
+
+  expect(spanState).toBe("Store created");
+  expect(spanSecondState).toBe("Store created");
+
+  destroyStore(test);
+
+  expect(spanState).toBe("Store removed");
+  expect(spanSecondState).toBe("Store removed");
 });

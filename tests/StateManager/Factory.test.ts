@@ -1,33 +1,13 @@
 import { expect, test } from "vitest";
-import defineNuxoblivius, { getNuxoblivius } from "../../main/src/Core/index.js";
-import { defineFactory } from "../../main/src/StateManager/index.js";
-import type { BackendProperty, BackendComputed, WatchBackend } from "../../main/src/Core/interface/IBackend.js";
-
-interface IMinBackend {
-  state<T>(value: T): BackendProperty<T>;
-  computed<T>(handle: () => T): BackendComputed<T>;
-  watch<T>(prop: WatchBackend, handle: (value: T) => void): Function;
-}
-
-const getOblivius = (): IMinBackend => {
-  defineNuxoblivius();
-
-  const oblivius = getNuxoblivius();
-  const backend = oblivius.getBackend();
-
-  return {
-    state: (value) => backend.createProperty(value),
-    computed: (handle) => backend.createComputed(handle),
-    watch: (prop, handle) => backend.watchBackendValue(prop, handle as any),
-  };
-};
+import defineNuxoblivius, { signal, computed, watch, getNuxoblivius, onStoreDestroy, onStoreInit } from "../../main/src/Core/index.js";
+import { defineFactory, destroyStore } from "../../main/src/StateManager/index.js";
 
 test("Check: Create store as Functionaly", () => {
-  const { state, computed } = getOblivius();
+  defineNuxoblivius();
 
   const useCalcStore = defineFactory(() => {
-    const a = state(4);
-    const b = state(6);
+    const a = signal(4);
+    const b = signal(6);
 
     const result = computed(() => {
       return a.get() + b.get();
@@ -46,11 +26,11 @@ test("Check: Create store as Functionaly", () => {
 });
 
 test("Check: Watch props in store as Functionaly", () => {
-  const { state, computed, watch } = getOblivius();
+  defineNuxoblivius();
 
   const useCalcStore = defineFactory(() => {
-    const a = state(4);
-    const b = state(6);
+    const a = signal(4);
+    const b = signal(6);
 
     const result = computed(() => {
       return a.get() + b.get();
@@ -74,6 +54,8 @@ test("Check: Watch props in store as Functionaly", () => {
 });
 
 test("Check: Create store as Class", () => {
+  defineNuxoblivius();
+
   const useCalcStore = defineFactory(class {
     public a: number = 4;
     public b: number = 6;
@@ -93,7 +75,7 @@ test("Check: Create store as Class", () => {
 });
 
 test("Check: Watch props in store as Class", () => {
-  const { watch } = getOblivius();
+  defineNuxoblivius();
 
   const useCalcStore = defineFactory(class {
     public a: number = 4;
@@ -116,4 +98,63 @@ test("Check: Watch props in store as Class", () => {
   calc.a = 6;
 
   expect(mimicResult).toBe(12);
+});
+
+test("Check: Lifespan", () => {
+  defineNuxoblivius();
+
+  let spanState = "Not created";
+
+  const useStore = defineFactory(() => {
+    onStoreInit(() => spanState = "Store created");
+    onStoreDestroy(() => spanState = "Store removed");
+
+    return {};
+  });
+
+  expect(spanState).toBe("Not created");
+
+  const test = useStore();
+
+  expect(spanState).toBe("Store created");
+
+  destroyStore(test);
+
+  expect(spanState).toBe("Store removed");
+});
+
+test("Check: Nested lifespan", () => {
+  defineNuxoblivius();
+
+  let spanState = "Not created";
+  let spanSecondState = "Not created";
+
+  const useNested = defineFactory(() => {
+    onStoreInit(() => spanSecondState = "Store created");
+    onStoreDestroy(() => spanSecondState = "Store removed");
+
+    return {};
+  });
+
+  const useStore = defineFactory(() => {
+    const nested = useNested();
+
+    onStoreInit(() => spanState = "Store created");
+    onStoreDestroy(() => spanState = "Store removed");
+
+    return {};
+  });
+
+  expect(spanState).toBe("Not created");
+  expect(spanSecondState).toBe("Not created");
+
+  const test = useStore();
+
+  expect(spanState).toBe("Store created");
+  expect(spanSecondState).toBe("Store created");
+
+  destroyStore(test);
+
+  expect(spanState).toBe("Store removed");
+  expect(spanSecondState).toBe("Store removed");
 });

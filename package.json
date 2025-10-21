@@ -13,7 +13,8 @@
     "backend": "npm test && npm run build:backend",
     "test": "vitest --run",
     "start": "npm test && npm run build:core && npm run build:backend",
-    "link": "cd ./main && npm link && cd ../backends/react && npm link && cd ../vue3 && npm link && cd ../.."
+    "link": "cd ./main && npm link && cd ../backends/react && npm link && cd ../vue3 && npm link && cd ../..",
+    "publish:core": "cd ./main && npm publish --public"
   },
   "author": "notelementimport",
   "license": "ISC",

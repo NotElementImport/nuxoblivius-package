@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { IThread } from "../../main/src/Core/interface/IThread.js";
+import { IErrorInfo, IThread } from "../../main/src/Core/interface/IThread.js";
 import defineNuxoblivius, {
   defineThread,
   onThreadSafe,
@@ -9,15 +9,14 @@ import defineNuxoblivius, {
 let lastConsoleLog: string = "";
 
 class TestThread extends IThread {
-  public override onError(e: Error, _: Function): unknown {
-    lastConsoleLog = e.message;
-    return void 0;
+  public override onError(e: IErrorInfo, _: Function) {
+    lastConsoleLog = e.error.message;
   }
 }
 
 class RetryThread extends IThread {
-  public override onError(e: Error, retry: Function): unknown {
-    lastConsoleLog = e.message;
+  public override onError(e: IErrorInfo, retry: Function) {
+    lastConsoleLog = e.error.message;
     return retry();
   }
 }
@@ -94,4 +93,67 @@ test("Check: async retry", async () => {
   expect(lastConsoleLog).toBe("Unexcepted");
   expect(personalData).toBe("My personal data");
   lastConsoleLog = "";
+});
+
+test("Check: multithread", () => {
+  var errorThreadMsg: string = "";
+  var apiLoggerMsg: string = "";
+
+  class ErrorThread extends IThread {
+    public onError(e: IErrorInfo, _: Function) {
+      errorThreadMsg = e.error.message;
+    }
+  }
+
+  class ApiThread extends IThread {
+    public onError(e: IErrorInfo, _: Function) {
+      apiLoggerMsg = e.error.message;
+    }
+  }
+
+  defineNuxoblivius();
+
+  const testThread = defineThread(ErrorThread, ApiThread);
+
+  onThreadSafe(testThread, () => {
+    throw "This is error";
+  })();
+
+  expect(errorThreadMsg).toBe("This is error");
+  expect(apiLoggerMsg).toBe("This is error");
+});
+
+test("Check: multithread retry", () => {
+  var errorThreadMsg: string = "";
+  var apiLoggerMsg: string = "";
+  var failHook: boolean = true;
+
+  class ErrorThread extends IThread {
+    public onError(e: IErrorInfo, retry: Function) {
+      errorThreadMsg = e.error.message;
+      return retry();
+    }
+  }
+
+  class ApiThread extends IThread {
+    public onError(e: IErrorInfo, _: Function) {
+      apiLoggerMsg = e.error.message;
+    }
+  }
+
+  defineNuxoblivius({});
+
+  const testThread = defineThread(ErrorThread, ApiThread);
+
+  const returnData = onThreadSafe(testThread, () => {
+    if (failHook) {
+      failHook = false;
+      throw "This is error";
+    }
+    return "Test";
+  })();
+
+  expect(errorThreadMsg).toBe("This is error");
+  expect(apiLoggerMsg).toBe("This is error");
+  expect(returnData).toBe("Test");
 });

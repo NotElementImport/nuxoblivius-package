@@ -92,6 +92,10 @@ export class MakeBuilder extends ITemplateBuilder {
       );
     }
 
+    ctx.storeBackend.toOnUnMount(() => {
+      ctx.storeBackend.storeDestroy(instance);
+    });
+
     return instance;
   }
 }

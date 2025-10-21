@@ -4,6 +4,8 @@ import type { IContainer } from "../../Core/interface/IContainer.js";
 
 type StateConstructor = (new (...args: any) => object) | ((di: IContainer, ...args: any) => object);
 
+export const SHARED_BUFFER = Symbol();
+
 const tryIsClass = (instance: any) => {
   const asText = `${instance}`;
 

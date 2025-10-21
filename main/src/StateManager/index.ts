@@ -35,6 +35,8 @@ export class StateManagerFactory {
   }
 }
 
+const DESTROY_TOKEN = Symbol();
+
 export function defineFactory<T, K extends any[]>(store: FactoryInstance<T, K>): (...args: K) => ToStore<T> {
   return (...args: K) => {
     const nx = getNuxoblivius();
@@ -44,14 +46,21 @@ export function defineFactory<T, K extends any[]>(store: FactoryInstance<T, K>):
       const di = nx.getDI();
       const managerFactory = di.injectOrError(StateManagerFactory);
 
-      return managerFactory.createByTemplate({
+      const instance = managerFactory.createByTemplate({
         backendCtx, store, args, template: MakeBuilder
       });
+
+      // @ts-ignore
+      instance[DESTROY_TOKEN] = () => {
+        backendCtx.unMount();
+      };
+
+      return instance;
     }) as any;
   }
 }
 
-export function defineSingleton<T, K extends []>(store: SingletonInstance<T>): () => ToStore<T> {
+export function defineSingleton<T>(store: SingletonInstance<T>): () => ToStore<T> {
   var dummyInstance: T;
 
   return () => {
@@ -60,23 +69,41 @@ export function defineSingleton<T, K extends []>(store: SingletonInstance<T>): (
     const bk = nx.getBackend();
     var managerFactory: StateManagerFactory;
 
-
     if (!dummyInstance) {
       managerFactory = di.injectOrError(StateManagerFactory);
 
       bk.muteContext(() => {
-        dummyInstance = managerFactory.createByTemplate({
-          backendCtx: undefined, store, args: [di], template: DummyBuilder
-        }) as T;
+        bk.storeTransform((backendCtx) => {
+          dummyInstance = managerFactory.createByTemplate({
+            backendCtx, store, args: [di], template: DummyBuilder
+          }) as T;
+        });
       });
     }
 
     return bk.storeTransform((backendCtx) => {
       managerFactory ??= di.injectOrError(StateManagerFactory);
 
-      return managerFactory.createByTemplate({
+      const instance = managerFactory.createByTemplate({
         backendCtx, store: () => dummyInstance, args: [], template: ProxyBuilder
       }) as any;
+
+      // @ts-ignore
+      instance[DESTROY_TOKEN] = () => {
+        backendCtx.unMount();
+      };
+
+      return instance;
     }) as any;
   }
+}
+
+export function destroyStore(store: unknown): boolean {
+  // @ts-ignore
+  if (store && store[DESTROY_TOKEN]) {
+    // @ts-ignore
+    store[DESTROY_TOKEN]();
+    return true;
+  }
+  return false;
 }

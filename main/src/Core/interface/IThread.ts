@@ -1,11 +1,26 @@
+export type ThreadOutput = void | unknown;
+
 export interface IThreadOptions {
   noThrow?: boolean;
 }
 
+export interface IErrorInfo {
+  error: Error;
+  isRetry: boolean;
+  isLastRetry: boolean;
+}
+
 export abstract class IThread {
+  protected toErrorInfo(error: Error | unknown, retryCount: number): IErrorInfo {
+    return {
+      error: error instanceof Error ? error : new Error(`${error}`),
+      isRetry: retryCount > 0,
+      isLastRetry: retryCount == 9
+    }
+  }
+
   public runOnThread<T>(handle: () => T, options: IThreadOptions): T {
-    var hasResposne = false,
-      response: T;
+    var hasResposne = false, response: T;
 
     const runEvent = (count: number = 0) => {
       if (count === 10) {
@@ -22,7 +37,7 @@ export abstract class IThread {
               hasResposne = true;
             } catch (e) {
               await this.onError(
-                e instanceof Error ? e : new Error(`${e}`),
+                this.toErrorInfo(e, count),
                 () => runEvent(count),
               );
 
@@ -38,8 +53,9 @@ export abstract class IThread {
         response = tempResponse;
         hasResposne = true;
       } catch (e) {
-        this.onError(e instanceof Error ? e : new Error(`${e}`), () =>
-          runEvent(count),
+        this.onError(
+          this.toErrorInfo(e, count),
+          () => runEvent(count),
         );
 
         if (!hasResposne && !options.noThrow) {
@@ -53,7 +69,23 @@ export abstract class IThread {
     return runEvent() as any;
   }
 
-  public onError(e: Error, retry: Function): unknown {
+  public onError(e: IErrorInfo, retry: Function): ThreadOutput {
     return void 0;
+  }
+}
+
+export class ThreadMultiple extends IThread {
+  public constructor(private _threadList: IThread[]) {
+    super();
+  }
+
+  public onError(e: IErrorInfo, retry: Function): ThreadOutput {
+    var canRunRetry = false;
+
+    for (const subThread of this._threadList) {
+      subThread.onError(e, () => canRunRetry = true);
+    }
+
+    return canRunRetry ? retry() : void 0;
   }
 }

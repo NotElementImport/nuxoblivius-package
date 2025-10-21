@@ -5,35 +5,66 @@ export class BasicProperty<T> extends BackendProperty<T> { }
 export class BasicComputed<T> extends BackendComputed<T> { }
 
 export class BasicBackend implements IBackend {
+  private _activeCtx: StoreBackendContext;
+  protected isMuted: boolean = false;
+
+  protected scopeContext<T>(ctx: StoreBackendContext, handle: (ctx: StoreBackendContext) => T): T {
+    const oldCtx = this._activeCtx;
+    this._activeCtx = ctx;
+    const response = handle(ctx);
+    this._activeCtx = oldCtx;
+    return response;
+  }
+
+  public onStoreDestroy(handle: () => void, ctx: StoreBackendContext): void {
+    ctx.toStoreDestroy(handle);
+  }
+
+  public onStoreInit(handle: () => void, ctx: StoreBackendContext): void {
+    ctx.toStoreInit(handle);
+  }
+
   public onMounted(handle: () => void): void {
-    throw new Error("Method not implemented.");
+    if (this._activeCtx) {
+      this._activeCtx.toOnMount(handle);
+    }
   }
 
   public onUnMounted(handle: () => void): void {
-    throw new Error("Method not implemented.");
+    if (this._activeCtx) {
+      this._activeCtx.toOnUnMount(handle);
+    }
   }
-
-  protected isMuted: boolean = false;
 
   public muteContext(handle: () => void): void {
     const oldMuted = this.isMuted;
+    const oldCtx = this._activeCtx;
     this.isMuted = true;
+    this._activeCtx = undefined;
     handle();
     this.isMuted = oldMuted;
+    this._activeCtx = oldCtx;
   }
 
   public inContext(): StoreBackendContext {
-    return this.isMuted
-      ? new StoreBackendContext()
-      : new StoreBackendContext();
+    return this.isMuted || this._activeCtx
+      ? new StoreBackendContext({ isMuted: true })
+      : new StoreBackendContext({ isMuted: false });
   }
 
   public getActiveContext(): StoreBackendContext | undefined {
-    return undefined;
+    return this._activeCtx;
   }
 
   public storeTransform(handle: CallStoreHandle): StoreType {
-    return handle(this.inContext());
+    if (this._activeCtx) {
+      return handle(this._activeCtx);
+    }
+
+    const context = this.inContext();
+    const response = this.scopeContext(context, (ctx) => handle(ctx));
+    context.storeInit(response);
+    return response;
   }
 
   public isBackendValue(data: unknown): data is BasicProperty<unknown> {

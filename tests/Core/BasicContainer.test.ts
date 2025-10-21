@@ -2,10 +2,14 @@ import { expect, test } from "vitest";
 import { BasicContainer } from "../../main/src/Core/containers/BasicContainer.js";
 import { asToken } from "../../main/src/Core/interface/IContainer.js";
 
+let counter = 0;
+
 class DITest {
   public constructor(
-    public message: number = Math.round(Math.random() * 1000)
-  ) { }
+    public message: number = counter
+  ) {
+    counter += 1;
+  }
 }
 
 test('Check: singleton (class method)', () => {

@@ -1,7 +1,8 @@
 import { IBackend } from "../../Core/interface/IBackend.js";
 import { Computed, Property, WrapProperty } from "../../Core/Property.js";
+import { uniqId } from "../../Core/Utils.js";
 import type { IPropReader, PropInfo } from "../interface/IPropReader.js";
-import { InstanceContext, ITemplateBuilder } from "../interface/ITemplateBuilder.js";
+import { InstanceContext, ITemplateBuilder, SHARED_BUFFER } from "../interface/ITemplateBuilder.js";
 
 type ShelterMap = Map<string, Property<unknown>>;
 
@@ -91,6 +92,12 @@ export class DummyBuilder extends ITemplateBuilder {
             ctx)
       );
     }
+
+    (instance as any)[SHARED_BUFFER] = {
+      dummyCtx: ctx.storeBackend
+    };
+
+    ctx.storeBackend.setAsSingleton();
 
     return instance;
   }

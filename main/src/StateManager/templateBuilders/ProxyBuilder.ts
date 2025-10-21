@@ -1,6 +1,7 @@
-import { IBackend } from "../../Core/interface/IBackend.js";
+import type { IBackend, StoreBackendContext } from "../../Core/interface/IBackend.js";
 import { type Property } from "../../Core/Property.js";
-import { type InstanceContext, ITemplateBuilder } from "../interface/ITemplateBuilder.js";
+import { uniqId } from "../../Core/Utils.js";
+import { type InstanceContext, ITemplateBuilder, SHARED_BUFFER } from "../interface/ITemplateBuilder.js";
 
 type ShelterMap = Map<string, Property<unknown>>;
 const PARENT_TOKEN = Symbol();
@@ -65,6 +66,25 @@ export class ProxyBuilder extends ITemplateBuilder {
         },
       });
     }
+
+    const dummyCtx = (instance as any)[SHARED_BUFFER].dummyCtx as StoreBackendContext;
+    let breakRelationWithParent: Function;
+
+    ctx.storeBackend.toStoreInit(() => {
+      breakRelationWithParent = ctx.storeBackend.beChild(dummyCtx);
+
+      dummyCtx.storeInit(instance);
+    });
+
+    ctx.storeBackend.toStoreDestroy(() => {
+      breakRelationWithParent?.();
+
+      dummyCtx.storeDestroy(instance);
+    });
+
+    ctx.storeBackend.toOnUnMount(() => {
+      ctx.storeBackend.storeDestroy(instance);
+    });
 
     return proxyInstance;
   }
