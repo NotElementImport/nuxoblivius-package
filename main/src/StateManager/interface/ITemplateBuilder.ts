@@ -1,12 +1,14 @@
 import { getNuxoblivius } from "../../Core/index.js";
 import { StoreBackendContext } from "../../Core/interface/IBackend.js";
-import type { IContainer } from "../../Core/interface/IContainer.js";
+import { IContainer } from "../../Core/interface/IContainer.js";
 
-type StateConstructor = (new (...args: any) => object) | ((di: IContainer, ...args: any) => object);
+export type StateConstructor = (new (...args: unknown[]) => object) | ((di: IContainer, ...args: unknown[]) => object);
+export type RawInstance = Record<string | symbol, unknown>;
+export type Instance = RawInstance;
 
 export const SHARED_BUFFER = Symbol();
 
-const tryIsClass = (instance: any) => {
+const tryIsClass = (instance: unknown) => {
   const asText = `${instance}`;
 
   if (asText.startsWith('class')) {
@@ -14,10 +16,10 @@ const tryIsClass = (instance: any) => {
   }
   else if (asText.startsWith('function')) {
     try {
-      new instance();
+      new (instance as new () => unknown)();
       return true;
     }
-    catch (e) {
+    catch {
       return false;
     }
   }
@@ -39,21 +41,21 @@ export class InstanceContext {
 export abstract class ITemplateBuilder {
   protected static REACTIVE_SHELTER = Symbol();
 
-  private createInstanceFromConstructor(storeCtx: StoreBackendContext, instance: StateConstructor, args: any[]): [object, InstanceContext] {
+  private createInstanceFromConstructor(storeCtx: StoreBackendContext, instance: StateConstructor, args: unknown[]): [RawInstance, InstanceContext] {
     const ctx = new InstanceContext(storeCtx);
 
     ctx.isClass = tryIsClass(instance);
 
     const storeInstance = ctx.isClass
-      ? new (instance as any)(...args)
+      ? new (instance as new (...args: unknown[]) => unknown)(...args)
       : (instance as Function)(getNuxoblivius().getDI(), ...args);
 
     return [storeInstance, ctx];
   }
 
-  protected abstract build(instance: object, ctx: Readonly<InstanceContext>): object;
+  protected abstract build(instance: RawInstance, ctx: Readonly<InstanceContext>): Instance;
 
-  public buildOrFail(ctx: StoreBackendContext, instance: StateConstructor, args: any[]): object {
+  public buildOrFail(ctx: StoreBackendContext, instance: StateConstructor, args: unknown[]): Instance {
     return this.build(
       ...this.createInstanceFromConstructor(ctx, instance, args)
     );

@@ -52,10 +52,7 @@ class ReactCtx extends StoreBackendContext {
 
   public setTrigger(): void {
     super.setTrigger();
-    try {
-      this._setState();
-    }
-    catch (e) { }
+    this._setState();
   }
 }
 
@@ -100,6 +97,6 @@ export class ReactBackend extends BasicBackend {
   }
 
   public override createProperty<T>(value: T, ctx: StoreBackendContext): BackendProperty<T> {
-    return new ReactProperty(value, ctx as any);
+    return new ReactProperty(value, ctx as ReactCtx);
   }
 }

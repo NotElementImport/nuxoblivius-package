@@ -1,6 +1,6 @@
-import { BasicBackend, BasicComputed, BasicProperty } from "@nuxoblivius_builds/core/Core/Backend/Basic";
-import { type CallStoreHandle, type StoreType, BackendComputed, BackendProperty, StoreBackendContext } from "@nuxoblivius_builds/core/Core/Backend/Interface";
 import { onMounted, onUnmounted, shallowRef, ShallowRef } from "vue";
+import { BasicBackend, BasicComputed, BasicProperty } from "@nuxoblivius_builds/core/Core/Backend/Basic";
+import { BackendComputed, BackendProperty, StoreBackendContext } from "@nuxoblivius_builds/core/Core/Backend/Interface";
 
 class Vue3Property<T> extends BasicProperty<T> {
   private _vueRef!: ShallowRef;
@@ -48,25 +48,19 @@ class Vue3Computed<T> extends BasicComputed<T> {
   }
 }
 
-interface Vue3ContextOptions {
-  readonly isMuted: boolean;
-}
-
 class Vue3Context extends StoreBackendContext {
-  public constructor(private readonly options: Vue3ContextOptions) {
-    super();
-  }
-
-  public isMuted(): boolean {
-    return this.options.isMuted;
+  public constructor() {
+    super({ isMuted: false });
+    onMounted(() => this.mount());
+    onUnmounted(() => this.unMount());
   }
 }
 
 export class Vue3Backend extends BasicBackend {
   public override inContext(): StoreBackendContext {
-    return new Vue3Context({
-      isMuted: this.isMuted
-    });
+    return this.isMuted
+      ? new StoreBackendContext({ isMuted: true })
+      : new Vue3Context();
   }
 
   public override onMounted(handle: () => void): void {
@@ -82,16 +76,10 @@ export class Vue3Backend extends BasicBackend {
   }
 
   public override createProperty<T>(value: T, ctx: StoreBackendContext): BackendProperty<T> {
-    if (!ctx || (ctx instanceof Vue3Context && ctx.isMuted())) {
-      return new BasicProperty(value);
-    }
     return new Vue3Property(value);
   }
 
   public override createComputed<T>(handle: () => T, ctx: StoreBackendContext): BackendComputed<T> {
-    if (!ctx || (ctx instanceof Vue3Context && ctx.isMuted())) {
-      return new BasicComputed(handle);
-    }
     return new Vue3Computed(handle);
   }
 }

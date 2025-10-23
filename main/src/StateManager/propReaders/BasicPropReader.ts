@@ -34,20 +34,42 @@ class DataPropInfo implements PropInfo {
 
 export class BasicPropReader implements IPropReader {
   public *getPropsFrom(object: object): Iterable<PropInfo> {
-    for (const propName of Object.getOwnPropertyNames(object)) {
-      yield new DataPropInfo({
-        propName,
-        basicType: true,
-        value: (object as any)[propName]
-      });
+    for (const entry of Object.entries(Object.getOwnPropertyDescriptors(object))) {
+      const [propName, info] = entry;
+
+      if (!info.configurable) {
+        continue;
+      }
+
+      if (info.value) {
+        yield new DataPropInfo({
+          propName,
+          basicType: true,
+          value: info.value,
+        });
+      }
+      else {
+        yield new DataPropInfo({
+          propName,
+          basicType: false,
+          set: (v: unknown) => info.set.call(object, v),
+          get: () => info.get.call(object)
+        });
+      }
     }
 
-    for (const [propName, info] of Object.entries(Object.getOwnPropertyDescriptors(Object.getPrototypeOf(object)))) {
+    for (const entry of Object.entries(Object.getOwnPropertyDescriptors(Object.getPrototypeOf(object)))) {
+      const [propName, info] = entry;
+
+      if (!info.configurable) {
+        continue;
+      }
+
       if (info.set || info.get) {
         yield new DataPropInfo({
           propName,
           basicType: false,
-          set: (v: any) => info.set.call(object, v),
+          set: (v: unknown) => info.set.call(object, v),
           get: () => info.get.call(object)
         });
       }

@@ -1,7 +1,6 @@
+import { Property } from "../../Core/Property.js";
+import { Instance, InstanceContext, ITemplateBuilder, RawInstance, SHARED_BUFFER } from "../interface/ITemplateBuilder.js";
 import type { IBackend, StoreBackendContext } from "../../Core/interface/IBackend.js";
-import { type Property } from "../../Core/Property.js";
-import { uniqId } from "../../Core/Utils.js";
-import { type InstanceContext, ITemplateBuilder, SHARED_BUFFER } from "../interface/ITemplateBuilder.js";
 
 type ShelterMap = Map<string, Property<unknown>>;
 const PARENT_TOKEN = Symbol();
@@ -11,8 +10,8 @@ export class ProxyBuilder extends ITemplateBuilder {
     private readonly backend: IBackend
   ) { super(); }
 
-  private getReactiveShelter(instance: any): Iterable<[string, Property<unknown>]> {
-    const shelter: ShelterMap | undefined = instance[ITemplateBuilder.REACTIVE_SHELTER];
+  private getReactiveShelter(instance: RawInstance): Iterable<[string, Property<unknown>]> {
+    const shelter: ShelterMap | undefined = instance[ITemplateBuilder.REACTIVE_SHELTER] as ShelterMap;
 
     if (shelter) {
       return shelter.entries();
@@ -21,8 +20,8 @@ export class ProxyBuilder extends ITemplateBuilder {
     return [];
   }
 
-  protected build(instance: object, ctx: Readonly<InstanceContext>): object {
-    const mimicInstance: Record<string, unknown> = {
+  protected build(instance: RawInstance, ctx: Readonly<InstanceContext>): Instance {
+    const mimicInstance: Instance = {
       [PARENT_TOKEN]: instance,
       [ITemplateBuilder.REACTIVE_SHELTER]: new Map()
     };
@@ -30,26 +29,26 @@ export class ProxyBuilder extends ITemplateBuilder {
     const proxyInstance = new Proxy(mimicInstance, {
       get(_, propName, __) {
         if (propName === "prototype") {
-          return (instance as any).prototype;
+          return instance.prototype;
         }
 
-        var value = mimicInstance[propName as any];
+        var value = mimicInstance[propName];
 
         if (value) {
           return value;
         }
 
-        value = (instance as any)[propName];
+        value = instance[propName];
 
         if (typeof value === "function") {
-          return (...args: any) => (value as Function).call(proxyInstance, proxyInstance, ...args);
+          return (...args: unknown[]) => (value as Function).call(proxyInstance, proxyInstance, ...args);
         }
 
         return value;
       }
     });
 
-    const mimicShelter: ShelterMap = mimicInstance[ITemplateBuilder.REACTIVE_SHELTER as any] as any;
+    const mimicShelter: ShelterMap = mimicInstance[ITemplateBuilder.REACTIVE_SHELTER] as ShelterMap;
     for (const [prop, value] of this.getReactiveShelter(instance)) {
       mimicShelter.set(prop, this.backend.createProperty(value.get(), ctx.storeBackend));
 
@@ -67,7 +66,7 @@ export class ProxyBuilder extends ITemplateBuilder {
       });
     }
 
-    const dummyCtx = (instance as any)[SHARED_BUFFER].dummyCtx as StoreBackendContext;
+    const dummyCtx = (instance[SHARED_BUFFER] as Record<string, unknown>).dummyCtx as StoreBackendContext;
     let breakRelationWithParent: Function;
 
     ctx.storeBackend.toStoreInit(() => {

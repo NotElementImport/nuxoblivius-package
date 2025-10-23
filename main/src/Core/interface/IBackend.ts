@@ -5,7 +5,7 @@ export abstract class BackendProperty<T> extends Property<T> { }
 export abstract class BackendComputed<T> extends Computed<T> { }
 
 export type SetBackend = unknown | ((v: unknown) => unknown);
-export type WatchBackend = BackendProperty<any> | BackendComputed<any> | (() => unknown);
+export type WatchBackend = BackendProperty<unknown> | BackendComputed<unknown> | (() => unknown);
 
 export type CallStoreHandle = (ctx: StoreBackendContext) => StoreType;
 export type StoreType = unknown;

@@ -1,7 +1,7 @@
-import { IBackend } from "../../Core/interface/IBackend.js";
 import { Property, WrapProperty } from "../../Core/Property.js";
-import type { IPropReader, PropInfo } from "../interface/IPropReader.js";
-import { InstanceContext, ITemplateBuilder } from "../interface/ITemplateBuilder.js";
+import { Instance, InstanceContext, ITemplateBuilder, RawInstance } from "../interface/ITemplateBuilder.js";
+import { IBackend } from "../../Core/interface/IBackend.js";
+import { IPropReader, PropInfo } from "../interface/IPropReader.js";
 
 type ShelterMap = Map<string, Property<unknown>>;
 
@@ -25,7 +25,7 @@ export class MakeBuilder extends ITemplateBuilder {
 
     if (!isClassStore) {
       if (this.backend.isBackendValue(propValue)) {
-        map.set(propName, propValue as any);
+        map.set(propName, propValue as Property);
       }
       else {
         map.set(
@@ -73,8 +73,8 @@ export class MakeBuilder extends ITemplateBuilder {
     }
   }
 
-  protected build(instance: object, ctx: Readonly<InstanceContext>): object {
-    (instance as any)[ITemplateBuilder.REACTIVE_SHELTER] = new Map();
+  protected build(instance: RawInstance, ctx: Readonly<InstanceContext>): Instance {
+    instance[ITemplateBuilder.REACTIVE_SHELTER] = new Map();
 
     for (const propInfo of this.propReader.getPropsFrom(instance)) {
       Object.defineProperty(
@@ -82,11 +82,11 @@ export class MakeBuilder extends ITemplateBuilder {
         propInfo.propName,
         propInfo.isBasicType()
           ? this.basicToReactive(
-            (instance as any)[ITemplateBuilder.REACTIVE_SHELTER],
+            instance[ITemplateBuilder.REACTIVE_SHELTER] as ShelterMap,
             propInfo,
             ctx)
           : this.accessorToReactive(
-            (instance as any)[ITemplateBuilder.REACTIVE_SHELTER],
+            instance[ITemplateBuilder.REACTIVE_SHELTER] as ShelterMap,
             propInfo,
             ctx)
       );

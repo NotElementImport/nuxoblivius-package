@@ -1,11 +1,12 @@
 import { StateManagerFactory } from "../StateManager/index.js";
-import { IPropReaderToken } from "../StateManager/interface/IPropReader.js";
 import { BasicPropReader } from "../StateManager/propReaders/BasicPropReader.js";
 import { DummyBuilder } from "../StateManager/templateBuilders/DummyBuilder.js";
 import { MakeBuilder } from "../StateManager/templateBuilders/MakeBuilder.js";
 import { ProxyBuilder } from "../StateManager/templateBuilders/ProxyBuilder.js";
-import { BasicBackend } from "./backend/BasicBackend.js";
+import { IPropReaderToken } from "../StateManager/interface/IPropReader.js";
+
 import { BasicContainer } from "./containers/BasicContainer.js";
+import { BasicBackend } from "./backend/BasicBackend.js";
 import type {
   BackendComputed,
   BackendProperty,
@@ -13,6 +14,7 @@ import type {
 } from "./interface/IBackend.js";
 import type { IContainer } from "./interface/IContainer.js";
 import { IThread, ThreadMultiple } from "./interface/IThread.js";
+import { isSeekerWorking, Property } from "./Property.js";
 
 interface CoreOptions {
   container: IContainer;
@@ -98,7 +100,7 @@ export function signal<T>(value: T | (() => T)): BackendProperty<T> {
     }
 
     return backend.createProperty(value, ctx);
-  }) as any;
+  }) as BackendProperty<T>;
 }
 
 export function spanSignal<T>(value: (() => T)): BackendProperty<T> {
@@ -113,7 +115,18 @@ export function spanSignal<T>(value: (() => T)): BackendProperty<T> {
     }, ctx);
 
     return signal;
-  }) as any;
+  }) as BackendProperty<T>;
+}
+
+type RawValue<T> = T extends Property<infer K> ? K : T;
+export type OrSignal<T> = T | Property<T>;
+
+export function toValue<T>(value: T): RawValue<T> {
+  if (value instanceof Property) {
+    return isSeekerWorking() ? value.get() : value.valueOf();
+  }
+
+  return value as RawValue<T>;
 }
 
 export function computed<T>(handle: () => T): BackendComputed<T> {
@@ -121,7 +134,7 @@ export function computed<T>(handle: () => T): BackendComputed<T> {
 
   return backend.storeTransform((ctx) => {
     return backend.createComputed(handle, ctx);
-  }) as any;
+  }) as BackendComputed<T>;
 }
 
 export function watch<T>(
@@ -131,8 +144,8 @@ export function watch<T>(
   const backend = getNuxoblivius().getBackend();
 
   return backend.storeTransform(() => {
-    return backend.watchBackendValue(prop, handle as any);
-  }) as any;
+    return backend.watchBackendValue(prop as Property, handle as any);
+  }) as Function;
 }
 
 export function onMounted(handle: () => void): void {
@@ -191,7 +204,7 @@ export function onTimespan(
     backend.onStoreDestroy(safeBreakHandle, ctx);
 
     return safeBreakHandle;
-  }) as any;
+  }) as (() => void);
 }
 
 export function defineThread(...instances: (new () => IThread)[]): IThread {

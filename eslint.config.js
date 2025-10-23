@@ -7,7 +7,7 @@ import unicorn from "eslint-plugin-unicorn";
 
 export default [
   {
-    files: ["**/*.ts", "**/*.tsx"],
+    files: ["./main/**/*.ts", "./backends/**/*.ts"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -29,7 +29,6 @@ export default [
       // плагины
       "import/order": ["warn", { "newlines-between": "always" }],
       "sonarjs/no-duplicate-string": "warn",
-      "unicorn/prefer-optional-catch-binding": "warn",
     },
   },
 ];

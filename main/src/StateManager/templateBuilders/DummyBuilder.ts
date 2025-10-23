@@ -1,8 +1,7 @@
+import { Computed, findAllProperties, Property, WrapProperty } from "../../Core/Property.js";
+import { Instance, InstanceContext, ITemplateBuilder, RawInstance, SHARED_BUFFER } from "../interface/ITemplateBuilder.js";
 import { IBackend } from "../../Core/interface/IBackend.js";
-import { Computed, Property, WrapProperty } from "../../Core/Property.js";
-import { uniqId } from "../../Core/Utils.js";
-import type { IPropReader, PropInfo } from "../interface/IPropReader.js";
-import { InstanceContext, ITemplateBuilder, SHARED_BUFFER } from "../interface/ITemplateBuilder.js";
+import { IPropReader, PropInfo } from "../interface/IPropReader.js";
 
 type ShelterMap = Map<string, Property<unknown>>;
 
@@ -26,7 +25,7 @@ export class DummyBuilder extends ITemplateBuilder {
 
     if (!isClassStore) {
       if (this.backend.isBackendValue(propValue)) {
-        map.set(propName, propValue as any);
+        map.set(propName, propValue as Property);
       }
       else {
         map.set(
@@ -46,6 +45,7 @@ export class DummyBuilder extends ITemplateBuilder {
     }
 
     return {
+      configurable: false,
       get: () => map.get(propName).get(),
       set: (v) => map.get(propName).set(v)
     }
@@ -59,23 +59,25 @@ export class DummyBuilder extends ITemplateBuilder {
     if (isClassStore && prop.get) {
       map.set(
         propName,
-        new Computed(() => prop.get())
+        this.backend.createComputed(() => prop.get())
       );
 
       return {
+        configurable: false,
         get: () => map.get(propName).get(),
         set: () => { throw new Error("Readonly Computed property edit") }
       }
     }
 
     return {
+      configurable: false,
       get: () => prop.get?.(),
       set: (v) => prop.set?.(v)
     }
   }
 
-  protected build(instance: object, ctx: Readonly<InstanceContext>): object {
-    (instance as any)[ITemplateBuilder.REACTIVE_SHELTER] = new Map();
+  protected build(instance: RawInstance, ctx: Readonly<InstanceContext>): Instance {
+    instance[ITemplateBuilder.REACTIVE_SHELTER] = new Map();
 
     for (const propInfo of this.propReader.getPropsFrom(instance)) {
       Object.defineProperty(
@@ -83,17 +85,17 @@ export class DummyBuilder extends ITemplateBuilder {
         propInfo.propName,
         propInfo.isBasicType()
           ? this.basicToReactive(
-            (instance as any)[ITemplateBuilder.REACTIVE_SHELTER],
+            instance[ITemplateBuilder.REACTIVE_SHELTER] as ShelterMap,
             propInfo,
             ctx)
           : this.accessorToReactive(
-            (instance as any)[ITemplateBuilder.REACTIVE_SHELTER],
+            instance[ITemplateBuilder.REACTIVE_SHELTER] as ShelterMap,
             propInfo,
             ctx)
       );
     }
 
-    (instance as any)[SHARED_BUFFER] = {
+    instance[SHARED_BUFFER] = {
       dummyCtx: ctx.storeBackend
     };
 

@@ -5,14 +5,14 @@ abstract class ContainerValue {
     private readonly _value: SingletonValue | FactoryValue
   ) { }
 
-  public abstract getInstance(...args: any[]): unknown;
+  public abstract getInstance(...args: unknown[]): unknown;
 
   public onClean(): void { }
-  public makeInstance(...args: any[]): unknown {
+  public makeInstance(...args: unknown[]): unknown {
     if (typeof this._value === "function") {
       // is constructor
       if (this._value.name != "") {
-        return new (this._value as any)(...args);
+        return new (this._value as new (...args: unknown[]) => unknown)(...args);
       }
 
       return (this._value as Function)(...args);
@@ -23,7 +23,7 @@ abstract class ContainerValue {
 }
 
 class FactoryContainerValue extends ContainerValue {
-  public getInstance(...args: any[]): unknown {
+  public getInstance(...args: unknown[]): unknown {
     return this.makeInstance(...args);
   }
 }
@@ -31,7 +31,7 @@ class FactoryContainerValue extends ContainerValue {
 class SingletonContainerValue extends ContainerValue {
   private _existValue: unknown;
 
-  public getInstance(...args: any[]): unknown {
+  public getInstance(...args: unknown[]): unknown {
     if (!this._existValue) {
       this._existValue = this.makeInstance(...args);
     }
@@ -70,7 +70,7 @@ export class BasicContainer implements IContainer {
   }
 
   public inject<T, ARGS extends any[]>(token: ContainerToken<T, ARGS>, ...args: ARGS | []): T | null {
-    const container = this._container.get(token);
+    const container = this._container.get(token as ContainerToken);
 
     if (!container) {
       return null;
@@ -79,15 +79,15 @@ export class BasicContainer implements IContainer {
     return container.getInstance(...args) as T;
   }
 
-  public injectOrError<T, ARGS extends any[]>(token: ContainerToken<T, ARGS>, ...args: ARGS | []): T {
-    if (!this._container.has(token)) {
+  public injectOrError<T, ARGS extends unknown[]>(token: ContainerToken<T, ARGS>, ...args: ARGS | []): T {
+    if (!this._container.has(token as ContainerToken)) {
       throw new Error("Token not exist in container");
     }
 
     return this.inject(token, ...args);
   }
 
-  public injectOrCreate<T, ARGS extends any[]>(token: new (...args: ARGS) => T, ...args: ARGS): T {
+  public injectOrCreate<T, ARGS extends unknown[]>(token: new (...args: ARGS) => T, ...args: ARGS): T {
     const value = this.inject(token, ...args);
 
     if (!value) {
@@ -103,13 +103,13 @@ export class BasicContainer implements IContainer {
     const childContainer = new Proxy(new Map(), {
       get(target, prop, reciver) {
         if (prop === "set") {
-          return function (key: any, value: any) {
+          return function (key: ContainerToken, value: ContainerValue) {
             parent._container.set(key, value);
             return target.set(key, value);
           }
         }
 
-        const value = (target as any)[prop];
+        const value = (target as unknown as Record<string, unknown>)[prop as string];
 
         if (typeof value === "function") {
           return value.bind(target);

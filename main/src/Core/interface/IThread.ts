@@ -66,7 +66,7 @@ export abstract class IThread {
       return response;
     };
 
-    return runEvent() as any;
+    return runEvent() as T;
   }
 
   public onError(e: IErrorInfo, retry: Function): ThreadOutput {

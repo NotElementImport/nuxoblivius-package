@@ -11,10 +11,12 @@
     "build:backend": "npm run build:backend:react && npm run build:backend:vue3",
     "core": "npm test && npm run build:core",
     "backend": "npm test && npm run build:backend",
-    "test": "vitest --run",
+    "test": "npm run lint && vitest --run",
     "start": "npm test && npm run build:core && npm run build:backend",
     "link": "cd ./main && npm link && cd ../backends/react && npm link && cd ../vue3 && npm link && cd ../..",
-    "publish:core": "cd ./main && npm publish --public"
+    "publish:core": "cd ./main && npm publish --public",
+    "lint": "npx eslint --format codeframe",
+    "lint:fix": "npx eslint --fix"
   },
   "author": "notelementimport",
   "license": "ISC",
@@ -22,6 +24,7 @@
     "@typescript-eslint/eslint-plugin": "^8.44.1",
     "@typescript-eslint/parser": "^8.44.1",
     "eslint": "^9.36.0",
+    "eslint-formatter-codeframe": "^7.32.1",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-sonarjs": "^3.0.5",
     "eslint-plugin-unicorn": "^61.0.2",

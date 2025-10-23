@@ -1,11 +1,12 @@
-import type { IContainer } from "../Core/interface/IContainer.js";
-import type { ITemplateBuilder } from "./interface/ITemplateBuilder.js";
 import { getNuxoblivius } from "../Core/index.js";
-import { MakeBuilder } from "./templateBuilders/MakeBuilder.js";
-import type { Property } from "../Core/Property.js";
-import { ProxyBuilder } from "./templateBuilders/ProxyBuilder.js";
+import { Property } from "../Core/Property.js";
+import { StoreBackendContext } from "../Core/interface/IBackend.js";
+import { IContainer } from "../Core/interface/IContainer.js";
+
 import { DummyBuilder } from "./templateBuilders/DummyBuilder.js";
-import type { StoreBackendContext } from "../Core/interface/IBackend.js";
+import { ProxyBuilder } from "./templateBuilders/ProxyBuilder.js";
+import { MakeBuilder } from "./templateBuilders/MakeBuilder.js";
+import { ITemplateBuilder, StateConstructor } from "./interface/ITemplateBuilder.js";
 
 type ToStore<T> = { [K in keyof T]: (T[K] extends Property<infer Type> ? Type : T[K]) }
 type FactoryInstance<T = unknown, K extends any[] = any> = ((di: IContainer, ...args: K) => T) | (new (...args: K) => T);
@@ -14,8 +15,8 @@ type SingletonInstance<T = unknown> = ((di: IContainer) => T) | (new (...args: a
 interface CreateByTemplateOptions {
   backendCtx: StoreBackendContext;
   store: FactoryInstance | SingletonInstance;
-  args: any[];
-  templateArgs?: any[];
+  args: unknown[];
+  templateArgs?: unknown[];
   template: new (...args: any[]) => ITemplateBuilder;
 }
 
@@ -30,14 +31,15 @@ export class StateManagerFactory {
 
     return builder.buildOrFail(
       options.backendCtx,
-      options.store as any, options.args
+      options.store as StateConstructor,
+      options.args
     );
   }
 }
 
 const DESTROY_TOKEN = Symbol();
 
-export function defineFactory<T, K extends any[]>(store: FactoryInstance<T, K>): (...args: K) => ToStore<T> {
+export function defineFactory<T, K extends unknown[]>(store: FactoryInstance<T, K>): (...args: K) => ToStore<T> {
   return (...args: K) => {
     const nx = getNuxoblivius();
     const bk = nx.getBackend();
@@ -56,7 +58,7 @@ export function defineFactory<T, K extends any[]>(store: FactoryInstance<T, K>):
       };
 
       return instance;
-    }) as any;
+    }) as ToStore<T>;
   }
 }
 
@@ -86,7 +88,7 @@ export function defineSingleton<T>(store: SingletonInstance<T>): () => ToStore<T
 
       const instance = managerFactory.createByTemplate({
         backendCtx, store: () => dummyInstance, args: [], template: ProxyBuilder
-      }) as any;
+      });
 
       // @ts-ignore
       instance[DESTROY_TOKEN] = () => {
@@ -94,7 +96,7 @@ export function defineSingleton<T>(store: SingletonInstance<T>): () => ToStore<T
       };
 
       return instance;
-    }) as any;
+    }) as ToStore<T>;
   }
 }
 

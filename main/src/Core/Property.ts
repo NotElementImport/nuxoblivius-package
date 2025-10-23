@@ -1,6 +1,10 @@
 var isSeekerMode: boolean = false;
 var seekerResult: Property[] = [];
 
+export const isSeekerWorking = () => {
+  return isSeekerMode;
+};
+
 export const ingnoreSeeker = <T>(handle: () => T): T => {
   const oldSeekerValue = isSeekerMode;
   isSeekerMode = false;
@@ -56,7 +60,7 @@ export class Property<T = unknown> {
 
   public set(newValue: T | ((v: T) => T)): void {
     const value = typeof newValue === "function"
-      ? (newValue as any)(this._value)
+      ? (newValue as Function)(this._value)
       : newValue;
 
     const oldValue = this._value;
