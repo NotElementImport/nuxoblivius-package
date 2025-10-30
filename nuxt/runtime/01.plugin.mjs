@@ -41,7 +41,6 @@ const useDefaultFetch = async (url, options, isBlob, abort) => {
 
 const useFetch = async (isHydrate, key, url, options, isBlob, abort) => {
     if (isNuxt3_17_4()) {
-        console.log('isNuxt3_17_4()')
         if (isUseAsyncDataFetch(isHydrate)) {
             var { data } = await useAsyncData(key, async () => {
                 return await useDefaultFetch(url, options, isBlob, abort);
