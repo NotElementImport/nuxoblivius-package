@@ -10,15 +10,15 @@ const [nuxtMajorVersion, nuxtMinorVersion, nuxtAtomVersion] = version.split(".")
 let nuxtIs3_17_4;
 
 const isNuxt3_17_4 = () => {
-    if (nuxtIs3_17_4) {
-        return nuxtIs3_17_4;
-    }
+    if (nuxtIs3_17_4) return nuxtIs3_17_4;
 
-    const nuxt3_17_4 = 3 * 17 * 4;
-    const currentNuxt = (+nuxtMajorVersion) * (+nuxtMinorVersion) * (+nuxtAtomVersion);
+    const target = 3 * Math.pow(10, 6) + 17 * Math.pow(10, 3) + 4;
+    const current =
+        (+nuxtMajorVersion) * Math.pow(10, 6) +
+        (+nuxtMinorVersion) * Math.pow(10, 3) +
+        (+nuxtAtomVersion);
 
-    nuxtIs3_17_4 = nuxt3_17_4 >= currentNuxt;
-
+    nuxtIs3_17_4 = current >= target;
     return nuxtIs3_17_4;
 };
 
@@ -41,6 +41,7 @@ const useDefaultFetch = async (url, options, isBlob, abort) => {
 
 const useFetch = async (isHydrate, key, url, options, isBlob, abort) => {
     if (isNuxt3_17_4()) {
+        console.log('isNuxt3_17_4()')
         if (isUseAsyncDataFetch(isHydrate)) {
             var { data } = await useAsyncData(key, async () => {
                 return await useDefaultFetch(url, options, isBlob, abort);
