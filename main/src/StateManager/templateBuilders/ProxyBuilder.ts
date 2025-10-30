@@ -41,7 +41,7 @@ export class ProxyBuilder extends ITemplateBuilder {
         value = instance[propName];
 
         if (typeof value === "function") {
-          return (...args: unknown[]) => (value as Function).call(proxyInstance, proxyInstance, ...args);
+          return (...args: unknown[]) => (value as Function).bind(proxyInstance)(...args);
         }
 
         return value;

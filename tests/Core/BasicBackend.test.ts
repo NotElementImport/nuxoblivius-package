@@ -63,7 +63,7 @@ test("Check: watch backend value", () => {
   const a = backend.createProperty("Test", null as any);
   var mimicA = a.get();
 
-  backend.watchBackendValue(a, (value) => {
+  backend.watchBackendValue(a as undefined, (value) => {
     mimicA = value as string;
   });
 

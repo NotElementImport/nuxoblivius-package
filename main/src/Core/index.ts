@@ -38,6 +38,7 @@ export class Core {
 }
 
 var nuxobliviusInstance: Core;
+var nuxobliviusEventLoop: Set<Promise<unknown>> = new Set();
 
 export function getNuxoblivius(): Core {
   if (!nuxobliviusInstance) {
@@ -47,6 +48,25 @@ export function getNuxoblivius(): Core {
   }
 
   return nuxobliviusInstance;
+}
+
+export async function waitEventLoop() {
+  const values = Array.from(nuxobliviusEventLoop.values());
+
+  await Promise.all(values);
+}
+
+export function orQueueToEventLoop<T extends unknown>(value: T, then: (value: Awaited<T>) => void): void {
+  if (value instanceof Promise) {
+    nuxobliviusEventLoop.add(value);
+
+    value.then((v) => {
+      then(v);
+      nuxobliviusEventLoop.delete(value);
+    });
+  }
+
+  then(value as Awaited<T>);
 }
 
 // Main entry
@@ -181,24 +201,39 @@ export function onStoreDestroy(handle: () => void): void {
 }
 
 export function onTimespan(
-  handle: () => Function
+  handle: () => (Function | void | Promise<Function | void>)
 ): (() => void) {
   const backend = getNuxoblivius().getBackend();
 
   return backend.storeTransform((ctx) => {
     var canBeBrake = true;
-    var breakHandle: Function;
+    var brakeIt = false;
+    var breakHandle: Function | void;
 
     const safeBreakHandle = () => {
-      if (canBeBrake && breakHandle && typeof breakHandle === "function") {
-        breakHandle();
+      brakeIt = false;
+
+      if (canBeBrake) {
+        if (typeof breakHandle === "function") {
+          breakHandle();
+        }
+        else {
+          brakeIt = true;
+        }
         canBeBrake = false;
       }
     };
 
     backend.onStoreInit(() => {
       canBeBrake = true;
-      breakHandle = handle();
+
+      orQueueToEventLoop(handle(), (breakCallback) => {
+        breakHandle = breakCallback;
+
+        if (brakeIt) {
+          safeBreakHandle();
+        }
+      });
     }, ctx);
 
     backend.onStoreDestroy(safeBreakHandle, ctx);

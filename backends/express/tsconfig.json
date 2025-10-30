@@ -1,0 +1,9 @@
+{
+  "includes": [
+    "./src/**/*"
+  ],
+  "compilerOptions": {
+    "outDir": "./dist" /* Specify an output folder for all emitted files. */,
+  },
+  "extends": "../../tsconfig.json"
+}

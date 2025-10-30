@@ -18,6 +18,7 @@ export class StoreBackendContext {
   private _UID: string;
   private _pointerCount: Map<unknown, number> = new Map();
   private _childs: Set<StoreBackendContext> = new Set();
+  private _parent?: StoreBackendContext;
 
   private _subsStoreInit: Function[] = [];
   private _subsStoreDestroy: Function[] = [];
@@ -38,13 +39,22 @@ export class StoreBackendContext {
   }
 
   public beChild(parent: StoreBackendContext): () => void {
-    parent._childs.add(this);
-
-    parent.toStoreDestroy(() => {
+    if (this._parent) {
       parent._childs.delete(this);
-    });
+      this._parent = null;
+    }
 
-    return () => parent._childs.delete(this);
+    if (parent) {
+      this._parent = parent;
+      parent._childs.add(this);
+      return () => parent._childs.delete(this);
+    }
+
+    return () => { };
+  }
+
+  public getParent(): StoreBackendContext | null {
+    return this._parent;
   }
 
   public isMuted(): boolean {

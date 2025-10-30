@@ -1,0 +1,27 @@
+{
+  "name": "@nuxoblivius_builds/backend_express",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Nuxoblivius a React backend",
+  "author": "NotElementImport",
+  "license": "ISC",
+  "dependencies": {
+    "@nuxoblivius_builds/core": "^2.0.0",
+    "@types/express": "^5.0.5",
+    "express": "^5.1.0",
+    "vue": "^3.0.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/ExpressBackend.js",
+      "types": "./dist/ExpressBackend.d.ts"
+    },
+    "./Plugin": {
+      "import": "./dist/Plugin.js",
+      "types": "./dist/Plugin.d.ts"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
