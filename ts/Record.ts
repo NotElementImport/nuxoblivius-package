@@ -1,5 +1,5 @@
 import { appendMerge, isRef, queryToUrl, refOrVar, resolveOrLater, storeToQuery, urlPathParams } from "./Utils.js"
-import { defaultHeaders, storeFetch, defaultFetchFailure, routerInterpolation } from "./config.js"
+import { defaultHeaders, storeFetch, defaultFetchFailure, routerInterpolation, options as configOptions } from "./config.js"
 import { isReactive, onUnmounted, reactive, watch } from "vue"
 
 type DynamicResponse = { [key: string]: any }
@@ -1347,6 +1347,11 @@ export default class Record {
      * Call request
      */
     private async doFetch(method: string = 'get') {
+        let launchTrace: string[] = [];
+        if (configOptions.useTracing) {
+            launchTrace = new Error().stack.split("at").slice(3);
+        }
+
         if (this._oneRequestAtTime && this._currentRequest != null) {
             return this._currentRequest;
         }
@@ -1470,7 +1475,8 @@ export default class Record {
             options,
             this._isBlob,
             this._template as any,
-            this._abortController.getSignal()
+            this._abortController.getSignal(),
+            launchTrace
         )
 
         /**

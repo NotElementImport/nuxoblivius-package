@@ -6,10 +6,11 @@ export const defaultHeaders = {} as any
 export let defaultFetchFailure: Function = () => undefined as object
 
 export const options = {
+    useTracing: false,
     /**
      * HTTP request configuration
      */
-    http: async (url: string, options: any, isblob: boolean, abort: AbortSignal) => {
+    http: async (url: string, options: any, isblob: boolean, abort: AbortSignal, trace: string[]) => {
         let response: Response;
 
         try {
@@ -158,8 +159,8 @@ export function routerInterpolation(data: string, where: 'path' | 'query') {
 /**
  * Fetching data for store
  */
-export async function storeFetch(url: string, requestInit: any, isblob: boolean, pattern: string | TemplateFunction, abort: AbortSignal): Promise<FetchResult> {
-    const response = await options.http(url, requestInit, isblob, abort) // raw response
+export async function storeFetch(url: string, requestInit: any, isblob: boolean, pattern: string | TemplateFunction, abort: AbortSignal, launchTrace: string[]): Promise<FetchResult> {
+    const response = await options.http(url, requestInit, isblob, abort, launchTrace) // raw response
 
     if (response instanceof Blob) { // return value for Blob data
         return {
@@ -213,6 +214,9 @@ export async function storeFetch(url: string, requestInit: any, isblob: boolean,
 }
 
 export const settings = {
+    traceRequest() {
+        options.useTracing = true;
+    },
     template(name: string, logic: () => { data: any, countPages?: number }) {
         options.templates[name] = logic
         return this

@@ -11,7 +11,8 @@ const module = defineNuxtModule({
   defaults: {
     rules: {},
     logs: false,
-    clientLogs: false
+    clientLogs: false,
+    parseError: false,
   },
   // hooks: {
   // }
@@ -32,7 +33,6 @@ const module = defineNuxtModule({
        )))))))))        
 `)
     }
-
 
     const resolver = createResolver(import.meta.url);
 
@@ -58,11 +58,10 @@ const module = defineNuxtModule({
       rules: _options.rules,
       logs: _options.logs,
       clientLogs: _options.clientLogs,
+      parseError: _options.parseError,
     };
 
     addPlugin({
-      order: -Infinity,
-      mode: "all",
       src: resolver.resolve("./runtime/01.plugin")
     });
   }

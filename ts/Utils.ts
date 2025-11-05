@@ -186,6 +186,7 @@ export const toURLMeta = (url: URL | string | { origin?: string, path: string, p
                 // @ts-ignore
                 path = path.replaceAll(
                     `{$${param}}`,
+                    // @ts-ignore
                     process.env[key] ?? value,
                 );
             }
