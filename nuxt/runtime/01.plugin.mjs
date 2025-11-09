@@ -190,10 +190,10 @@ async function doTrackRequest(uid, ...args) {
           `${sc.yellow("⚠")} [${sc.yellow("LEAK REQUEST")}] ${sc.green(`"${args[0]}"`)}`,
           ...(appInfo.isDev
             ? [
-                ...trace.map(
-                  (v) => `  •  ${sc.yellow(v.trim().replace("\n", ""))}`,
-                ),
-              ]
+              ...trace.map(
+                (v) => `  •  ${sc.yellow(v.trim().replace("\n", ""))}`,
+              ),
+            ]
             : []),
         ].join("\n"),
       );
@@ -288,8 +288,6 @@ export default defineNuxtPlugin({
           ? await doTrackRequest(uid, url, options, isBlob, abort, tracing)
           : await doRequest(uid, url, options, isBlob, abort);
 
-        response.body = { uid, ...response.body };
-
         return response;
       });
     },
@@ -333,26 +331,26 @@ export default defineNuxtPlugin({
             `  -  Success requests: ${successValue} ${leaks}`,
             ...(Object.keys(requestData.requestStats.slow).length
               ? [
-                  "  -  Slow requests: ",
-                  ...Object.entries(requestData.requestStats.slow).map(
-                    ([url, time]) => {
-                      if (time > 1000) {
-                        return `     • ${sc.green(`"${url}"`)}: ${sc.yellow(normTime(time))}`;
-                      }
+                "  -  Slow requests: ",
+                ...Object.entries(requestData.requestStats.slow).map(
+                  ([url, time]) => {
+                    if (time > 1000) {
                       return `     • ${sc.green(`"${url}"`)}: ${sc.yellow(normTime(time))}`;
-                    },
-                  ),
-                ]
+                    }
+                    return `     • ${sc.green(`"${url}"`)}: ${sc.yellow(normTime(time))}`;
+                  },
+                ),
+              ]
               : []),
             ...(countLeaks
               ? [
-                  "  -  " + sc.yellow("⚠ Leaks requests") + ":",
-                  ...Object.entries(requestData.requestStats.leaks).map(
-                    ([url]) => {
-                      return `     • ${sc.green(`"${url}"`)}`;
-                    },
-                  ),
-                ]
+                "  -  " + sc.yellow("⚠ Leaks requests") + ":",
+                ...Object.entries(requestData.requestStats.leaks).map(
+                  ([url]) => {
+                    return `     • ${sc.green(`"${url}"`)}`;
+                  },
+                ),
+              ]
               : []),
           ].join("\n"),
         );
