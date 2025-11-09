@@ -1,236 +1,283 @@
-type TemplateFunction = (raw: any) => { data?: any, countPages?: number }
-type TemplateLogic = { [key: string]: TemplateFunction }
-type FetchResult = { data: object | Blob | null, error: boolean, errorText: string, code: number, pageCount: number, protocol?: object, header: object }
+type TemplateFunction = (raw: any) => { data?: any; countPages?: number };
+type TemplateLogic = { [key: string]: TemplateFunction };
+type FetchResult = {
+  data: object | Blob | null;
+  error: boolean;
+  errorText: string;
+  code: number;
+  pageCount: number;
+  protocol?: object;
+  header: object;
+};
 
-export const defaultHeaders = {} as any
-export let defaultFetchFailure: Function = () => undefined as object
+export const defaultHeaders = {} as any;
+export let defaultFetchFailure: Function = () => undefined as object;
 
 export const options = {
-    useTracing: false,
-    /**
-     * HTTP request configuration
-     */
-    http: async (url: string, options: any, isblob: boolean, abort: AbortSignal, trace: string[]) => {
-        let response: Response;
+  useTracing: false,
+  /**
+   * HTTP request configuration
+   */
+  http: async (
+    url: string,
+    options: any,
+    isblob: boolean,
+    abort: AbortSignal,
+    trace: string[],
+  ) => {
+    let response: Response;
 
-        try {
-            response = await fetch(url, {
-                ...options,
-                signal: abort,
-            });
-        }
-        catch (err) {
-            // @ts-ignore
-            if (err.name !== "AbortError") throw err;
-        }
+    try {
+      response = await fetch(url, {
+        ...options,
+        signal: abort,
+      });
+    } catch (err) {}
 
-        if (abort.aborted) {
-            return {
-                _meta: { ok: false, code: 400, text: "Aborted" },
-                header: new Headers(),
-                body: {
-                    _errorCode: 400,
-                    _errorText: "Aborted",
-                    _errorBody: "Aborted",
-                }
-            }
-        }
+    if (abort.aborted) {
+      return {
+        _meta: { ok: false, code: 400, text: "Aborted" },
+        header: new Headers(),
+        body: {
+          _errorCode: 400,
+          _errorText: "Aborted",
+          _errorBody: "Aborted",
+        },
+      };
+    }
 
-        let _meta = { // object for meta data
-            ok: response.ok,
-            code: response.status,
-            text: response.statusText,
-        };
+    let _meta = {
+      // object for meta data
+      ok: response.ok,
+      code: response.status,
+      text: response.statusText,
+    };
 
-        if (!response.ok) {
-            return {
-                _meta,
-                header: response.headers,
-                body: {
-                    _errorCode: response.status,
-                    _errorText: response.statusText,
-                    _errorBody: await response.text()
-                }
-            }
-        }
+    if (!response.ok) {
+      return {
+        _meta,
+        header: response.headers,
+        body: {
+          _errorCode: response.status,
+          _errorText: response.statusText,
+          _errorBody: await response.text(),
+        },
+      };
+    }
 
-        if (isblob) // for blob data
-            return { header: response.headers, body: response.blob(), _meta }
-        const raw = await response.text()
+    if (isblob)
+      // for blob data
+      return { header: response.headers, body: response.blob(), _meta };
+    const raw = await response.text();
 
-        if (raw.length > 0 && (raw[0] == '{' || raw[0] == '[')) {
-            return { header: response.headers, body: JSON.parse(raw), _meta }
-        }
-        return { header: response.headers, body: raw, _meta } // this function returns RAW DATA (before template using)
-    },
-    cookie: { get: (name: string) => '', set: (name: string, value: any) => null as any } as any as { get(name: string): any, set(name: string, value: any): void },
-    router: {} as any as { path: '', params: Record<string, any>, query: Record<string, any> },
-    _templates: {} as TemplateLogic, // incapsulated templates
-    get templates() { return this._templates }
-}
+    if (raw.length > 0 && (raw[0] == "{" || raw[0] == "[")) {
+      return { header: response.headers, body: JSON.parse(raw), _meta };
+    }
+    return { header: response.headers, body: raw, _meta }; // this function returns RAW DATA (before template using)
+  },
+  cookie: {
+    get: (name: string) => "",
+    set: (name: string, value: any) => null as any,
+  } as any as { get(name: string): any; set(name: string, value: any): void },
+  router: {} as any as {
+    path: "";
+    params: Record<string, any>;
+    query: Record<string, any>;
+  },
+  _templates: {} as TemplateLogic, // incapsulated templates
+  get templates() {
+    return this._templates;
+  },
+};
 
 export function setRequestFailure(handle: Function) {
-    defaultFetchFailure = handle
+  defaultFetchFailure = handle;
 }
 
 /**
  * User can set default header for all records
  */
 export function setDefaultHeader(name: string, value: any) {
-    defaultHeaders[name] = value // defaultHeaders are collecting to the array
+  defaultHeaders[name] = value; // defaultHeaders are collecting to the array
 }
 
 /**
  * User can set default auth value for all records
  */
 export function setDefaultAuth(string: any) {
-    defaultHeaders.Authorization = string
+  defaultHeaders.Authorization = string;
 }
 
 /**
  * Returns converted data by template
  */
 export function callPattern(name: string | Function, data: object) {
-    if (typeof name == 'string' && name in options.templates) { //find template by name
-        return options.templates[name](data)
-    }
-    else if (typeof name == "function") { // try use template if function is correct
-        return name(data)
-    }
+  if (typeof name == "string" && name in options.templates) {
+    //find template by name
+    return options.templates[name](data);
+  } else if (typeof name == "function") {
+    // try use template if function is correct
+    return name(data);
+  }
 
-    return { data } // if there isn't correct template
+  return { data }; // if there isn't correct template
 }
 
 export function extendsPattern(parent: any, child: any) {
-    if ('data' in child) {
-        parent.data = child.data
-    }
-    if ('pageCount' in child) {
-        parent.pageCount = child.pageCount
-    }
-    if ('protocol' in child) {
-        parent.protocol = child.protocol
-    }
+  if ("data" in child) {
+    parent.data = child.data;
+  }
+  if ("pageCount" in child) {
+    parent.pageCount = child.pageCount;
+  }
+  if ("protocol" in child) {
+    parent.protocol = child.protocol;
+  }
 
-    return parent
+  return parent;
 }
 
 /**
  * Check for pattern (template) for Record
  */
 function isValidPattern(pattern: string | Function) {
-    if (typeof pattern === "string" && pattern.length > 0)
-        return true
-    else if (typeof pattern === "function")
-        return true
-    else // if pattern were not set or incorrect
-        return false
+  if (typeof pattern === "string" && pattern.length > 0) return true;
+  else if (typeof pattern === "function")
+    return true; // if pattern were not set or incorrect
+  else return false;
 }
 
-export function routerInterpolation(data: string, where: 'path' | 'query') {
-    const fromPath = (name: string) => {
-        let index = +(name);
-        const isNumber = !Number.isNaN(index);
+export function routerInterpolation(data: string, where: "path" | "query") {
+  const fromPath = (name: string) => {
+    let index = +name;
+    const isNumber = !Number.isNaN(index);
 
-        if (isNumber) {
-            return [name, () => {
-                const splitedPath = options.router.path.split('/')
-                if (index < 0) return splitedPath[splitedPath.length - index] ?? null
-                return splitedPath[index]
-            }]
-        }
-        return [name, () => options.router.params[name] ?? null];
+    if (isNumber) {
+      return [
+        name,
+        () => {
+          const splitedPath = options.router.path.split("/");
+          if (index < 0) return splitedPath[splitedPath.length - index] ?? null;
+          return splitedPath[index];
+        },
+      ];
     }
+    return [name, () => options.router.params[name] ?? null];
+  };
 
-    const fromQuery = (name: string) => {
-        return [name, () => options.router.query[name] ?? null];
-    }
+  const fromQuery = (name: string) => {
+    return [name, () => options.router.query[name] ?? null];
+  };
 
-    if (data.startsWith('path.')) {
-        return fromPath(data.replace('path.', ''));
-    }
-    else if (data.startsWith('query.')) {
-        return fromQuery(data.replace('query.', ''));
-    }
+  if (data.startsWith("path.")) {
+    return fromPath(data.replace("path.", ""));
+  } else if (data.startsWith("query.")) {
+    return fromQuery(data.replace("query.", ""));
+  }
 
-    return where == 'path' ? fromPath(data) : fromQuery(data);
+  return where == "path" ? fromPath(data) : fromQuery(data);
 }
 
 /**
  * Fetching data for store
  */
-export async function storeFetch(url: string, requestInit: any, isblob: boolean, pattern: string | TemplateFunction, abort: AbortSignal, launchTrace: string[]): Promise<FetchResult> {
-    const response = await options.http(url, requestInit, isblob, abort, launchTrace) // raw response
+export async function storeFetch(
+  url: string,
+  requestInit: any,
+  isblob: boolean,
+  pattern: string | TemplateFunction,
+  abort: AbortSignal,
+  launchTrace: string[],
+): Promise<FetchResult> {
+  const response = await options.http(
+    url,
+    requestInit,
+    isblob,
+    abort,
+    launchTrace,
+  ); // raw response
 
-    if (response instanceof Blob) { // return value for Blob data
-        return {
-            header: response.header,
-            data: response.body,
-            error: false,
-            code: 200,
-            errorText: '',
-            pageCount: 0,
-            protocol: null as any
-        }
+  if (response instanceof Blob) {
+    // return value for Blob data
+    return {
+      header: response.header,
+      data: response.body,
+      error: false,
+      code: 200,
+      errorText: "",
+      pageCount: 0,
+      protocol: null as any,
+    };
+  }
+
+  if (
+    typeof response.body == "object" &&
+    !Array.isArray(response.body) &&
+    "_errorCode" in response.body
+  ) {
+    // case for error
+    if (
+      response.body._errorBody.length > 0 &&
+      response.body._errorBody[0] == "{"
+    ) {
+      response.body._errorBody = JSON.parse(response.body._errorBody); // forming errorBody
     }
 
-    if (typeof response.body == 'object' && !Array.isArray(response.body) && '_errorCode' in response.body) { // case for error
-        if (response.body._errorBody.length > 0 && response.body._errorBody[0] == '{') {
-            response.body._errorBody = JSON.parse(response.body._errorBody) // forming errorBody
-        }
+    return {
+      // and return value with info about error IN DATA (that's very helpful)
+      header: response.header,
+      data: response.body._errorBody || null,
+      error: true,
+      code: response.body._errorCode || 500,
+      errorText: response.body._errorText || "Unknow",
+      pageCount: 0,
+      protocol: null as any,
+    };
+  }
 
-        return { // and return value with info about error IN DATA (that's very helpful)
-            header: response.header,
-            data: response.body._errorBody || null,
-            error: true,
-            code: response.body._errorCode || 500,
-            errorText: response.body._errorText || 'Unknow',
-            pageCount: 0,
-            protocol: null as any
-        }
-    }
+  let data = response.body;
+  let pageCount = 0;
+  let protocol = null;
 
-    let data = response.body
-    let pageCount = 0
-    let protocol = null
+  if (!abort.aborted && isValidPattern(pattern)) {
+    // check template
+    const result = callPattern(pattern, response.body) || {}; // use template for response.body if it's correct
 
-    if (!abort.aborted && isValidPattern(pattern)) { // check template
-        const result = callPattern(pattern, response.body) || {} // use template for response.body if it's correct
+    data = result.data ?? data;
+    pageCount = result.pageCount ?? pageCount; // return data, pageCount variable and protocol data
+    protocol = result.protocol ?? protocol;
+  }
 
-        data = result.data ?? data
-        pageCount = result.pageCount ?? pageCount // return data, pageCount variable and protocol data
-        protocol = result.protocol ?? protocol
-    }
-
-    return { // return final correct value
-        header: response.header,
-        data,
-        code: 200,
-        error: false,
-        pageCount,
-        errorText: '',
-        protocol
-    }
+  return {
+    // return final correct value
+    header: response.header,
+    data,
+    code: 200,
+    error: false,
+    pageCount,
+    errorText: "",
+    protocol,
+  };
 }
 
 export const settings = {
-    traceRequest() {
-        options.useTracing = true;
-    },
-    template(name: string, logic: () => { data: any, countPages?: number }) {
-        options.templates[name] = logic
-        return this
-    },
-    httpClient(client: any) {
-        options.http = client
-        return this
-    },
-    cookieWorker(logic: any) {
-        options.cookie = logic
-        return this
-    },
-    router(logic: any) {
-        options.router = logic
-        return this
-    }
-}
+  traceRequest() {
+    options.useTracing = true;
+  },
+  template(name: string, logic: () => { data: any; countPages?: number }) {
+    options.templates[name] = logic;
+    return this;
+  },
+  httpClient(client: any) {
+    options.http = client;
+    return this;
+  },
+  cookieWorker(logic: any) {
+    options.cookie = logic;
+    return this;
+  },
+  router(logic: any) {
+    options.router = logic;
+    return this;
+  },
+};
