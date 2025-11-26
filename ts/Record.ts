@@ -1589,10 +1589,11 @@ export default class Record {
             if (!this._variables.response) // Not Exist create
                 this._variables.response = [];
 
-            this._variables.response.push(...v);
+            if (Array.isArray(v))
+                this._variables.response.push(...v);
         }
         // Rewrite Mode
-        else {
+        else if (!(v instanceof TypeError)) {
             this._variables.response = v;
         }
 

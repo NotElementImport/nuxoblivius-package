@@ -23,7 +23,7 @@ export const options = {
     options: any,
     isblob: boolean,
     abort: AbortSignal,
-    trace: string[],
+    trace: string[]
   ) => {
     let response: Response;
 
@@ -32,7 +32,21 @@ export const options = {
         ...options,
         signal: abort,
       });
-    } catch (err) {}
+    } catch (err: any) {
+      return {
+        _meta: {
+          ok: false,
+          code: 0,
+          text: err?.message || "Network error",
+        },
+        header: new Headers(),
+        body: {
+          _errorCode: 0,
+          _errorText: err?.message || "Network error",
+          _errorBody: err,
+        },
+      };
+    }
 
     if (abort.aborted) {
       return {
@@ -187,14 +201,14 @@ export async function storeFetch(
   isblob: boolean,
   pattern: string | TemplateFunction,
   abort: AbortSignal,
-  launchTrace: string[],
+  launchTrace: string[]
 ): Promise<FetchResult> {
   const response = await options.http(
     url,
     requestInit,
     isblob,
     abort,
-    launchTrace,
+    launchTrace
   ); // raw response
 
   if (response instanceof Blob) {
