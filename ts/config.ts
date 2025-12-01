@@ -33,6 +33,17 @@ export const options = {
         signal: abort,
       });
     } catch (err: any) {
+      if (abort.aborted) {
+        return {
+          _meta: { ok: false, code: 400, text: "Aborted" },
+          header: new Headers(),
+          body: {
+            _errorCode: 400,
+            _errorText: "Aborted",
+            _errorBody: "Aborted",
+          },
+        };
+      }
       return {
         _meta: {
           ok: false,
