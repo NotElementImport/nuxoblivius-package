@@ -212,7 +212,8 @@ export default class Record {
         frozenKey: 0,                /** @deprecated [Nerd] :key variable, for manual watch effect */
 
         isError: false,
-        isLoading: false
+        isLoading: false,
+        isRetry: false
     })
 
     /** @deprecated [Nerd] Frozen Response for manual trigger WatchEffect */
@@ -1489,7 +1490,10 @@ export default class Record {
                 response: fetchResult.data,
                 isAbort: this._abortController.isAborted(),
                 abortCode: this._abortController.getAbortCode(),
-            }, () => this.doFetch(method));
+            }, () => {
+                if (!this._variables.isRetry) this.doFetch(method)
+                this._variables.isRetry = true
+            });
 
             // If answer had object data replace
             if (typeof answer == 'object') {
