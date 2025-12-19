@@ -1490,8 +1490,8 @@ export default class Record {
                 response: fetchResult.data,
                 isAbort: this._abortController.isAborted(),
                 abortCode: this._abortController.getAbortCode(),
-            }, () => {
-                if (!this._variables.isRetry) this.doFetch(method)
+            }, (breakIfError?: boolean) => {
+                if (!breakIfError || !this._variables.isRetry) this.doFetch(method)
                 this._variables.isRetry = true
             });
 
