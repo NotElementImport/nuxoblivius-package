@@ -2,7 +2,12 @@ name: Building
 
 on:
   workflow_dispatch:
-    branches: [ main ]
+    inputs:
+      publish:
+        description: 'Publish package?'
+        default: true
+        required: true
+
 
 jobs:
   build-test-publish:
@@ -21,7 +26,7 @@ jobs:
       run: npm test
 
     - name: Publish (only for admin)
-      if: github.actor == ${{ secrets.AUTHOR }}
+      if: github.actor == ${{ secrets.AUTHOR }} && inputs.publish == true
       run: |
         # Publish the package
         npm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
