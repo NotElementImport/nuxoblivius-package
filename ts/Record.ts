@@ -212,8 +212,7 @@ export default class Record {
         frozenKey: 0,                /** @deprecated [Nerd] :key variable, for manual watch effect */
 
         isError: false,
-        isLoading: false,
-        isRetry: false
+        isLoading: false
     })
 
     /** @deprecated [Nerd] Frozen Response for manual trigger WatchEffect */
@@ -1347,7 +1346,7 @@ export default class Record {
     /**
      * Call request
      */
-    private async doFetch(method: string = 'get') {
+    private async doFetch(method: string = 'get', isRetry?: boolean) {
         let launchTrace: string[] = [];
         if (configOptions.useTracing) {
             launchTrace = new Error().stack.split("at").slice(3);
@@ -1491,8 +1490,7 @@ export default class Record {
                 isAbort: this._abortController.isAborted(),
                 abortCode: this._abortController.getAbortCode(),
             }, (breakIfError?: boolean) => {
-                if (!breakIfError || !this._variables.isRetry) this.doFetch(method)
-                this._variables.isRetry = true
+                if (!breakIfError || !isRetry) this.doFetch(method, true)
             });
 
             // If answer had object data replace
