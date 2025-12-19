@@ -112,7 +112,7 @@ export interface ISetupConfig {
 }
 
 type FetchFailureInfo = { text: string, code: number, response: unknown, isAbort: boolean, abortCode: number };
-type IFetchFailureHandle = (info: FetchFailureInfo, retry: () => Promise<any>) => any;
+type IFetchFailureHandle = (info: FetchFailureInfo, retry: (breakIfError?: boolean) => Promise<any>) => any;
 
 type SetupObject = ISetupConfig | ((item: Record<{}, {}, {}, {}, {}, {}>) => void)
 

@@ -1346,7 +1346,7 @@ export default class Record {
     /**
      * Call request
      */
-    private async doFetch(method: string = 'get') {
+    private async doFetch(method: string = 'get', isRetry?: boolean) {
         let launchTrace: string[] = [];
         if (configOptions.useTracing) {
             launchTrace = new Error().stack.split("at").slice(3);
@@ -1489,7 +1489,9 @@ export default class Record {
                 response: fetchResult.data,
                 isAbort: this._abortController.isAborted(),
                 abortCode: this._abortController.getAbortCode(),
-            }, () => this.doFetch(method));
+            }, (breakIfError?: boolean) => {
+                if (!breakIfError || !isRetry) this.doFetch(method, true)
+            });
 
             // If answer had object data replace
             if (typeof answer == 'object') {
