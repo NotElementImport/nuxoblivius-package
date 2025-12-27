@@ -1,4 +1,4 @@
-import { defineNuxtPlugin, useAppConfig, useNuxtApp, useAsyncData } from "#app";
+import { defineNuxtPlugin, useAppConfig, useRuntimeConfig, useNuxtApp } from "#app";
 import { forgetAllStores } from "nuxoblivius/dist";
 import { RegisterTemplate } from "nuxoblivius";
 import { settings, options as configOptions } from "nuxoblivius/dist/config.js";
@@ -64,26 +64,23 @@ function printLogOnAny(...data) {
 }
 
 function getFetchUrl(url) {
-  let finalUrl = url;
-  let rule = "";
+  if (!appInfo.runOnServer) return url
 
-  if (appInfo.runOnServer) {
-    for (const [rulePattern, prefixUrl] of Object.entries(
-      appInfo.serverRewriteRules,
-    )) {
-      if (url.startsWith(rulePattern)) {
-        rule = rulePattern;
-        finalUrl = prefixUrl + url.slice(rulePattern.length);
-      }
+  for (const [rawPrefix, proxyUrl] of Object.entries(appInfo.serverRewriteRules)) {
+    const prefix = rawPrefix.startsWith('/') ? rawPrefix : `/${rawPrefix}`
+
+    if (url.startsWith(prefix)) {
+      const rest = url.slice(prefix.length)
+      return proxyUrl.replace(/\/$/, '') + '/' + rest.replace(/^\//, '')
     }
   }
 
-  return { url, finalUrl, rule };
+  return url
 }
 
 async function doRequest(uid, url, options, isBlob, abort) {
   const requestData = appInfo.nuxtRequests[uid];
-  let { finalUrl } = getFetchUrl(url);
+  let finalUrl = getFetchUrl(url);
 
   // If client and hydration return from cache:
   if (appInfo.useNuxtFetchWrapper && !appInfo.runOnServer) {
@@ -228,7 +225,7 @@ export default defineNuxtPlugin({
     let uid = nuxtApp.payload.nuxoblivius?.uid ?? generateUID();
     appInfo.isDev = true; // import.meta.dev;
 
-    const pluginConfig = useAppConfig().nuxoblivius;
+    const pluginConfig = useRuntimeConfig().public.nuxoblivius || useAppConfig().nuxoblivius || {};
 
     appInfo.isLogClientEnabled = !!pluginConfig.clientLogs;
     appInfo.isLogServerEnabled = !!pluginConfig.logs;

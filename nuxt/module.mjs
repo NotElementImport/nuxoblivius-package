@@ -45,15 +45,6 @@ const module = defineNuxtModule({
     else
       _nuxt.options.vite.optimizeDeps.exclude.push('nuxoblivius', 'nuxoblivius-builds')
 
-    if (!_nuxt.options.routeRules)
-      _nuxt.options.routeRules = {}
-
-    for (const [rule, url] of Object.entries(_options.rules)) {
-      _nuxt.options.routeRules[rule + '/**'] = {
-        proxy: url + '/**'
-      }
-    }
-
     _nuxt.options.appConfig.nuxoblivius = {
       rules: _options.rules,
       logs: _options.logs,
